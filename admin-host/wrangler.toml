@@ -1,0 +1,7 @@
+name = "loopy"
+compatibility_date = "2025-01-01"
+
+# Serves the built admin site (npm run build with VITE_API_URL set). Single-page-app fallback keeps routes working.
+[assets]
+directory = "../dist"
+not_found_handling = "single-page-application"

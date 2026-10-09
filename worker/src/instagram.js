@@ -18,6 +18,7 @@ async function refreshToken(env, token) {
 
 export async function syncInstagram(env) {
   if (!env.IG_TOKEN) return { skipped: 'IG_TOKEN not set' };
+  if (!env.MEDIA) return { skipped: 'R2 is not enabled yet' };
   const token = await refreshToken(env, await getToken(env));
   const res = await fetch(`${GRAPH}/me/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp&limit=50&access_token=${token}`);
   if (!res.ok) return { error: `Instagram API ${res.status}` };

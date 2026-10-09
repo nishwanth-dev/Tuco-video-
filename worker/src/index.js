@@ -18,12 +18,13 @@ const toWidget = (r) => ({ id: r.id, name: r.name, type: r.type, page: r.page, s
 // Public endpoints only answer to the store origins; admin endpoints need the bearer token.
 const corsFor = (req, env) => {
   const origin = req.headers.get('origin') || '';
-  const ok = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).includes(origin) || origin.startsWith('http://localhost');
+  const ok = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).includes(origin) || origin.startsWith('http://localhost') || (!!origin && !!req.headers.get('authorization') || req.method === 'OPTIONS' && !!origin);
   return { 'access-control-allow-origin': ok ? origin : 'null', 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS', vary: 'origin' };
 };
 const isAdmin = (req, env) => !!env.ADMIN_TOKEN && req.headers.get('authorization') === `Bearer ${env.ADMIN_TOKEN}`;
 
 async function serveMedia(req, env, key) {
+  if (!env.MEDIA) return new Response('Video storage (R2) is not enabled yet', { status: 503 });
   const range = req.headers.get('range');
   const m = range && /bytes=(\d*)-(\d*)/.exec(range);
   const head = await env.MEDIA.head(key);
@@ -156,6 +157,7 @@ async function handle(req, env) {
 
   // Raw file body, stored in R2 and served back through /media. Free plan caps request bodies at 100 MB.
   if (p === '/api/upload' && req.method === 'PUT') {
+    if (!env.MEDIA) return json({ error: 'Video storage (R2) is not enabled yet. Paste a video URL instead.' }, 503, cors);
     const name = (url.searchParams.get('name') || 'video.mp4').replace(/[^\w.-]/g, '_').slice(-80);
     const key = `videos/${crypto.randomUUID()}-${name}`;
     await env.MEDIA.put(key, req.body, { httpMetadata: { contentType: req.headers.get('content-type') || 'video/mp4' } });
