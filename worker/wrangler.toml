@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "tuco-video"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "274a336b-513f-4e82-a90f-324967136727"
 
 # Create first with: wrangler r2 bucket create tuco-videos
 [[r2_buckets]]
