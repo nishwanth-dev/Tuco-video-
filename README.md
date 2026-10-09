@@ -4,7 +4,7 @@ Own video platform for Tuco Kids (replaces Whatmore). Three parts:
 
 - **Admin site** (React + Vite, `src/`): upload videos, link products, pick placements, view analytics.
 - **API** (Cloudflare Worker + D1 + R2, `worker/`): stores videos and events, streams files, copies Instagram reels weekly.
-- **Look and feel:** Tuco Kids brand (yellow #ffd94a, ink #4d4747, cream, pill buttons, More Sugar headings and Poppins).
+- **Look and feel:** admin dashboard is minimal white and grey (Inter, near-black buttons, soft borders); store widgets keep a small Tuco yellow accent (#ffd94a).
 - **Store widget** (`public/widget.js`): drop-in script for tucokids.com. Carousel, stories, spotlight and banner, fullscreen player, add to cart. Uses Shadow DOM so theme CSS cannot break it.
 
 ## Run locally
