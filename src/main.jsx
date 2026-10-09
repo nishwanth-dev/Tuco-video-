@@ -21,10 +21,11 @@ class Boundary extends React.Component {
 
 createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>);
 
-// Hand over from the instant HTML splash to the app.
-requestAnimationFrame(() => {
+// The opening splash stays up for 5 seconds from the moment the page started loading, then fades out.
+const SPLASH_MS = 5000;
+setTimeout(() => {
   const s = document.getElementById('splash');
   if (!s) return;
   s.classList.add('hide');
   setTimeout(() => s.remove(), 400);
-});
+}, Math.max(0, SPLASH_MS - performance.now()));
