@@ -22,8 +22,8 @@ Sign in with the admin token. Demo page: `/widget-demo.html` (update its widget 
 4. `npx wrangler deploy`, set `VITE_API_URL` to the Worker URL, `npm run build`, publish `dist/` on Cloudflare Pages.
 
 ## Live (Cloudflare free plan)
-- API: https://tuco-video-api.tuco-video-worker.workers.dev (`worker/`, `npx wrangler deploy`)
-- Admin: https://loopy.tuco-video-worker.workers.dev (`admin-host/`: `VITE_API_URL=<api url> npm run build`, then `cd admin-host && ../worker/node_modules/.bin/wrangler deploy`)
+- API: https://tuco-video-api.tucokids.workers.dev (`worker/`, `npx wrangler deploy`)
+- Admin: https://loopy.tucokids.workers.dev (`admin-host/`: `VITE_API_URL=<api url> npm run build`, then `cd admin-host && ../worker/node_modules/.bin/wrangler deploy`)
 - R2 video storage is off until R2 is enabled; then uncomment the `r2_buckets` block in `worker/wrangler.toml` and redeploy.
 
 ## Add to the store
