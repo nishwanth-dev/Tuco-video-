@@ -18,14 +18,32 @@ const NAV = [
   { group: 'Settings' }, { id: 'custom', label: 'Customizations' }, { id: 'integrations', label: 'Integrations' },
 ];
 
+const ROUTES = ['home', 'videos', 'products', 'w:product', 'w:home', 'w:collection', 'w:pages', 'analytics', 'custom', 'integrations'];
+// Each page has its own address (#/videos), so the browser and phone back button move between pages.
+const fromHash = () => { const r = decodeURIComponent(location.hash.replace(/^#\/?/, '')); return ROUTES.includes(r) ? r : 'home'; };
+
 export default function App() {
-  const [route, setRoute] = useState('home');
+  const [route, setRoute] = useState(fromHash);
   const [authed, setAuthed] = useState(!!getToken());
   const [videos, setVideos] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+
+  const go = useCallback((r) => {
+    if (r === fromHash()) { setRoute(r); return; }
+    history.pushState({ loopyRoute: r }, '', '#/' + r);
+    setRoute(r);
+    window.scrollTo(0, 0);
+  }, []);
+  useEffect(() => {
+    // Make the very first page a real history entry too, then follow the back and forward buttons.
+    if (!location.hash) history.replaceState({ loopyRoute: 'home' }, '', '#/home');
+    const onPop = () => setRoute(fromHash());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const fail = useCallback((e) => { if (e.message === 'unauthorized') setAuthed(false); else setError(e.message); }, []);
   const loadVideos = useCallback(() => listVideos().then(setVideos).catch(fail), [fail]);
@@ -39,7 +57,7 @@ export default function App() {
 
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
   if (!ready) return <Loader />;
-  const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go: setRoute };
+  const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go };
 
   return (
     <div className="shell">
@@ -47,7 +65,7 @@ export default function App() {
         <div className="brand"><Logo /></div>
         {NAV.map((n, i) => n.group
           ? <div className="grp" key={i}>{n.group}</div>
-          : <button key={n.id} className={'nav' + (n.id === route ? ' on' : '')} onClick={() => setRoute(n.id)}>{n.label}{n.badge && <span className="badge">{videos.length}</span>}</button>)}
+          : <button key={n.id} className={'nav' + (n.id === route ? ' on' : '')} onClick={() => go(n.id)}>{n.label}{n.badge && <span className="badge">{videos.length}</span>}</button>)}
         <div className="grow" />
         <button className="nav" onClick={() => { setToken(''); setAuthed(false); }}>Sign out</button>
       </aside>

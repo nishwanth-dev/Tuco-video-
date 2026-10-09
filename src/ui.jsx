@@ -1,11 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function Modal({ title, onClose, children, wide }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const k = (e) => e.key === 'Escape' && onClose();
+    const k = (e) => e.key === 'Escape' && closeRef.current();
     document.addEventListener('keydown', k);
     return () => document.removeEventListener('keydown', k);
-  }, [onClose]);
+  }, []);
+  // The back button closes the window instead of leaving the page.
+  useEffect(() => {
+    let byBack = false;
+    history.pushState({ loopyModal: 1 }, '');
+    const onPop = () => { byBack = true; closeRef.current(); };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      if (!byBack && history.state && history.state.loopyModal) history.back();
+    };
+  }, []);
   return (
     <div className="overlay" onMouseDown={onClose}>
       <div className={'modal' + (wide ? ' wide' : '')} onMouseDown={(e) => e.stopPropagation()}>
