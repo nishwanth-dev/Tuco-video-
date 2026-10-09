@@ -15,7 +15,7 @@ database_id = "274a336b-513f-4e82-a90f-324967136727"
 
 [vars]
 # Comma-separated store origins allowed to call the public API.
-ALLOWED_ORIGINS = "https://tucokids.com,https://www.tucokids.com"
+ALLOWED_ORIGINS = "https://tucokids.com,https://www.tucokids.com,https://greenspecialities.myshopify.com"
 STORE_URL = "https://tucokids.com"
 STORE_FALLBACK_URL = "https://greenspecialities.myshopify.com"
 
