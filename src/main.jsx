@@ -20,3 +20,11 @@ class Boundary extends React.Component {
 }
 
 createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>);
+
+// Hand over from the instant HTML splash to the app.
+requestAnimationFrame(() => {
+  const s = document.getElementById('splash');
+  if (!s) return;
+  s.classList.add('hide');
+  setTimeout(() => s.remove(), 400);
+});

@@ -8,8 +8,26 @@
     <script src="/widget.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+      <style>
+      body { margin: 0; background: #fafafa; }
+      .splash { position: fixed; inset: 0; z-index: 9999; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; transition: opacity .35s ease; }
+      .splash.hide { opacity: 0; pointer-events: none; }
+      .splash svg { display: block; filter: drop-shadow(0 10px 24px rgba(24,24,27,.18)); animation: lp-pop .6s cubic-bezier(.2,.9,.3,1.2) both; }
+      .splash .ring { transform-origin: 24px 24px; animation: lp-spin 1.1s cubic-bezier(.55,.1,.35,.9) infinite; }
+      .splash .tri { transform-origin: 26px 24px; animation: lp-pulse 1.1s ease-in-out infinite; }
+      .splash .word { font: 700 22px 'Inter', system-ui, sans-serif; letter-spacing: -.04em; color: #18181b; animation: lp-rise .6s .15s ease both; }
+      .splash .bar { width: 64px; height: 3px; border-radius: 3px; background: #e4e4e7; overflow: hidden; animation: lp-rise .6s .25s ease both; }
+      .splash .bar i { display: block; width: 40%; height: 100%; border-radius: 3px; background: #ffd94a; animation: lp-slide 1s ease-in-out infinite; }
+      @keyframes lp-spin { to { transform: rotate(360deg); } }
+      @keyframes lp-pulse { 0%, 100% { transform: scale(.9); } 50% { transform: scale(1.06); } }
+      @keyframes lp-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+      @keyframes lp-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @keyframes lp-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+      @media (prefers-reduced-motion: reduce) { .splash *, .splash svg { animation: none !important; } }
+    </style>
   </head>
   <body>
+    <div class="splash" id="splash" role="status" aria-label="Loading Loopy"><svg viewBox="0 0 48 48" width="76" height="76" aria-hidden="true"><rect width="48" height="48" rx="14" fill="#18181b"/><g class="ring"><path d="M24 10.5a13.5 13.5 0 1 0 13 9.8" fill="none" stroke="#ffd94a" stroke-width="4.5" stroke-linecap="round"/><circle cx="36.5" cy="12.5" r="2.7" fill="#ffd94a"/></g><path class="tri" d="M21 18.2v11.6l9.6-5.8z" fill="#fff" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg><div class="word">loopy</div><div class="bar"><i></i></div></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

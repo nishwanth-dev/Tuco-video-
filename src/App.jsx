@@ -8,6 +8,7 @@ import Customizations from './Customizations.jsx';
 import Analytics from './Analytics.jsx';
 import Integrations from './Integrations.jsx';
 import Logo from './Logo.jsx';
+import Loader from './Loader.jsx';
 
 const NAV = [
   { id: 'home', label: 'Home' }, { id: 'videos', label: 'Videos', badge: true }, { id: 'products', label: 'Products' },
@@ -24,14 +25,20 @@ export default function App() {
   const [widgets, setWidgets] = useState([]);
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
 
   const fail = useCallback((e) => { if (e.message === 'unauthorized') setAuthed(false); else setError(e.message); }, []);
   const loadVideos = useCallback(() => listVideos().then(setVideos).catch(fail), [fail]);
   const loadWidgets = useCallback(() => listWidgets().then(setWidgets).catch(fail), [fail]);
   const loadSettings = useCallback(() => getSettings().then(setSettings).catch(fail), [fail]);
-  useEffect(() => { if (authed) { loadVideos(); loadWidgets(); loadSettings(); } }, [authed, loadVideos, loadWidgets, loadSettings]);
+  useEffect(() => {
+    if (!authed) return;
+    const t0 = Date.now();
+    Promise.allSettled([loadVideos(), loadWidgets(), loadSettings()]).then(() => setTimeout(() => setReady(true), Math.max(0, 700 - (Date.now() - t0))));
+  }, [authed, loadVideos, loadWidgets, loadSettings]);
 
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
+  if (!ready) return <Loader />;
   const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go: setRoute };
 
   return (
