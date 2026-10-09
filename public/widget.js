@@ -4,7 +4,16 @@
    Everything renders in Shadow DOM so theme CSS cannot break the layout. */
 (function () {
   var script = document.currentScript;
-  var API = (script && script.getAttribute('data-api')) || window.TUCO_VIDEO_API || '';
+  var API = (script && script.getAttribute('data-api')) || window.TUCO_VIDEO_API || 'https://tuco-video-api.tucokids.workers.dev';
+  // In the theme editor, show why a widget is empty; on the live store, stay hidden.
+  function note(el, msg) {
+    if (window.Shopify && window.Shopify.designMode) {
+      var r = el.shadowRoot || el.attachShadow({ mode: 'open' });
+      el.style.display = '';
+      r.innerHTML = '<p style="font:12px sans-serif;color:#b42318;background:#fef3f2;border:1px solid #fee4e2;padding:10px 12px;border-radius:8px;margin:8px 16px">Loopy: ' + esc(msg) + '</p>';
+    } else el.style.display = 'none';
+    if (window.console) console.warn('[Loopy] ' + msg);
+  }
   var isMobile = function () { return window.matchMedia('(max-width: 749px)').matches; };
   var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
   // YouTube links play in an embedded player and use the YouTube thumbnail on tiles.
@@ -311,7 +320,7 @@
     var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview };
     return prepare(ctx, cfg.videos || []).then(function (list) {
       if (!list.length) {
-        if (opts.preview) { var r = el.shadowRoot || el.attachShadow({ mode: 'open' }); r.innerHTML = '<style>' + BASE + '</style><p style="text-align:center;color:#999;font:13px sans-serif;padding:24px">No videos to show yet.</p>'; } else el.style.display = 'none';
+        if (opts.preview) { var r = el.shadowRoot || el.attachShadow({ mode: 'open' }); r.innerHTML = '<style>' + BASE + '</style><p style="text-align:center;color:#999;font:13px sans-serif;padding:24px">No videos to show yet.</p>'; } else note(el, 'no live videos to show for this widget. Check the video is live and (for tagged widgets) has a product.');
         return;
       }
       el.style.display = '';
@@ -334,11 +343,11 @@
     ['placement', 'audience'].forEach(function (k) { var v = el.getAttribute('data-' + k); if (v) q.push(k + '=' + encodeURIComponent(v)); });
     fetch(API + '/api/public/config?' + q.join('&')).then(function (r) { return r.json(); })
       .then(function (cfg) {
-        if (!cfg.widget && wid) { el.style.display = 'none'; return; }
+        if (!cfg.widget && wid) { note(el, 'widget ' + wid + ' was not found or is switched off in Loopy.'); return; }
         if (el.getAttribute('data-heading') && cfg.widget) cfg.widget.heading = el.getAttribute('data-heading');
         return render(el, cfg);
       })
-      .catch(function () { el.style.display = 'none'; });
+      .catch(function (e) { note(el, 'could not load from ' + API + ' (' + (e && e.message ? e.message : 'network or blocked store address') + ').'); });
   }
   // A bare widget id typed on its own (for example in a Custom Liquid box) becomes a widget.
   function scanBare() {
