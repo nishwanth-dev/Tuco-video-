@@ -4,7 +4,7 @@ export const DEFAULTS = {
   showAtc: true, showPrice: true, cartAction: 'drawer', tileType: 'overlay',
   carousel: { headingColor: '#4d4747', headingFont: '', headingWeight: '600', ordering: 'none', shuffleBatch: 0, onlyTagged: true, detailsColor: '#4d4747', showAtcBelow: true, showAtcHover: false, feedAtcColor: '#ffd94a', feedAtcTextColor: '#4d4747', overlayImage: '', overlayPlacement: 'bottom-right', overlaySize: 20, tileAspect: '9/16', tileWidthDesktop: 220, tileWidthMobile: 160, tileFit: 'cover' },
   stories: { borderColor: '#ffd94a', titleColor: '#4d4747', sizeFactor: 1, spacing: 1 },
-  banner: { clickable: true, fullScreen: false, showCta: true, showDots: true, aspectLandscape: '16/9', aspectPortrait: '9/16', fit: 'cover', focus: 'center', heightMode: 'ratio', desktopHeight: 520, mobileHeight: 480, background: '#f3f3f3' },
+  banner: { clickable: true, fullScreen: false, showCta: true, showDots: true, aspectLandscape: '16/9', aspectPortrait: '9/16', fit: 'cover', focus: 'center', heightMode: 'fixed', desktopHeight: 480, mobileHeight: 420, background: '#f3f3f3' },
   spotlight: { enabled: true, position: 'left', sizeFactor: 1, ultraMinimize: false },
   product: { ultraMinimize: false, showPopup: false, showHomepageVideos: false, recommend: 'none', collectionMode: 'always' },
   oos: { showWhenAllOut: false, showTile: true, soldOutLabel: true },

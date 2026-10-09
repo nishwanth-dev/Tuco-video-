@@ -17,6 +17,13 @@ export default function Customizations({ settings, videos, loadSettings, setErro
   const dirty = JSON.stringify(s) !== JSON.stringify(settings);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
   const setIn = (g, k, v) => setS((o) => ({ ...o, [g]: { ...o[g], [k]: v } }));
+  // Warn before leaving the page with unsaved changes.
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
   const save = async () => { setSaving(true); try { await saveSettings(s); await loadSettings(); } catch (e) { setError(e.message); } setSaving(false); };
 
   const previewType = SECTIONS.find((x) => x[0] === sec)[2];
@@ -33,7 +40,7 @@ export default function Customizations({ settings, videos, loadSettings, setErro
         {SECTIONS.map(([id, label]) => <button key={id} className={'cnav' + (id === sec ? ' on' : '')} onClick={() => setSec(id)}>{label}</button>)}
       </div>
       <div className="cform">
-        <div className="chead"><h2>{SECTIONS.find((x) => x[0] === sec)[1]}</h2><button className="btn" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving...' : dirty ? 'Save changes' : 'Saved'}</button></div>
+        <div className="chead"><h2>{SECTIONS.find((x) => x[0] === sec)[1]}</h2><div className="row">{dirty && <span className="unsaved">Unsaved changes</span>}<button className="btn" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving...' : dirty ? 'Save changes' : 'Saved'}</button></div></div>
         {sec === 'brand' && <>
           <Field label="Brand Theme Color" hint="Sets the color of buttons and highlights"><Color v={s.brandColor} on={(v) => set('brandColor', v)} /></Field>
           <Field label="Brand Theme Font" hint="Use a font your theme already loads"><input value={s.brandFont} onChange={(e) => set('brandFont', e.target.value)} /></Field>
