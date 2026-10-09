@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Loopy">
+  <rect width="48" height="48" rx="14" fill="#18181b"/>
+  <path d="M24 10.5a13.5 13.5 0 1 0 13 9.8" fill="none" stroke="#ffd94a" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="36.5" cy="12.5" r="2.7" fill="#ffd94a"/>
+  <path d="M21 18.2v11.6l9.6-5.8z" fill="#fff" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>

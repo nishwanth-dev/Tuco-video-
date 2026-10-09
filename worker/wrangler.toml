@@ -16,6 +16,8 @@ bucket_name = "tuco-videos"
 [vars]
 # Comma-separated store origins allowed to call the public API.
 ALLOWED_ORIGINS = "https://tucokids.com,https://www.tucokids.com"
+STORE_URL = "https://tucokids.com"
+STORE_FALLBACK_URL = "https://greenspecialities.myshopify.com"
 
 # Weekly Instagram copy job (Mondays 03:00 UTC).
 [triggers]

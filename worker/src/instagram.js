@@ -32,7 +32,7 @@ export async function syncInstagram(env) {
     const key = `videos/ig-${m.id}.mp4`;
     await env.MEDIA.put(key, file.body, { httpMetadata: { contentType: 'video/mp4' } });
     const title = (m.caption || 'Instagram reel').split('\n')[0].slice(0, 80);
-    await env.DB.prepare("INSERT INTO videos (id,title,url,poster,status,placements,source,source_id,created_at) VALUES (?,?,?,?, 'draft','[]','instagram',?,?)")
+    await env.DB.prepare("INSERT INTO videos (id,title,url,poster,status,placements,products,source,source_id,created_at) VALUES (?,?,?,?, 'draft','[]','[]','instagram',?,?)")
       .bind(crypto.randomUUID(), title, `/media/${key}`, '', m.id, Date.now()).run();
     added.push(m.id);
   }

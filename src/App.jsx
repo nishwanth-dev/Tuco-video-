@@ -1,37 +1,59 @@
 import { useCallback, useEffect, useState } from 'react';
-import { listVideos, saveVideo, deleteVideo, isLive, getToken, setToken } from './api.js';
-import Library from './Library.jsx';
-import Widgets from './Widgets.jsx';
+import { listVideos, listWidgets, getSettings, getToken, setToken, apiBase } from './api.js';
+import Home from './Home.jsx';
+import Videos from './Videos.jsx';
+import Products from './Products.jsx';
+import WidgetsPage from './WidgetsPage.jsx';
+import Customizations from './Customizations.jsx';
 import Analytics from './Analytics.jsx';
+import Integrations from './Integrations.jsx';
+import Logo from './Logo.jsx';
 
-const TABS = ['Videos', 'Widgets', 'Analytics'];
+const NAV = [
+  { id: 'home', label: 'Home' }, { id: 'videos', label: 'Videos', badge: true }, { id: 'products', label: 'Products' },
+  { group: 'Video widgets' },
+  { id: 'w:product', label: 'Product Pages' }, { id: 'w:home', label: 'Homepage' }, { id: 'w:collection', label: 'Collection Pages' }, { id: 'w:pages', label: 'Pages' },
+  { group: 'Analytics' }, { id: 'analytics', label: 'Overview' },
+  { group: 'Settings' }, { id: 'custom', label: 'Customizations' }, { id: 'integrations', label: 'Integrations' },
+];
 
 export default function App() {
-  const [tab, setTab] = useState('Videos');
+  const [route, setRoute] = useState('home');
+  const [authed, setAuthed] = useState(!!getToken());
   const [videos, setVideos] = useState([]);
-  const [authed, setAuthed] = useState(!isLive || !!getToken());
+  const [widgets, setWidgets] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
 
-  const load = useCallback(() => listVideos().then(setVideos).catch((e) => {
-    if (e.message === 'unauthorized') setAuthed(false); else setError(e.message);
-  }), []);
-  useEffect(() => { if (authed) load(); }, [authed, load]);
+  const fail = useCallback((e) => { if (e.message === 'unauthorized') setAuthed(false); else setError(e.message); }, []);
+  const loadVideos = useCallback(() => listVideos().then(setVideos).catch(fail), [fail]);
+  const loadWidgets = useCallback(() => listWidgets().then(setWidgets).catch(fail), [fail]);
+  const loadSettings = useCallback(() => getSettings().then(setSettings).catch(fail), [fail]);
+  useEffect(() => { if (authed) { loadVideos(); loadWidgets(); loadSettings(); } }, [authed, loadVideos, loadWidgets, loadSettings]);
 
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
-  const act = (fn) => async (...a) => { try { await fn(...a); await load(); } catch (e) { setError(e.message); } };
+  const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go: setRoute };
 
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand">Tuco Videos</div>
-        {TABS.map((t) => <button key={t} className={'nav' + (t === tab ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>)}
-        {isLive && <button className="nav" onClick={() => { setToken(''); setAuthed(false); }}>Sign out</button>}
+        <div className="brand"><Logo /></div>
+        {NAV.map((n, i) => n.group
+          ? <div className="grp" key={i}>{n.group}</div>
+          : <button key={n.id} className={'nav' + (n.id === route ? ' on' : '')} onClick={() => setRoute(n.id)}>{n.label}{n.badge && <span className="badge">{videos.length}</span>}</button>)}
+        <div className="grow" />
+        <button className="nav" onClick={() => { setToken(''); setAuthed(false); }}>Sign out</button>
       </aside>
-      <main className="main">
+      <main className={'main' + (route === 'custom' ? ' full' : '')}>
         {error && <div className="err" onClick={() => setError('')}>{error} (click to dismiss)</div>}
-        {tab === 'Videos' && <Library videos={videos} onSave={act(saveVideo)} onDelete={act(deleteVideo)} onSynced={load} />}
-        {tab === 'Widgets' && <Widgets videos={videos} />}
-        {tab === 'Analytics' && <Analytics videos={videos} />}
+        {!apiBase && <div className="err">VITE_API_URL is not set, so the admin cannot reach the API.</div>}
+        {route === 'home' && <Home {...ctx} />}
+        {route === 'videos' && <Videos {...ctx} />}
+        {route === 'products' && <Products {...ctx} />}
+        {route.startsWith('w:') && <WidgetsPage key={route} page={route.slice(2)} {...ctx} />}
+        {route === 'analytics' && <Analytics {...ctx} />}
+        {route === 'custom' && settings && <Customizations {...ctx} />}
+        {route === 'integrations' && <Integrations {...ctx} />}
       </main>
     </div>
   );
@@ -40,10 +62,10 @@ export default function App() {
 function Login({ onDone }) {
   const [t, setT] = useState('');
   return (
-    <div className="overlay" style={{ background: '#faf7f8' }}>
+    <div className="overlay" style={{ background: '#fafafa' }}>
       <form className="modal" onSubmit={(e) => { e.preventDefault(); setToken(t.trim()); onDone(); }}>
-        <h2>Tuco Videos</h2>
-        <label>Admin token<input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} /></label>
+        <Logo size={36} />
+        <label className="lab">Admin token<input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} /></label>
         <button className="btn">Sign in</button>
       </form>
     </div>
