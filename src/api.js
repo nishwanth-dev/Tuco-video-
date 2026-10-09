@@ -32,3 +32,6 @@ export const saveOrder = (handle, order) => send('PUT', `/api/order/${handle}`, 
 export const searchProducts = (q = '') => req(`/api/store/products?q=${encodeURIComponent(q)}`).then((d) => d.products);
 export const getAnalytics = (days) => req(`/api/analytics?days=${days}`);
 export const syncInstagram = () => send('POST', '/api/sync/instagram', {});
+
+export const listCollections = () => req('/api/store/collections').then((d) => d.collections);
+export const reorderVideos = (ids) => send('PUT', '/api/videos/order', { ids });

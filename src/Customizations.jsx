@@ -106,6 +106,8 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Ultraminimize on Scroll"><Toggle on={s.spotlight.ultraMinimize} onChange={(v) => setIn('spotlight', 'ultraMinimize', v)} /></Field>
           <Field label="Position" hint="Which corner of the screen"><Sel v={s.spotlight.position} on={(v) => setIn('spotlight', 'position', v)} opts={['left', 'right']} /></Field>
           <Field label="Size Factor"><Num v={s.spotlight.sizeFactor} on={(v) => setIn('spotlight', 'sizeFactor', v)} /></Field>
+          <Field label="Distance from bottom on mobile" hint="Pixels. Raise it so the video clears your bottom menu bar"><input type="number" min="0" max="300" value={s.spotlight.bottomOffsetMobile ?? 84} onChange={(e) => setIn('spotlight', 'bottomOffsetMobile', Number(e.target.value))} /></Field>
+          <Field label="Distance from bottom on desktop" hint="Pixels"><input type="number" min="0" max="300" value={s.spotlight.bottomOffsetDesktop ?? 20} onChange={(e) => setIn('spotlight', 'bottomOffsetDesktop', Number(e.target.value))} /></Field>
         </>}
         {sec === 'oos' && <>
           <Field label="Show Videos When All Products Are Out of Stock" hint="Display videos for out-of-stock products"><Toggle on={s.oos.showWhenAllOut} onChange={(v) => setIn('oos', 'showWhenAllOut', v)} /></Field>

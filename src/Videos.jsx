@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { saveVideo, deleteVideo, uploadVideo, searchProducts, syncInstagram } from './api.js';
+import { saveVideo, deleteVideo, uploadVideo, searchProducts, syncInstagram, reorderVideos } from './api.js';
 import { Modal, Empty } from './ui.jsx';
 import { Thumb, Player } from './media.jsx';
 
@@ -18,6 +18,7 @@ export default function Videos({ videos, loadVideos, setError }) {
   const [tagging, setTagging] = useState(null);
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [arranging, setArranging] = useState(false);
   const [msg, setMsg] = useState('');
 
   const list = useMemo(() => {
@@ -34,7 +35,8 @@ export default function Videos({ videos, loadVideos, setError }) {
 
   const pages = Math.max(1, Math.ceil(list.length / per));
   const shown = list.slice(page * per, page * per + per);
-  const act = (fn) => async (...a) => { try { await fn(...a); await loadVideos(); } catch (e) { setError(e.message); } };
+  // Returns '' on success or the error message, so dialogs can stay open and show what went wrong.
+  const act = (fn) => async (...a) => { try { await fn(...a); await loadVideos(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
   const patch = act((v, p) => saveVideo({ ...v, ...p }));
   const bulk = act(async (fn) => { await Promise.all(sel.map((id) => fn(videos.find((v) => v.id === id)))); setSel([]); });
   const toggleSel = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -61,6 +63,7 @@ export default function Videos({ videos, loadVideos, setError }) {
         </div>
         <button className="btn" onClick={() => setAdding(true)}>+ Add Media</button>
         <button className="btn ghost" onClick={sync}>Sync Instagram</button>
+        <button className="btn ghost" onClick={() => setArranging(true)}>Arrange</button>
         <input className="search" placeholder="Search by video, product title or handle..." value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
       </div>
       {msg && <p className="muted">{msg}</p>}
@@ -97,9 +100,10 @@ export default function Videos({ videos, loadVideos, setError }) {
         <button className="link" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>Next ›</button>
         <select value={per} onChange={(e) => { setPer(Number(e.target.value)); setPage(0); }}>{[12, 24, 48].map((n) => <option key={n} value={n}>{n} per page</option>)}</select>
       </div>
-      {tagging && <TagProducts video={tagging} onClose={() => setTagging(null)} onSave={async (products) => { await patch(tagging, { products }); setTagging(null); }} />}
-      {editing && <EditVideo video={editing} onClose={() => setEditing(null)} onSave={async (v) => { await act(saveVideo)(v); setEditing(null); }} />}
-      {adding && <AddMedia onClose={() => setAdding(false)} onSave={async (v) => { await act(saveVideo)(v); setAdding(false); }} />}
+      {tagging && <TagProducts video={tagging} onClose={() => setTagging(null)} onSave={async (products) => { const m = await patch(tagging, { products }); if (!m) setTagging(null); return m; }} />}
+      {editing && <EditVideo video={editing} onClose={() => setEditing(null)} onSave={async (v) => { const m = await act(saveVideo)(v); if (!m) setEditing(null); return m; }} />}
+      {arranging && <ArrangeVideos videos={videos.filter((v) => !v.archived)} onClose={() => setArranging(false)} onSaved={async () => { setArranging(false); await loadVideos(); }} setError={setError} />}
+      {adding && <AddMedia onClose={() => setAdding(false)} onSave={async (v) => { const m = await act(saveVideo)(v); if (!m) setAdding(false); return m; }} />}
     </>
   );
 }
@@ -120,6 +124,7 @@ export function TagProducts({ video, onClose, onSave }) {
   const [results, setResults] = useState([]);
   const [url, setUrl] = useState('');
   const [err, setErr] = useState('');
+  const [saveErr, setSaveErr] = useState('');
   const t = useRef();
   const has = (h) => chosen.some((p) => p.handle === h);
   const toggle = (p) => setChosen((c) => (has(p.handle) ? c.filter((x) => x.handle !== p.handle) : [...c, { handle: p.handle, title: p.title, price: p.price, image: p.image }]));
@@ -153,7 +158,8 @@ export function TagProducts({ video, onClose, onSave }) {
           ))}</div>
         </div>
       </div>
-      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={() => onSave(chosen)}>Save</button></div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => setSaveErr((await onSave(chosen)) || '')}>Save</button></div>
+      {saveErr && <p className="red small">{saveErr}</p>}
     </Modal>
   );
 }
@@ -162,17 +168,49 @@ function EditVideo({ video, onClose, onSave }) {
   const [v, setV] = useState(video);
   const set = (k, val) => setV((o) => ({ ...o, [k]: val }));
   const toggle = (p) => set('placements', v.placements.includes(p) ? v.placements.filter((x) => x !== p) : [...v.placements, p]);
+  const [saveErr, setSaveErr] = useState('');
+  const [posterBusy, setPosterBusy] = useState(false);
+  const [posterMsg, setPosterMsg] = useState('');
+  // Grabs a frame from the video and stores it as the poster image.
+  const makePoster = async () => {
+    setPosterBusy(true); setPosterMsg('');
+    try {
+      const vid = document.createElement('video');
+      vid.crossOrigin = 'anonymous'; vid.muted = true; vid.src = v.url;
+      await new Promise((res, rej) => { vid.onloadeddata = res; vid.onerror = () => rej(new Error('The video could not be read.')); });
+      vid.currentTime = Math.min(0.5, (vid.duration || 1) / 2);
+      await new Promise((res) => { vid.onseeked = res; });
+      const c = document.createElement('canvas');
+      c.width = 540; c.height = Math.round((540 * vid.videoHeight) / vid.videoWidth) || 960;
+      c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+      const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.8));
+      if (!blob) throw new Error('This video host blocks reading frames. Upload the video to Loopy instead.');
+      const url = await uploadVideo(new File([blob], 'poster.jpg', { type: 'image/jpeg' }));
+      set('poster', url); setPosterMsg('Poster added.');
+    } catch (e) { setPosterMsg(e.message || 'Could not generate a poster.'); }
+    setPosterBusy(false);
+  };
   return (
     <Modal title="Video details" onClose={onClose}>
       <Player className="vprev" url={v.url} />
       <label className="lab">Title<input value={v.title} onChange={(e) => set('title', e.target.value)} /></label>
       <label className="lab">Poster image URL (optional)<input value={v.poster} onChange={(e) => set('poster', e.target.value)} /></label>
+      <div className="row"><button type="button" className="btn ghost sm" disabled={posterBusy} onClick={makePoster}>{posterBusy ? 'Generating...' : 'Generate poster from video'}</button>{posterMsg && <span className="muted">{posterMsg}</span>}</div>
+      <div className="two">
+        <label className="lab">Button text (optional)<input value={v.ctaText || ''} onChange={(e) => set('ctaText', e.target.value)} placeholder="e.g. Buy the set" /></label>
+        <label className="lab">Button link (optional)<input value={v.ctaUrl || ''} onChange={(e) => set('ctaUrl', e.target.value)} placeholder="/collections/gifting" /></label>
+      </div>
+      <div className="two">
+        <label className="lab">Show from (optional)<input type="datetime-local" value={toLocal(v.startsAt)} onChange={(e) => set('startsAt', fromLocal(e.target.value))} /></label>
+        <label className="lab">Hide after (optional)<input type="datetime-local" value={toLocal(v.endsAt)} onChange={(e) => set('endsAt', fromLocal(e.target.value))} /></label>
+      </div>
       <div className="two">
         <label className="lab">Status<select value={v.status} onChange={(e) => set('status', e.target.value)}><option value="live">live</option><option value="draft">draft</option></select></label>
         <label className="lab">Audience<select value={v.audience} onChange={(e) => set('audience', e.target.value)}><option>kids</option><option>teens</option></select></label>
       </div>
       <div className="lab">Show on<div className="checks">{SHOW_ON.map(([k, l]) => <label key={k} className="chk"><input type="checkbox" checked={v.placements.includes(k)} onChange={() => toggle(k)} />{l}</label>)}</div></div>
-      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={() => onSave(v)}>Save</button></div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => setSaveErr((await onSave(v)) || '')}>Save</button></div>
+      {saveErr && <p className="red small">{saveErr}</p>}
     </Modal>
   );
 }
@@ -185,6 +223,7 @@ function AddMedia({ onClose, onSave }) {
   const pick = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    if (f.size > 100 * 1024 * 1024) { setErr('This file is over 100 MB. Compress it first (tools/compress-video.sh) and try again.'); e.target.value = ''; return; }
     setBusy(true); setErr('');
     try { setUrl(await uploadVideo(f)); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); } catch (x) { setErr(x.message); }
     setBusy(false);
@@ -197,7 +236,24 @@ function AddMedia({ onClose, onSave }) {
       {busy && <p className="muted">Uploading...</p>}
       {err && <p className="red small">{err}</p>}
       <p className="muted">The video is saved as a draft. Tag products and set it live afterwards.</p>
-      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!url || !title || busy} onClick={() => onSave({ title, url, poster: '', audience: 'kids', status: 'draft', placements: [], products: [] })}>Add</button></div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!/^https?:\/\//i.test(url) || !title.trim() || busy} onClick={async () => { const m = await onSave({ title: title.trim(), url: url.trim(), poster: '', audience: 'kids', status: 'draft', placements: [], products: [] }); if (m) setErr(m); }}>Add</button></div>
+    </Modal>
+  );
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+const toLocal = (ms) => { if (!ms) return ''; const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fromLocal = (t) => (t ? new Date(t).getTime() : 0);
+
+function ArrangeVideos({ videos, onClose, onSaved, setError }) {
+  const [ids, setIds] = useState(videos.map((v) => v.id));
+  const move = (i, d) => setIds((o) => { const n = [...o]; const j = i + d; if (j < 0 || j >= n.length) return n; [n[i], n[j]] = [n[j], n[i]]; return n; });
+  return (
+    <Modal title="Arrange videos" onClose={onClose}>
+      <p className="muted">This sets the default order widgets use when they show all tagged videos.</p>
+      <div className="arr">{ids.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
+        <div className="arow" key={id}><Thumb url={v.url} /><span>{v.title}</span><button className="link" onClick={() => move(i, -1)}>↑</button><button className="link" onClick={() => move(i, 1)}>↓</button></div>); })}</div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => { try { await reorderVideos(ids); await onSaved(); } catch (e) { setError(e.message); } }}>Save order</button></div>
     </Modal>
   );
 }

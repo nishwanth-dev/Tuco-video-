@@ -6,7 +6,7 @@ const fmtTime = (s) => (s >= 3600 ? (s / 3600).toFixed(1) + ' hrs' : s >= 60 ? M
 
 export default function Analytics({ videos, widgets, setError }) {
   const [days, setDays] = useState(30);
-  const [data, setData] = useState({ perVideo: [], perWidget: [], daily: [] });
+  const [data, setData] = useState({ perVideo: [], perWidget: [], daily: [], byDevice: [], bySource: [], sales: { orders: 0, revenue: 0 }, salesByVideo: [] });
   useEffect(() => { getAnalytics(days).then(setData).catch((e) => setError(e.message)); }, [days, setError]);
 
   const t = useMemo(() => data.perVideo.reduce((a, r) => ({ imp: a.imp + (r.impressions || 0), plays: a.plays + (r.plays || 0), secs: a.secs + (r.secs || 0), atc: a.atc + (r.atc || 0), likes: a.likes + (r.likes || 0), shares: a.shares + (r.shares || 0) }), { imp: 0, plays: 0, secs: 0, atc: 0, likes: 0, shares: 0 }), [data]);
@@ -24,6 +24,7 @@ export default function Analytics({ videos, widgets, setError }) {
         <div className="stat"><span>Add to cart</span><b>{t.atc}</b><small>{pct(t.atc, t.plays)} of views</small></div>
         <div className="stat"><span>Likes</span><b>{t.likes}</b></div>
         <div className="stat"><span>Shares</span><b>{t.shares}</b></div>
+        <div className="stat"><span>Orders from videos</span><b>{data.sales.orders}</b><small>{data.sales.revenue ? '₹' + Math.round(data.sales.revenue).toLocaleString('en-IN') + ' sales' : 'connect the order webhook'}</small></div>
       </div>
       <h3 className="sect">Views per day</h3>
       <div className="chart">{data.daily.length ? data.daily.map((d) => <div key={d.day} className="bar1" title={`${d.day}: ${d.plays} views, ${d.atc} add to cart`}><i style={{ height: (d.plays / max) * 100 + '%' }} /><span>{d.day.slice(5)}</span></div>) : <p className="muted pad">No views recorded in this period yet.</p>}</div>
@@ -31,11 +32,19 @@ export default function Analytics({ videos, widgets, setError }) {
       <table><thead><tr><th>Widget</th><th>Impressions</th><th>Views</th><th>View rate</th><th>Add to cart</th><th>Cart rate</th></tr></thead>
         <tbody>{data.perWidget.map((r) => <tr key={r.widget}><td>{widgets.find((w) => w.id === r.widget)?.name || r.widget}</td><td>{r.impressions}</td><td>{r.plays}</td><td>{pct(r.plays, r.impressions)}</td><td>{r.atc}</td><td>{pct(r.atc, r.plays)}</td></tr>)}
           {!data.perWidget.length && <tr><td colSpan="6" className="muted">No widget traffic yet.</td></tr>}</tbody></table>
+      <div className="split">
+        <div><h3 className="sect">By device</h3>
+          <table><thead><tr><th>Device</th><th>Views</th><th>Add to cart</th><th>Cart rate</th></tr></thead>
+            <tbody>{data.byDevice.map((r) => <tr key={r.device}><td>{r.device}</td><td>{r.plays}</td><td>{r.atc}</td><td>{pct(r.atc, r.plays)}</td></tr>)}{!data.byDevice.length && <tr><td colSpan="4" className="muted">No data yet.</td></tr>}</tbody></table></div>
+        <div><h3 className="sect">By traffic source</h3>
+          <table><thead><tr><th>Source</th><th>Views</th><th>Add to cart</th><th>Cart rate</th></tr></thead>
+            <tbody>{data.bySource.map((r) => <tr key={r.src}><td>{r.src}</td><td>{r.plays}</td><td>{r.atc}</td><td>{pct(r.atc, r.plays)}</td></tr>)}{!data.bySource.length && <tr><td colSpan="4" className="muted">No data yet.</td></tr>}</tbody></table></div>
+      </div>
       <h3 className="sect">Video performance</h3>
-      <table><thead><tr><th>Video</th><th>Impressions</th><th>Views</th><th>Avg watch</th><th>Add to cart</th><th>Cart rate</th><th>Likes</th><th>Shares</th></tr></thead>
-        <tbody>{rows.map(({ v, impressions = 0, plays = 0, secs = 0, atc = 0, likes = 0, shares = 0 }) => <tr key={v.id}><td>{v.title}</td><td>{impressions}</td><td>{plays}</td><td>{plays ? (secs / plays).toFixed(1) + 's' : '-'}</td><td>{atc}</td><td>{pct(atc, plays)}</td><td>{likes}</td><td>{shares}</td></tr>)}
-          {!rows.length && <tr><td colSpan="8" className="muted">No video activity yet.</td></tr>}</tbody></table>
-      <p className="muted pad">Sales from video sessions needs Shopify order data and is not connected yet. Add to cart is tracked now, and each cart line carries a _tuco_video property.</p>
+      <table><thead><tr><th>Video</th><th>Impressions</th><th>Views</th><th>Avg watch</th><th>Add to cart</th><th>Cart rate</th><th>Likes</th><th>Shares</th><th>Orders</th><th>Sales</th></tr></thead>
+        <tbody>{rows.map(({ v, impressions = 0, plays = 0, secs = 0, atc = 0, likes = 0, shares = 0 }) => <tr key={v.id}><td>{v.title}</td><td>{impressions}</td><td>{plays}</td><td>{plays ? (secs / plays).toFixed(1) + 's' : '-'}</td><td>{atc}</td><td>{pct(atc, plays)}</td><td>{likes}</td><td>{shares}</td><td>{(data.salesByVideo.find((x) => x.video_id === v.id) || {}).orders || 0}</td><td>{(data.salesByVideo.find((x) => x.video_id === v.id) || {}).revenue ? '₹' + Math.round(data.salesByVideo.find((x) => x.video_id === v.id).revenue).toLocaleString('en-IN') : '-'}</td></tr>)}
+          {!rows.length && <tr><td colSpan="10" className="muted">No video activity yet.</td></tr>}</tbody></table>
+      <p className="muted pad">Sales are credited to the video whose cart line carries the _tuco_video property. To start counting sales, add the order webhook shown under Integrations.</p>
     </>
   );
 }
