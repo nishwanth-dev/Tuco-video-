@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { uploadVideo, syncInstagram, isLive } from './api.js';
 
 const PLACEMENTS = ['home', 'product', 'collection', 'teens'];
 const blank = { title: '', url: '', poster: '', audience: 'kids', status: 'draft', placements: [], product: { title: '', handle: '', price: '' } };
 
-export default function Library({ videos, onSave, onDelete }) {
+export default function Library({ videos, onSave, onDelete, onSynced }) {
+  const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState('all');
   const shown = videos.filter((v) => filter === 'all' || v.status === filter || v.audience === filter);
@@ -16,9 +18,11 @@ export default function Library({ videos, onSave, onDelete }) {
           <select value={filter} onChange={(e) => setFilter(e.target.value)}>
             {['all', 'live', 'draft', 'kids', 'teens'].map((f) => <option key={f}>{f}</option>)}
           </select>
+          {isLive && <button className="link" onClick={async () => { setMsg('Syncing Instagram...'); try { const r = await syncInstagram(); setMsg(r.skipped || r.error || `Copied ${r.added} new reel(s) as drafts`); onSynced(); } catch (e) { setMsg(e.message); } }}>Sync Instagram</button>}
           <button className="btn" onClick={() => setEditing(blank)}>+ Add video</button>
         </div>
       </div>
+      {msg && <p className="muted">{msg}</p>}
       <div className="grid">
         {shown.map((v) => (
           <div className="vcard" key={v.id}>
@@ -32,7 +36,7 @@ export default function Library({ videos, onSave, onDelete }) {
           </div>
         ))}
       </div>
-      {editing && <VideoForm video={editing} onClose={() => setEditing(null)} onSave={(v) => { onSave(v); setEditing(null); }} />}
+      {editing && <VideoForm video={editing} onClose={() => setEditing(null)} onSave={async (v) => { await onSave(v); setEditing(null); }} />}
     </>
   );
 }
@@ -42,8 +46,14 @@ function VideoForm({ video, onClose, onSave }) {
   const set = (k, val) => setV((o) => ({ ...o, [k]: val }));
   const setP = (k, val) => setV((o) => ({ ...o, product: { ...o.product, [k]: val } }));
   const toggle = (p) => set('placements', v.placements.includes(p) ? v.placements.filter((x) => x !== p) : [...v.placements, p]);
-  // File picks only last this session until Cloudflare R2 upload is connected.
-  const pick = (e) => { const f = e.target.files[0]; if (f) set('url', URL.createObjectURL(f)); };
+  const [busy, setBusy] = useState(false);
+  const pick = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setBusy(true);
+    try { set('url', await uploadVideo(f)); } catch (err) { alert(err.message); }
+    setBusy(false);
+  };
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -51,7 +61,7 @@ function VideoForm({ video, onClose, onSave }) {
         <h2>{v.id ? 'Edit video' : 'Add video'}</h2>
         <label>Title<input required value={v.title} onChange={(e) => set('title', e.target.value)} /></label>
         <label>Video URL (.mp4)<input required value={v.url} onChange={(e) => set('url', e.target.value)} placeholder="https://..." /></label>
-        <label>or choose a file (this session only)<input type="file" accept="video/*" onChange={pick} /></label>
+        <label>Upload a file {busy ? '(uploading...)' : isLive ? '(stored in R2, max 100 MB)' : '(demo: this session only)'}<input type="file" accept="video/*" onChange={pick} /></label>
         <label>Poster image URL (optional)<input value={v.poster} onChange={(e) => set('poster', e.target.value)} /></label>
         <div className="two">
           <label>Product name<input value={v.product.title} onChange={(e) => setP('title', e.target.value)} /></label>
@@ -63,7 +73,7 @@ function VideoForm({ video, onClose, onSave }) {
           <label>Status<select value={v.status} onChange={(e) => set('status', e.target.value)}><option>draft</option><option>live</option></select></label>
         </div>
         <div className="checks">{PLACEMENTS.map((p) => <label key={p} className="chk"><input type="checkbox" checked={v.placements.includes(p)} onChange={() => toggle(p)} />{p}</label>)}</div>
-        <div className="row end"><button type="button" className="link" onClick={onClose}>Cancel</button><button className="btn">Save</button></div>
+        <div className="row end"><button type="button" className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={busy}>Save</button></div>
       </form>
     </div>
   );

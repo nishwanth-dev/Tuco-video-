@@ -47,3 +47,4 @@ select, input:not([type=checkbox]) { width: 100%; padding: 9px 10px; border: 1px
 .stat { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; } .stat span { color: #888; font-size: 12px; } .stat b { font-size: 22px; }
 table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; } th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0eded; font-size: 14px; } th { color: #888; font-weight: 500; font-size: 12px; }
 @media (max-width: 700px) { .shell { flex-direction: column; } .side { width: auto; flex-direction: row; overflow-x: auto; } .brand { margin: 8px; } .main { padding: 16px; } }
+.err { background:#ffe3e3; color:#a11; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; cursor:pointer; }
