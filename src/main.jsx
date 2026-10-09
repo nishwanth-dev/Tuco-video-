@@ -21,8 +21,8 @@ class Boundary extends React.Component {
 
 createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>);
 
-// The opening splash stays up for 5 seconds from the moment the page started loading, then fades out.
-const SPLASH_MS = 5000;
+// The opening splash stays up for 3 seconds from the moment the page started loading, then fades out.
+const SPLASH_MS = 3000;
 setTimeout(() => {
   const s = document.getElementById('splash');
   if (!s) return;
