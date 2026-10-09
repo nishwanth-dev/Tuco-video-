@@ -23,7 +23,8 @@
 
   /* ---------- styles ---------- */
   var BASE = [
-    ':host{display:block;font-family:var(--font),system-ui,sans-serif;color:#222}*{box-sizing:border-box}[hidden]{display:none!important}',
+    ':host{display:block;width:100%;min-width:min(300px,100vw);font-family:var(--font),system-ui,sans-serif;color:#222}*{box-sizing:border-box}[hidden]{display:none!important}',
+    '.carousel,.stories,.banner{width:100%;min-width:0}',
     '.head{text-align:center;margin:0 auto 14px;padding:0 16px}.title{font-size:28px;margin:0;color:var(--head-color);font-family:var(--head-font),var(--font),sans-serif;font-weight:var(--head-weight)}',
     '.track{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 8px;scroll-snap-type:x proximity;scrollbar-width:none}.track::-webkit-scrollbar{display:none}',
     '.card{flex:0 0 190px;scroll-snap-align:start;display:flex;flex-direction:column;gap:8px}',
@@ -40,7 +41,7 @@
     '.stories .track{gap:calc(14px * var(--spacing))}.stories .card{flex:0 0 calc(84px * var(--size));text-align:center;gap:6px}',
     '.stories .tile{aspect-ratio:1;border-radius:50%;border:3px solid var(--story-border)}.stories .tile img.th,.stories .tile video{border-radius:50%}',
     '.lbl{font-size:12px;color:var(--story-title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory}.banner .card{flex:0 0 100%}.banner .tile{border-radius:0;aspect-ratio:var(--ar)}',
+    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory;width:100%}.banner .card{flex:0 0 100%;min-width:100%}.banner .tile{border-radius:0;aspect-ratio:var(--ar)}',
     '.banner.full .tile{aspect-ratio:auto;height:100vh;height:100svh}',
     '.cta{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;background:var(--brand);color:#222;border-radius:var(--btn-radius);font:600 13px var(--font),sans-serif;padding:11px 24px}',
     '.dots{display:flex;gap:6px;justify-content:center;padding:8px}.dots i{width:6px;height:6px;border-radius:50%;background:#d4d4d8}.dots i.on{background:#222}',
