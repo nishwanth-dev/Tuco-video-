@@ -4,6 +4,7 @@ Own video platform for Tuco Kids (replaces Whatmore). Three parts:
 
 - **Admin site** (React + Vite, `src/`): upload videos, link products, pick placements, view analytics.
 - **API** (Cloudflare Worker + D1 + R2, `worker/`): stores videos and events, streams files, copies Instagram reels weekly.
+- **Look and feel:** Tuco Kids brand (yellow #ffd94a, ink #4d4747, cream, pill buttons, More Sugar headings and Poppins).
 - **Store widget** (`public/widget.js`): drop-in script for tucokids.com. Carousel, stories, spotlight and banner, fullscreen player, add to cart. Uses Shadow DOM so theme CSS cannot break it.
 
 ## Run locally
@@ -25,7 +26,7 @@ Leave `VITE_API_URL` empty to use the browser-only demo. Sign in with the admin 
 <div data-tuco-video data-layout="carousel" data-placement="home" data-heading="Watch &amp; shop"></div>
 <script src="https://YOUR-PAGES-SITE/widget.js" data-api="https://YOUR-WORKER" defer></script>
 ```
-`data-layout`: carousel, stories, spotlight, banner. Filters: `data-placement`, `data-audience`, `data-product` (product handle).
+`data-layout`: carousel, stories, spotlight, banner, floating (corner video; `data-position="left|right"`) and gallery (product page; optional `data-insert-into=".product__media-list"` and `data-insert-position="first|last"` to add it as a gallery slide). Filters: `data-placement`, `data-audience`, `data-product` (product handle).
 
 ## Limits
 Uploads through the Worker are capped at 100 MB (free plan). Instagram sync needs a Meta app and long-lived token (`IG_TOKEN`).

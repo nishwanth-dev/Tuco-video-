@@ -9,17 +9,21 @@
 
   var CSS = [
     ':host{display:block;font-family:Poppins,system-ui,sans-serif}',
-    '.head{text-align:center;margin:0 auto 14px;padding:0 16px}.title{font-size:28px;font-weight:800;color:#4d4747;margin:0}',
+    '.head{text-align:center;margin:0 auto 14px;padding:0 16px}.title{font-size:30px;color:#4d4747;margin:0;font-family:\'More Sugar\',Poppins,sans-serif;font-weight:400}',
     '.track{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 8px;scroll-snap-type:x proximity;scrollbar-width:none}.track::-webkit-scrollbar{display:none}',
     '.tile{position:relative;flex:0 0 190px;aspect-ratio:9/16;border:0;padding:0;border-radius:16px;overflow:hidden;background:#f3f3f3;cursor:pointer;scroll-snap-align:start}',
     '.tile video,.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}',
     '.info{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
     '.stories .track{gap:14px}.stories .item{flex:0 0 84px;text-align:center;font-size:12px;color:#4d4747}',
-    '.stories .tile{flex:none;width:84px;aspect-ratio:1;border-radius:50%;border:3px solid #f7a8c4}.stories .info{display:none}',
+    '.stories .tile{flex:none;width:84px;aspect-ratio:1;border-radius:50%;border:3px solid #ffd94a}.stories .info{display:none}',
     '.stories .lbl{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.spotlight .track{justify-content:center}.spotlight .tile{flex-basis:300px}',
     '.banner .tile{flex:1 0 100%;aspect-ratio:16/9;border-radius:0}.banner .track{padding:0}.banner.m .tile{aspect-ratio:9/16;max-height:80vh}',
-    '@media(max-width:749px){.title{font-size:22px}}'
+    '.fl{position:fixed;bottom:16px;z-index:2147482000;width:110px}.fl.right{right:16px}.fl.left{left:16px}.fl .tile{flex:none;width:110px}.fl .info{display:none}',
+    '.fx{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;font-size:11px;z-index:2}',
+    '.gal{position:relative;width:100%;aspect-ratio:var(--tuco-ratio,1/1);border-radius:12px;overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
+    '.snd{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:15px;cursor:pointer}',
+    '@media(max-width:749px){.title{font-size:22px}.fl,.fl .tile{width:92px}}'
   ].join('');
 
   var PCSS = [
@@ -30,7 +34,7 @@
     '.ui{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;box-sizing:border-box;padding:24px 16px calc(20px + env(safe-area-inset-bottom));color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75))}',
     '[hidden]{display:none!important}.t{margin:0 0 8px;font-weight:600;font-size:15px}.p{display:flex;align-items:center;gap:10px;background:#fff;color:#222;border-radius:12px;padding:8px}',
     '.p img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:none}.pm{flex:1;min-width:0;font-size:13px;line-height:1.3}.pm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.atc{border:0;border-radius:999px;background:#f0518c;color:#fff;font:600 13px Poppins,system-ui,sans-serif;padding:10px 16px;cursor:pointer}.atc[disabled]{opacity:.6}',
+    '.atc{border:0;border-radius:30px;background:#ffd94a;color:#4d4747;font:600 13px Poppins,system-ui,sans-serif;padding:10px 16px;cursor:pointer}.atc[disabled]{opacity:.6}',
     '.b{position:absolute;z-index:3;top:calc(12px + env(safe-area-inset-top));width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:16px;cursor:pointer}.x{right:12px}.s{right:60px}'
   ].join('');
 
@@ -132,9 +136,59 @@
     };
   }
 
+  // Floating corner video: remembers when a shopper closes it for the session.
+  function renderFloating(el, videos) {
+    try { if (sessionStorage.getItem('tuco_float_closed')) { el.style.display = 'none'; return; } } catch (e) { /* ignore */ }
+    var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
+    var v = videos[0];
+    var side = el.getAttribute('data-position') === 'left' ? 'left' : 'right';
+    root.innerHTML = '<style>' + CSS + '</style><div class="fl ' + side + '"><button class="tile" aria-label="' + esc(v.title) + '"><video data-src="' + esc(v.url) + '" muted loop playsinline preload="none"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : '') + '></video></button><button class="fx" aria-label="Close">\u2715</button></div>';
+    var vid = root.querySelector('video');
+    vid.src = vid.getAttribute('data-src') + '#t=0.1';
+    vid.play().catch(function () {});
+    root.querySelector('.tile').onclick = function () { openPlayer(videos, 0); };
+    root.querySelector('.fx').onclick = function (e) {
+      e.stopPropagation();
+      try { sessionStorage.setItem('tuco_float_closed', '1'); } catch (err) { /* ignore */ }
+      el.style.display = 'none';
+    };
+  }
+
+  // Product gallery video: plays inline with a sound toggle. Optionally moves itself into the theme gallery.
+  function renderGallery(el, videos) {
+    var sel = el.getAttribute('data-insert-into');
+    var target = sel && document.querySelector(sel);
+    if (target) {
+      var holder = /^(UL|OL)$/.test(target.tagName) ? document.createElement('li') : el;
+      if (holder !== el) { holder.className = target.firstElementChild ? target.firstElementChild.className : ''; holder.appendChild(el); }
+      if (el.getAttribute('data-insert-position') === 'last') target.appendChild(holder); else target.insertBefore(holder, target.firstChild);
+    }
+    var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
+    var v = videos[0];
+    root.innerHTML = '<style>' + CSS + '</style><div class="gal"><video data-src="' + esc(v.url) + '" muted loop playsinline preload="none"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : '') + '></video><button class="snd" aria-label="Sound">\uD83D\uDD07</button></div>';
+    var vid = root.querySelector('video'), btn = root.querySelector('.snd'), counted = false, started = 0;
+    var toggle = function () { vid.muted = !vid.muted; btn.textContent = vid.muted ? '\uD83D\uDD07' : '\uD83D\uDD0A'; };
+    btn.onclick = toggle;
+    vid.onclick = toggle;
+    function flush() { if (started) { track({ type: 'watch', videoId: v.id, secs: (Date.now() - started) / 1000 }); started = 0; } }
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          if (!vid.src) vid.src = vid.getAttribute('data-src') + '#t=0.1';
+          vid.play().catch(function () {});
+          started = Date.now();
+          if (!counted) { counted = true; track({ type: 'play', videoId: v.id }); }
+        } else { vid.pause(); flush(); }
+      });
+    }, { rootMargin: '100px' }).observe(vid);
+    window.addEventListener('pagehide', flush);
+  }
+
   function render(el, videos) {
     var layout = el.getAttribute('data-layout') || 'carousel';
     var heading = el.getAttribute('data-heading') || '';
+    if (videos.length && layout === 'floating') return renderFloating(el, videos);
+    if (videos.length && layout === 'gallery') return renderGallery(el, videos);
     var list = layout === 'spotlight' || layout === 'banner' ? videos.slice(0, 1) : videos;
     if (!list.length) { el.style.display = 'none'; return; }
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
@@ -153,7 +207,7 @@
       entries.forEach(function (e) {
         var vid = e.target;
         if (e.isIntersecting) {
-          if (!vid.src) vid.src = vid.getAttribute('data-src');
+          if (!vid.src) vid.src = vid.getAttribute('data-src') + '#t=0.1';
           vid.play().catch(function () {});
         } else vid.pause();
       });
