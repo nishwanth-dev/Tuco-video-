@@ -59,6 +59,10 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Show Add to Cart Button On Hover" hint='For the "Info below" tile'><Toggle on={s.carousel.showAtcHover} onChange={(v) => setIn('carousel', 'showAtcHover', v)} /></Field>
           <Field label="Feed tile button color"><Color v={s.carousel.feedAtcColor} on={(v) => setIn('carousel', 'feedAtcColor', v)} /></Field>
           <Field label="Feed tile button text color"><Color v={s.carousel.feedAtcTextColor} on={(v) => setIn('carousel', 'feedAtcTextColor', v)} /></Field>
+          <Field label="Tile shape" hint="Shape of each video tile"><Sel v={s.carousel.tileAspect || '9/16'} on={(v) => setIn('carousel', 'tileAspect', v)} opts={[['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
+          <Field label="Tile width on desktop" hint="In pixels"><input type="number" min="100" max="600" value={s.carousel.tileWidthDesktop ?? 220} onChange={(e) => setIn('carousel', 'tileWidthDesktop', Number(e.target.value))} /></Field>
+          <Field label="Tile width on mobile" hint="In pixels"><input type="number" min="80" max="400" value={s.carousel.tileWidthMobile ?? 160} onChange={(e) => setIn('carousel', 'tileWidthMobile', Number(e.target.value))} /></Field>
+          <Field label="Video fit in tile" hint="Fill the tile (crops edges) or show the whole video"><Sel v={s.carousel.tileFit || 'cover'} on={(v) => setIn('carousel', 'tileFit', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
           <Field label="Thumbnail overlay image URL" hint="PNG/JPG shown on top of every thumbnail"><input value={s.carousel.overlayImage} placeholder="https://..." onChange={(e) => setIn('carousel', 'overlayImage', e.target.value)} /></Field>
           <Field label="Thumbnail overlay placement"><Sel v={s.carousel.overlayPlacement} on={(v) => setIn('carousel', 'overlayPlacement', v)} opts={['bottom-right', 'bottom-left', 'top-right', 'top-left']} /></Field>
           <Field label="Thumbnail overlay size (% of width)"><input type="number" min="1" max="100" value={s.carousel.overlaySize} onChange={(e) => setIn('carousel', 'overlaySize', Number(e.target.value))} /></Field>
@@ -78,8 +82,17 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Is Full Screen" hint="Banner fills the screen height"><Toggle on={s.banner.fullScreen} onChange={(v) => setIn('banner', 'fullScreen', v)} /></Field>
           <Field label="Show Call to Action"><Toggle on={s.banner.showCta} onChange={(v) => setIn('banner', 'showCta', v)} /></Field>
           <Field label="Show Navigation Dots"><Toggle on={s.banner.showDots} onChange={(v) => setIn('banner', 'showDots', v)} /></Field>
-          <Field label="Landscape Aspect Ratio"><Sel v={s.banner.aspectLandscape} on={(v) => setIn('banner', 'aspectLandscape', v)} opts={['16/9', '4/3', '21/9', '1/1']} /></Field>
-          <Field label="Portrait Aspect Ratio"><Sel v={s.banner.aspectPortrait} on={(v) => setIn('banner', 'aspectPortrait', v)} opts={['9/16', '3/4', '4/5', '1/1']} /></Field>
+          <Field label="Banner height" hint="Follow a shape, or set an exact height in pixels"><Sel v={s.banner.heightMode || 'ratio'} on={(v) => setIn('banner', 'heightMode', v)} opts={[['ratio', 'By aspect ratio'], ['fixed', 'Fixed height']]} /></Field>
+          {(s.banner.heightMode || 'ratio') === 'ratio' ? <>
+            <Field label="Desktop aspect ratio" hint="Used on wide screens"><Sel v={s.banner.aspectLandscape} on={(v) => setIn('banner', 'aspectLandscape', v)} opts={['16/9', '21/9', '2/1', '3/1', '4/3', '1/1']} /></Field>
+            <Field label="Mobile aspect ratio" hint="Used on phones"><Sel v={s.banner.aspectPortrait} on={(v) => setIn('banner', 'aspectPortrait', v)} opts={['9/16', '4/5', '3/4', '1/1', '4/3', '16/9']} /></Field>
+          </> : <>
+            <Field label="Desktop height" hint="In pixels"><input type="number" min="120" max="1200" value={s.banner.desktopHeight ?? 520} onChange={(e) => setIn('banner', 'desktopHeight', Number(e.target.value))} /></Field>
+            <Field label="Mobile height" hint="In pixels"><input type="number" min="120" max="1000" value={s.banner.mobileHeight ?? 480} onChange={(e) => setIn('banner', 'mobileHeight', Number(e.target.value))} /></Field>
+          </>}
+          <Field label="Video fit" hint="Fill the banner (crops edges) or show the whole video with bars"><Sel v={s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fit', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
+          <Field label="Which part to keep when cropping" hint="Only matters when the video is cropped"><Sel v={s.banner.focus || 'center'} on={(v) => setIn('banner', 'focus', v)} opts={[['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]} /></Field>
+          <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
         </>}
         {sec === 'spotlight' && <>
           <Field label="Enable Spotlight videos" hint="Founder intros, sale announcements, moment marketing"><Toggle on={s.spotlight.enabled} onChange={(v) => setIn('spotlight', 'enabled', v)} /></Field>
@@ -95,20 +108,20 @@ export default function Customizations({ settings, videos, loadSettings, setErro
       </div>
       <div className="cprev">
         <div className="phead"><b>Widget Preview</b><div className="seg"><button className={device === 'mobile' ? 'on' : ''} onClick={() => setDevice('mobile')}>Mobile</button><button className={device === 'desktop' ? 'on' : ''} onClick={() => setDevice('desktop')}>Desktop</button></div></div>
-        <div className={'frame ' + device}><Preview type={previewType} settings={s} videos={previewVideos} /></div>
+        <div className={'frame ' + device}><Preview type={previewType} settings={s} videos={previewVideos} device={device} /></div>
       </div>
     </div>
   );
 }
 
 // Renders the real store widget with the unsaved settings so the preview matches the store.
-function Preview({ type, settings, videos }) {
+function Preview({ type, settings, videos, device }) {
   const ref = useRef();
   useEffect(() => {
     const el = ref.current;
     if (!el || !window.TucoVideo) return;
-    window.TucoVideo.render(el, { settings, widget: { id: 'preview', type, heading: 'Watch & shop' }, videos }, { preview: true });
-  }, [type, settings, videos]);
+    window.TucoVideo.render(el, { settings, widget: { id: 'preview', type, heading: 'Watch & shop' }, videos }, { preview: true, device });
+  }, [type, settings, videos, device]);
   return <div ref={ref} />;
 }
 

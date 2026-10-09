@@ -20,7 +20,9 @@
   var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
   // YouTube links play in an embedded player and use the YouTube thumbnail on tiles.
   var ytId = function (u) { var m = String(u || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([\w-]{11})/); return m ? m[1] : ''; };
-  var ytEmbed = function (id, controls) { return 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=' + (controls ? 1 : 0); };
+  var ytEmbed = function (id, controls, quiet) { return 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=' + (controls ? 1 : 0) + (quiet ? '&disablekb=1&fs=0&iv_load_policy=3' : ''); };
+  // A YouTube tile plays inline (muted, looping) once visible; the thumbnail shows until it loads and the cover keeps taps on the tile.
+  var ytTile = function (v) { return '<img class="th" data-yt="1" data-id="' + esc(v.id) + '" src="' + esc(thumbOf(v)) + '" alt="" loading="lazy"><iframe class="ytv" data-yt="' + ytId(v.url) + '" tabindex="-1" allow="autoplay; encrypted-media" title=""></iframe><span class="cover"></span>'; };
   var thumbOf = function (v) { var id = ytId(v.url); return v.poster || (id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''); };
 
   /* ---------- styles ---------- */
@@ -29,13 +31,15 @@
     '.carousel,.stories,.banner{width:100%;min-width:0}',
     '.head{text-align:center;margin:0 auto 14px;padding:0 16px}.title{font-size:28px;margin:0;color:var(--head-color);font-family:var(--head-font),var(--font),sans-serif;font-weight:var(--head-weight)}',
     '.track{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 8px;scroll-snap-type:x proximity;scrollbar-width:none}.track::-webkit-scrollbar{display:none}',
-    '.card{flex:0 0 190px;scroll-snap-align:start;display:flex;flex-direction:column;gap:8px}',
-    '.tile{position:relative;width:100%;aspect-ratio:9/16;border:0;padding:0;border-radius:var(--radius);overflow:hidden;background:#f3f3f3;cursor:pointer;display:block}',
-    '.tile video,.tile img.th{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}',
+    '.card{flex:0 0 var(--tw,190px);scroll-snap-align:start;display:flex;flex-direction:column;gap:8px}',
+    '.tile{position:relative;width:100%;aspect-ratio:var(--tar,9/16);border:0;padding:0;border-radius:var(--radius);overflow:hidden;background:#f3f3f3;cursor:pointer;display:block}',
+    '.tile video,.tile img.th{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--focus,center);display:block}',
+    '.fitc .tile video,.fitc .tile img.th{object-fit:contain}.fitc .ytv{width:100cqw;height:56.25cqw}.focus-top .ytv{top:0;transform:translateX(-50%)}.focus-bottom .ytv{top:auto;bottom:0;transform:translateX(-50%)}',
+    '.tile{container-type:size}.ytv{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:max(100cqw,177.78cqh);height:max(100cqh,56.25cqw);border:0;pointer-events:none;z-index:1;background:transparent}.cover{position:absolute;inset:0;z-index:2}',
     '.ov{position:absolute;width:var(--ov-size);height:auto;z-index:2;pointer-events:none}.ov.bottom-right{right:6px;bottom:6px}.ov.bottom-left{left:6px;bottom:6px}.ov.top-right{right:6px;top:6px}.ov.top-left{left:6px;top:6px}',
     '.views{position:absolute;top:8px;left:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:999px;padding:3px 8px}',
     '.sold{position:absolute;top:8px;right:8px;z-index:2;background:#fff;color:#222;font-size:11px;font-weight:600;border-radius:999px;padding:3px 8px}',
-    '.info{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
+    '.info{z-index:3;position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
     '.info b{display:block;font-size:13px}.meta{font-size:12px;line-height:1.3;color:var(--details-color)}.meta b{display:block;font-size:13px;font-weight:600}',
     '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 11px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:9px 10px;width:100%}.abtn[disabled]{opacity:.6;cursor:default}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
@@ -43,11 +47,11 @@
     '.stories .track{gap:calc(14px * var(--spacing))}.stories .card{flex:0 0 calc(84px * var(--size));text-align:center;gap:6px}',
     '.stories .tile{aspect-ratio:1;border-radius:50%;border:3px solid var(--story-border)}.stories .tile img.th,.stories .tile video{border-radius:50%}',
     '.lbl{font-size:12px;color:var(--story-title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory;width:100%}.banner .card{flex:0 0 100%;min-width:100%}.banner .tile{border-radius:0;aspect-ratio:var(--ar)}',
+    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory;width:100%}.banner .card{flex:0 0 100%;min-width:100%}.banner .tile{border-radius:0;aspect-ratio:var(--ar);background:var(--bbg,#f3f3f3)}.banner.fixed .tile{aspect-ratio:auto;height:var(--bh)}',
     '.banner.full .tile{aspect-ratio:auto;height:100vh;height:100svh}',
-    '.cta{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;background:var(--brand);color:#222;border-radius:var(--btn-radius);font:600 13px var(--font),sans-serif;padding:11px 24px}',
+    '.cta{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:3;background:var(--brand);color:#222;border-radius:var(--btn-radius);font:600 13px var(--font),sans-serif;padding:11px 24px}',
     '.dots{display:flex;gap:6px;justify-content:center;padding:8px}.dots i{width:6px;height:6px;border-radius:50%;background:#d4d4d8}.dots i.on{background:#222}',
-    '.fl{position:fixed;bottom:16px;z-index:2147482000;width:calc(110px * var(--size))}.fl.right{right:16px}.fl.left{left:16px}.fl .tile{width:100%}',
+    '.fl .tile{aspect-ratio:9/16}','.fl{position:fixed;bottom:16px;z-index:2147482000;width:calc(110px * var(--size))}.fl.right{right:16px}.fl.left{left:16px}.fl .tile{width:100%}',
     '.fl.mini{width:calc(64px * var(--size))}.fx{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;font-size:11px;z-index:3}',
     '.gal{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--radius);overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
     '.snd{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:15px;cursor:pointer}',
@@ -103,12 +107,14 @@
     });
   }
 
-  function cssVars(s, extra) {
-    var c = s.carousel, st = s.stories, round = s.border !== 'square';
+  function cssVars(s, extra, mobile) {
+    if (mobile === undefined) mobile = isMobile();
+    var c = s.carousel, st = s.stories, b = s.banner, round = s.border !== 'square';
     var v = {
       '--brand': s.brandColor, '--font': s.brandFont || 'Poppins', '--radius': round ? '16px' : '4px', '--btn-radius': round ? '999px' : '4px',
       '--head-color': c.headingColor, '--head-font': c.headingFont || s.brandFont || 'Poppins', '--head-weight': c.headingWeight, '--details-color': c.detailsColor,
       '--feed-bg': c.feedAtcColor, '--feed-fg': c.feedAtcTextColor, '--ov-size': c.overlaySize + '%',
+      '--tw': (mobile ? (c.tileWidthMobile || 160) : (c.tileWidthDesktop || 220)) + 'px', '--tar': String(c.tileAspect || '9/16').replace(':', '/'), '--focus': { top: 'center top', bottom: 'center bottom' }[b.focus] || 'center', '--bh': (mobile ? (b.mobileHeight || 480) : (b.desktopHeight || 520)) + 'px', '--bbg': b.background || '#f3f3f3',
       '--story-border': st.borderColor, '--story-title': st.titleColor, '--size': st.sizeFactor, '--spacing': st.spacing
     };
     Object.keys(extra || {}).forEach(function (k) { v[k] = extra[k]; });
@@ -209,8 +215,10 @@
         var vid = e.target;
         if (e.isIntersecting) {
           if (vid.tagName === 'VIDEO') { if (!vid.src) vid.src = vid.getAttribute('data-src') + '#t=0.1'; vid.play().catch(function () {}); }
+          if (vid.tagName === 'IMG') { var fr = vid.nextElementSibling; if (fr && fr.tagName === 'IFRAME' && !fr.getAttribute('src')) fr.src = ytEmbed(fr.getAttribute('data-yt'), false, true); }
           if (!vid.__seen) { vid.__seen = 1; track(ctx, { type: 'impression', videoId: vid.getAttribute('data-id') }); }
         } else if (vid.tagName === 'VIDEO') vid.pause();
+        else if (vid.tagName === 'IMG') { var f2 = vid.nextElementSibling; if (f2 && f2.tagName === 'IFRAME') f2.removeAttribute('src'); }
       });
     }, { rootMargin: '200px' });
     [].slice.call(root.querySelectorAll('video[data-src], img[data-yt]')).forEach(function (v) { io.observe(v); });
@@ -219,7 +227,7 @@
   function tileHTML(v, i, s, type) {
     var c = s.carousel, p = v.products[0], tt = s.tileType;
     var yt = ytId(v.url), tsrc = thumbOf(v);
-    var thumb = (tsrc ? '<img class="th"' + (yt ? ' data-yt="1" data-id="' + esc(v.id) + '"' : '') + ' src="' + esc(tsrc) + '" alt="" loading="lazy">' : '') + (yt ? '' : '<video data-id="' + esc(v.id) + '" data-src="' + esc(v.url) + '" muted loop playsinline preload="none"></video>');
+    var thumb = yt ? ytTile(v) : ((tsrc ? '<img class="th" src="' + esc(tsrc) + '" alt="" loading="lazy">' : '') + '<video data-id="' + esc(v.id) + '" data-src="' + esc(v.url) + '" muted loop playsinline preload="none"></video>');
     var ov = c.overlayImage ? '<img class="ov ' + esc(c.overlayPlacement) + '" src="' + esc(c.overlayImage) + '" alt="">' : '';
     var views = s.showViews ? '<span class="views">▶ ' + fmtViews(v.views || 0) + '</span>' : '';
     var sold = v.allSoldOut && s.oos.soldOutLabel ? '<span class="sold">Sold out</span>' : '';
@@ -259,10 +267,11 @@
     var s = ctx.settings, w = ctx.widget || {};
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
     var banner = type === 'banner';
-    var ar = (isMobile() ? s.banner.aspectPortrait : s.banner.aspectLandscape) || '16/9';
-    var cls = type + (banner && s.banner.fullScreen ? ' full' : '');
+    var ar = (ctx.mobile ? s.banner.aspectPortrait : s.banner.aspectLandscape) || '16/9';
+    var fit = banner ? s.banner.fit : s.carousel.tileFit;
+    var cls = type + (banner && s.banner.fullScreen ? ' full' : '') + (banner && s.banner.heightMode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + (s.banner.focus || 'center') : '');
     var head = w.heading && !banner ? '<div class="head"><h2 class="title">' + esc(w.heading) + '</h2></div>' : '';
-    root.innerHTML = '<style>' + cssVars(s, { '--ar': ar.replace(':', '/') }) + BASE + '</style><div class="' + cls + '">' + head + '<div class="track">' + list.map(function (v, i) { return tileHTML(v, i, s, type); }).join('') + '</div>' +
+    root.innerHTML = '<style>' + cssVars(s, { '--ar': ar.replace(':', '/') }, ctx.mobile) + BASE + '</style><div class="' + cls + '">' + head + '<div class="track">' + list.map(function (v, i) { return tileHTML(v, i, s, type); }).join('') + '</div>' +
       (banner && s.banner.showDots && list.length > 1 ? '<div class="dots">' + list.map(function (_, i) { return '<i class="' + (i ? '' : 'on') + '"></i>'; }).join('') + '</div>' : '') + '</div>';
     lazyVideos(root, ctx);
     wire(root, ctx, list);
@@ -280,7 +289,7 @@
     try { if (!ctx.preview && sessionStorage.getItem('tuco_float_closed_' + type)) { el.style.display = 'none'; return; } } catch (e) { /* ignore */ }
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
     var v = list[0];
-    root.innerHTML = '<style>' + cssVars(s, { '--size': cfg.sizeFactor }) + BASE + '</style><div class="fl ' + (cfg.position === 'left' ? 'left' : 'right') + '"><button class="tile" data-i="0" aria-label="' + esc(v.title) + '">' + (ytId(v.url) ? '<img class="th" data-yt="1" data-id="' + esc(v.id) + '" src="' + esc(thumbOf(v)) + '" alt="">' : '<video data-id="' + esc(v.id) + '" data-src="' + esc(v.url) + '" muted loop playsinline preload="none"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : '') + '></video>') + '</button><button class="fx" aria-label="Close">✕</button></div>';
+    root.innerHTML = '<style>' + cssVars(s, { '--size': cfg.sizeFactor }) + BASE + '</style><div class="fl ' + (cfg.position === 'left' ? 'left' : 'right') + '"><button class="tile" data-i="0" aria-label="' + esc(v.title) + '">' + (ytId(v.url) ? ytTile(v) : '<video data-id="' + esc(v.id) + '" data-src="' + esc(v.url) + '" muted loop playsinline preload="none"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : '') + '></video>') + '</button><button class="fx" aria-label="Close">✕</button></div>';
     lazyVideos(root, ctx);
     wire(root, ctx, list);
     var box = root.querySelector('.fl');
@@ -321,7 +330,7 @@
     opts = opts || {};
     keepAlive(el);
     var type = (cfg.widget && cfg.widget.type) || el.getAttribute('data-layout') || 'carousel';
-    var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview };
+    var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview, mobile: opts.device ? opts.device === 'mobile' : isMobile() };
     return prepare(ctx, cfg.videos || []).then(function (list) {
       if (!list.length) {
         if (opts.preview) { var r = el.shadowRoot || el.attachShadow({ mode: 'open' }); r.innerHTML = '<style>' + BASE + '</style><p style="text-align:center;color:#999;font:13px sans-serif;padding:24px">No videos to show yet.</p>'; } else note(el, 'no live videos to show for this widget. Check the video is live and (for tagged widgets) has a product.');
