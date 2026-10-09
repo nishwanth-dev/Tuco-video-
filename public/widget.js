@@ -14,6 +14,8 @@
     } else el.style.display = 'none';
     if (window.console) console.warn('[Loopy] ' + msg);
   }
+  // Some themes hide empty divs (div:empty {display:none}); a hidden child keeps the host visible.
+  function keepAlive(el) { if (!el.firstChild) { var m = document.createElement('span'); m.hidden = true; el.appendChild(m); } }
   var isMobile = function () { return window.matchMedia('(max-width: 749px)').matches; };
   var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
   // YouTube links play in an embedded player and use the YouTube thumbnail on tiles.
@@ -317,6 +319,7 @@
   /* ---------- entry points ---------- */
   function render(el, cfg, opts) {
     opts = opts || {};
+    keepAlive(el);
     var type = (cfg.widget && cfg.widget.type) || el.getAttribute('data-layout') || 'carousel';
     var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview };
     return prepare(ctx, cfg.videos || []).then(function (list) {
@@ -335,6 +338,7 @@
   function init(el) {
     if (el.__tuco || !API) return;
     el.__tuco = true;
+    keepAlive(el);
     var q = [];
     var wid = el.getAttribute('data-widget');
     if (wid) q.push('widget=' + encodeURIComponent(wid));
