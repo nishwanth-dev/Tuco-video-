@@ -178,7 +178,7 @@ async function handle(req, env, ctx) {
   const url = new URL(req.url);
   const p = url.pathname;
   const cors = corsFor(req, env);
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-private-network': 'true' } });
   if (p.startsWith('/media/')) return serveMedia(req, env, decodeURIComponent(p.slice(7)));
 
   // ---- public (store) ----
