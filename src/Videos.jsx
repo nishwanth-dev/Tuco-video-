@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { saveVideo, deleteVideo, uploadVideo, searchProducts, syncInstagram } from './api.js';
 import { Modal, Empty } from './ui.jsx';
+import { Thumb, Player } from './media.jsx';
 
 const WHERE = [['social', 'Social videos'], ['website', 'Videos on website'], ['home', 'Homepage'], ['product', 'Product Pages'], ['collection', 'Collection & Other Pages'], ['archived', 'Archived']];
 const SHOW_ON = [['home', 'Homepage'], ['product', 'Product pages'], ['collection', 'Collection pages'], ['pages', 'Other pages']];
@@ -77,7 +78,7 @@ export default function Videos({ videos, loadVideos, setError }) {
         {shown.map((v) => (
           <div className="vtile" key={v.id}>
             <div className="vmedia" onClick={() => setEditing(v)}>
-              <video src={v.url + '#t=0.1'} muted playsInline preload="metadata" onMouseEnter={(e) => e.target.play().catch(() => {})} onMouseLeave={(e) => e.target.pause()} />
+              <Thumb url={v.url} hover />
               <label className="sel" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={sel.includes(v.id)} onChange={() => toggleSel(v.id)} /></label>
               {v.source === 'instagram' && <span className="src">Social</span>}
               <span className={'st ' + v.status}>{v.status}</span>
@@ -163,7 +164,7 @@ function EditVideo({ video, onClose, onSave }) {
   const toggle = (p) => set('placements', v.placements.includes(p) ? v.placements.filter((x) => x !== p) : [...v.placements, p]);
   return (
     <Modal title="Video details" onClose={onClose}>
-      <video className="vprev" src={v.url} controls playsInline />
+      <Player className="vprev" url={v.url} />
       <label className="lab">Title<input value={v.title} onChange={(e) => set('title', e.target.value)} /></label>
       <label className="lab">Poster image URL (optional)<input value={v.poster} onChange={(e) => set('poster', e.target.value)} /></label>
       <div className="two">

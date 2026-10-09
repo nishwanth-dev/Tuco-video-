@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { searchProducts, getOrder, saveOrder } from './api.js';
 import { Modal, Empty } from './ui.jsx';
+import { Thumb } from './media.jsx';
 
 export default function Products({ videos, setError }) {
   const [products, setProducts] = useState([]);
@@ -45,7 +46,7 @@ function Arrange({ product, videos, onClose, setError }) {
   return (
     <Modal title={`Arrange media: ${product.title}`} onClose={onClose}>
       <div className="arr">{order.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
-        <div className="arow" key={id}><video src={v.url + '#t=0.1'} muted preload="metadata" /><span>{v.title}</span><button className="link" onClick={() => move(i, -1)}>↑</button><button className="link" onClick={() => move(i, 1)}>↓</button></div>); })}</div>
+        <div className="arow" key={id}><Thumb url={v.url} /><span>{v.title}</span><button className="link" onClick={() => move(i, -1)}>↑</button><button className="link" onClick={() => move(i, 1)}>↓</button></div>); })}</div>
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => { try { await saveOrder(product.handle, order); onClose(); } catch (e) { setError(e.message); } }}>Save order</button></div>
     </Modal>
   );

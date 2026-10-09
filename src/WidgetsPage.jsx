@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, apiBase } from './api.js';
 import { Modal, Toggle, Empty } from './ui.jsx';
+import { Thumb } from './media.jsx';
 
 const TYPES = {
   carousel: ['Video Carousel', 'Showcase your best videos in an engaging carousel'],
@@ -84,7 +85,7 @@ function Editor({ widget, videos, onClose, onSave }) {
         </div>
       )}
       {w.scope === 'custom' && !targetable && (
-        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><video src={v.url + '#t=0.1'} muted preload="metadata" /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
+        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
       {targetable && (
         <div className="lab">Show on products
@@ -103,13 +104,16 @@ function Editor({ widget, videos, onClose, onSave }) {
 
 function Embed({ widget, onClose }) {
   const attr = widget.type === 'gallery' ? ' data-insert-into=".product__media-list"' : '';
-  const code = `<div data-tuco-video data-widget="${widget.id}"${attr}></div>\n<script src="${location.origin}/widget.js" data-api="${apiBase}" defer></script>`;
-  const where = { floating: 'Paste just before </body> in layout/theme.liquid, or in a Custom Liquid section.', spotlight: 'Paste just before </body> in layout/theme.liquid, or in a Custom Liquid section.' }[widget.type] || 'Paste into a Custom Liquid section, or a Custom Liquid block, where you want the widget to appear.';
+  const full = `<div data-tuco-video data-widget="${widget.id}"${attr}></div>`;
+  const simple = widget.type !== 'gallery';
+  const where = ['floating', 'spotlight'].includes(widget.type) ? 'Paste it into a Custom Liquid section anywhere on the page; the video floats in the corner.' : 'In the theme editor, add a Custom Liquid section where the widget should appear and paste it into the box.';
   return (
     <Modal title="Embed code" onClose={onClose}>
-      <p className="muted">{where} Add the script tag only once per page.</p>
-      <textarea readOnly rows={5} className="code" value={code} onFocus={(e) => e.target.select()} />
-      <div className="row end"><button className="btn" onClick={() => navigator.clipboard.writeText(code)}>Copy</button></div>
+      <p className="muted">{where} The Loopy script line must already be in theme.liquid (once per page).</p>
+      {simple && <><h3>Simple: just the widget ID</h3><textarea readOnly rows={1} className="code" value={widget.id} onFocus={(e) => e.target.select()} /><div className="row end"><button className="btn ghost sm" onClick={() => navigator.clipboard.writeText(widget.id)}>Copy ID</button></div></>}
+      <h3>{simple ? 'Or the full tag' : 'Full tag (needed for the gallery widget)'}</h3>
+      <textarea readOnly rows={2} className="code" value={full} onFocus={(e) => e.target.select()} />
+      <div className="row end"><button className="btn" onClick={() => navigator.clipboard.writeText(full)}>Copy tag</button></div>
     </Modal>
   );
 }
