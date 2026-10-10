@@ -9,6 +9,47 @@ const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
 const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery'];
 const WPAGES = ['home', 'product', 'collection', 'pages'];
 
+// Per-widget appearance overrides: only these settings, with these limits, may be overridden.
+const RATIO = /^\d{1,2}\/\d{1,2}$/;
+const ev = (...v) => (x) => v.includes(x);
+const nm = (lo, hi) => (x) => typeof x === 'number' && isFinite(x) && x >= lo && x <= hi;
+const OVERRIDABLE = {
+  tileType: ev('overlay', 'below', 'feed', 'minimal'), showPrice: (x) => typeof x === 'boolean', showAtc: (x) => typeof x === 'boolean',
+  carousel: { tileAspect: (x) => RATIO.test(x), tileWidthDesktop: nm(60, 700), tileWidthMobile: nm(60, 500), tileFit: ev('cover', 'contain'), ordering: ev('none', 'newest', 'shuffle') },
+  stories: { sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4) },
+  banner: { heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
+  spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400) },
+};
+function cleanOverrides(o) {
+  if (o == null) return {};
+  if (typeof o !== 'object' || Array.isArray(o)) throw new Bad('appearance overrides are invalid');
+  const out = {};
+  for (const [k, v] of Object.entries(o)) {
+    const rule = OVERRIDABLE[k];
+    if (!rule) throw new Bad(`"${k}" cannot be overridden per widget`);
+    if (typeof rule === 'function') {
+      if (!rule(v)) throw new Bad(`invalid value for ${k}`);
+      out[k] = v;
+      continue;
+    }
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Bad(`invalid value for ${k}`);
+    out[k] = {};
+    for (const [kk, vv] of Object.entries(v)) {
+      if (typeof rule[kk] !== 'function') throw new Bad(`"${k}.${kk}" cannot be overridden per widget`);
+      if (!rule[kk](vv)) throw new Bad(`invalid value for ${k}.${kk}`);
+      out[k][kk] = vv;
+    }
+  }
+  return out;
+}
+const mergeOverrides = (settings, ov) => {
+  const out = JSON.parse(JSON.stringify(settings));
+  for (const [k, v] of Object.entries(ov || {})) {
+    if (v && typeof v === 'object' && out[k] && typeof out[k] === 'object') Object.assign(out[k], v); else out[k] = v;
+  }
+  return out;
+};
+
 // Rejects bad input with a clear message instead of storing it.
 function cleanVideo(v) {
   if (!v || typeof v !== 'object') throw new Bad('invalid video');
@@ -26,7 +67,7 @@ function cleanWidget(w) {
   if (!String(w.name || '').trim() || String(w.name).length > 120) throw new Bad('widget name is required (max 120 characters)');
   if (!WTYPES.includes(w.type) || !WPAGES.includes(w.page)) throw new Bad('invalid widget type or page');
   const list = (a, max) => (Array.isArray(a) ? a : []).map(String).filter((x) => HANDLE.test(x)).slice(0, max);
-  return { ...w, name: String(w.name).trim(), heading: String(w.heading || '').slice(0, 120), scope: w.scope === 'custom' ? 'custom' : 'tagged', videoIds: list(w.videoIds, 200), productHandles: list(w.productHandles, 200), collectionHandles: list(w.collectionHandles, 200), pageHandles: list(w.pageHandles, 200) };
+  return { ...w, name: String(w.name).trim(), heading: String(w.heading || '').slice(0, 120), scope: w.scope === 'custom' ? 'custom' : 'tagged', videoIds: list(w.videoIds, 200), productHandles: list(w.productHandles, 200), collectionHandles: list(w.collectionHandles, 200), pageHandles: list(w.pageHandles, 200), overrides: cleanOverrides(w.overrides) };
 }
 
 const json = (data, status = 200, extra = {}) =>
@@ -44,7 +85,7 @@ const toVideo = (r, origin = '') => {
 };
 const toWidget = (r) => ({
   id: r.id, name: r.name, type: r.type, page: r.page, scope: r.scope, videoIds: parse(r.video_ids, []), productHandles: parse(r.product_handles, []),
-  collectionHandles: parse(r.collection_handles, []), pageHandles: parse(r.page_handles, []), heading: r.heading, enabled: !!r.enabled,
+  collectionHandles: parse(r.collection_handles, []), pageHandles: parse(r.page_handles, []), heading: r.heading, enabled: !!r.enabled, overrides: parse(r.overrides, {}),
 });
 
 // Public endpoints only answer to the store origins; admin endpoints need the bearer token.
@@ -195,13 +236,15 @@ async function handle(req, env, ctx) {
       if (cache) ctx.waitUntil(cache.put(ckey, new Response(JSON.stringify(payload), { headers: { 'cache-control': 'public, max-age=60' } })).catch(() => {}));
       return json(payload, 200, { ...cors, 'cache-control': 'public, max-age=60' });
     };
-    const settings = await getSettings(env);
+    const baseSettings = await getSettings(env);
+    let settings = baseSettings;
     const wid = q('widget');
     let widget = null;
     if (wid) {
       const row = await env.DB.prepare('SELECT * FROM widgets WHERE id=?').bind(wid).first();
       if (!row || !row.enabled) return respond({ settings, widget: null, videos: [] });
       widget = toWidget(row);
+      settings = mergeOverrides(baseSettings, widget.overrides);
       // A widget limited to certain collections or pages stays empty elsewhere.
       if (widget.collectionHandles.length && !widget.collectionHandles.includes(q('collection'))) return respond({ settings, widget, videos: [] });
       if (widget.pageHandles.length && !widget.pageHandles.includes(q('page'))) return respond({ settings, widget, videos: [] });
@@ -355,9 +398,9 @@ async function upsertVideo(env, v, isNew) {
   else await env.DB.prepare('UPDATE videos SET title=?,url=?,poster=?,audience=?,status=?,placements=?,products=?,archived=?,sort=?,cta_text=?,cta_url=?,starts_at=?,ends_at=? WHERE id=?').bind(...args, v.id).run();
 }
 async function upsertWidget(env, w, isNew) {
-  const args = [w.name, w.type, w.page, w.scope || 'tagged', JSON.stringify(w.videoIds || []), JSON.stringify(w.productHandles || []), JSON.stringify(w.collectionHandles || []), JSON.stringify(w.pageHandles || []), w.heading || '', w.enabled === false ? 0 : 1];
-  if (isNew) await env.DB.prepare('INSERT INTO widgets (name,type,page,scope,video_ids,product_handles,collection_handles,page_handles,heading,enabled,id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').bind(...args, w.id, Date.now()).run();
-  else await env.DB.prepare('UPDATE widgets SET name=?,type=?,page=?,scope=?,video_ids=?,product_handles=?,collection_handles=?,page_handles=?,heading=?,enabled=? WHERE id=?').bind(...args, w.id).run();
+  const args = [w.name, w.type, w.page, w.scope || 'tagged', JSON.stringify(w.videoIds || []), JSON.stringify(w.productHandles || []), JSON.stringify(w.collectionHandles || []), JSON.stringify(w.pageHandles || []), w.heading || '', w.enabled === false ? 0 : 1, JSON.stringify(w.overrides || {})];
+  if (isNew) await env.DB.prepare('INSERT INTO widgets (name,type,page,scope,video_ids,product_handles,collection_handles,page_handles,heading,enabled,overrides,id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(...args, w.id, Date.now()).run();
+  else await env.DB.prepare('UPDATE widgets SET name=?,type=?,page=?,scope=?,video_ids=?,product_handles=?,collection_handles=?,page_handles=?,heading=?,enabled=?,overrides=? WHERE id=?').bind(...args, w.id).run();
 }
 
 export default {

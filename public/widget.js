@@ -403,6 +403,22 @@
     window.addEventListener('pagehide', flush);
   }
 
+  // Per-embed overrides from data attributes (set by the Loopy Video theme section). They win over the widget's own settings.
+  function applyAttrOverrides(s, el) {
+    var out = JSON.parse(JSON.stringify(s));
+    var g = function (n) { var v = el.getAttribute(n); return v == null ? '' : String(v).trim(); };
+    var num = function (n, lo, hi) { var v = parseFloat(g(n)); return isFinite(v) && v >= lo && v <= hi ? v : null; };
+    var bd = num('data-banner-h-desktop', 100, 1400), bm = num('data-banner-h-mobile', 100, 1200);
+    if (bd !== null || bm !== null) { out.banner.heightMode = 'fixed'; if (bd !== null) out.banner.desktopHeight = bd; if (bm !== null) out.banner.mobileHeight = bm; }
+    var bf = g('data-banner-fit'); if (bf === 'cover' || bf === 'contain') out.banner.fit = bf;
+    var td = num('data-tile-w-desktop', 60, 700), tm = num('data-tile-w-mobile', 60, 500);
+    if (td !== null) out.carousel.tileWidthDesktop = td;
+    if (tm !== null) out.carousel.tileWidthMobile = tm;
+    var sh = g('data-tile-shape'); if (/^\d{1,2}\/\d{1,2}$/.test(sh)) out.carousel.tileAspect = sh;
+    var tf = g('data-tile-fit'); if (tf === 'cover' || tf === 'contain') out.carousel.tileFit = tf;
+    return out;
+  }
+
   /* ---------- entry points ---------- */
   function render(el, cfg, opts) {
     opts = opts || {};
@@ -457,6 +473,7 @@
     load(0).then(function (cfg) {
       if (!cfg.widget && wid) { settle(false); note(el, 'widget ' + wid + ' was not found or is switched off in Loopy.'); return; }
       if (el.getAttribute('data-heading') && cfg.widget) cfg.widget.heading = el.getAttribute('data-heading');
+      cfg.settings = applyAttrOverrides(cfg.settings, el);
       return render(el, cfg).then(function () { settle(true); });
     }).catch(function (e) { settle(false); note(el, 'could not load from ' + API + ' (' + (e && e.message ? e.message : 'network or blocked store address') + ').'); });
   }

@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS widgets (
   page_handles TEXT DEFAULT '[]',
   heading TEXT DEFAULT '',
   enabled INTEGER DEFAULT 1,
+  overrides TEXT DEFAULT '{}',
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS events (

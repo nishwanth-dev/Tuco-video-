@@ -1,0 +1,234 @@
+{%- comment -%}
+  Loopy Video: shows a Loopy widget. Paste the widget ID from the Loopy admin (Get embed code).
+  Every copy of this section keeps its own settings, so each one can look different.
+{%- endcomment -%}
+
+{%- liquid
+  assign wid = section.settings.widget_id | strip
+  assign pad = section.settings.padding_top
+  assign pad_b = section.settings.padding_bottom
+-%}
+
+{%- style -%}
+  #shopify-section-{{ section.id }} .loopy-wrap {
+    padding-top: calc({{ pad }}px * 0.75);
+    padding-bottom: calc({{ pad_b }}px * 0.75);
+  }
+  @media screen and (min-width: 750px) {
+    #shopify-section-{{ section.id }} .loopy-wrap {
+      padding-top: {{ pad }}px;
+      padding-bottom: {{ pad_b }}px;
+    }
+  }
+{%- endstyle -%}
+
+<div class="loopy-wrap{% unless section.settings.full_width %} page-width{% endunless %}">
+  {%- if wid != blank -%}
+    <div
+      data-tuco-video
+      data-widget="{{ wid | escape }}"
+      {%- if section.settings.heading != blank %} data-heading="{{ section.settings.heading | strip | escape }}"{% endif -%}
+      {%- if section.settings.product_handle != blank %} data-product="{{ section.settings.product_handle | strip | escape }}"{% endif -%}
+      {%- if section.settings.collection_handle != blank %} data-collection="{{ section.settings.collection_handle | strip | escape }}"{% endif -%}
+      {%- if section.settings.page_handle != blank %} data-page="{{ section.settings.page_handle | strip | escape }}"{% endif -%}
+      {%- if section.settings.banner_height_desktop > 0 %} data-banner-h-desktop="{{ section.settings.banner_height_desktop }}"{% endif -%}
+      {%- if section.settings.banner_height_mobile > 0 %} data-banner-h-mobile="{{ section.settings.banner_height_mobile }}"{% endif -%}
+      {%- if section.settings.banner_fit != 'default' %} data-banner-fit="{{ section.settings.banner_fit }}"{% endif -%}
+      {%- if section.settings.tile_width_desktop > 0 %} data-tile-w-desktop="{{ section.settings.tile_width_desktop }}"{% endif -%}
+      {%- if section.settings.tile_width_mobile > 0 %} data-tile-w-mobile="{{ section.settings.tile_width_mobile }}"{% endif -%}
+      {%- if section.settings.tile_shape != 'default' %} data-tile-shape="{{ section.settings.tile_shape }}"{% endif -%}
+      {%- if section.settings.tile_fit != 'default' %} data-tile-fit="{{ section.settings.tile_fit }}"{% endif %}
+    ></div>
+  {%- elsif request.design_mode -%}
+    <p style="margin:0;padding:12px 16px;border:1px dashed #b0b0b0;border-radius:8px;font:13px/1.4 sans-serif;color:#555;text-align:center">
+      Loopy Video: enter a widget ID in this section's settings (copy it from the Loopy admin, under Get embed code).
+    </p>
+  {%- endif -%}
+</div>
+
+{%- comment -%} Loads the Loopy script once per page, even with several of these sections. {%- endcomment -%}
+<script>
+  (function () {
+    if (window.__tucoLoaded || document.querySelector('script[data-loopy]')) return;
+    var s = document.createElement('script');
+    s.src = 'https://loopy.tucokids.workers.dev/widget.js';
+    s.defer = true;
+    s.setAttribute('data-loopy', '');
+    s.setAttribute('data-api', 'https://tuco-video-api.tucokids.workers.dev');
+    document.head.appendChild(s);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Loopy Video",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows a video widget from your Loopy admin. Copy the widget ID from Loopy (widget page, then Get embed code). Every copy of this section can look different."
+    },
+    {
+      "type": "text",
+      "id": "widget_id",
+      "label": "Loopy widget ID",
+      "info": "Looks like wgt_ab12cd34"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading (optional)",
+      "info": "Shown above carousels."
+    },
+    {
+      "type": "header",
+      "content": "Where it applies"
+    },
+    {
+      "type": "text",
+      "id": "product_handle",
+      "label": "Product handle (optional)",
+      "info": "Leave empty to use the product of the page it is on."
+    },
+    {
+      "type": "text",
+      "id": "collection_handle",
+      "label": "Collection handle (optional)",
+      "info": "Leave empty to use the collection of the page it is on."
+    },
+    {
+      "type": "text",
+      "id": "page_handle",
+      "label": "Page handle (optional)",
+      "info": "Leave empty to use the page it is on."
+    },
+    {
+      "type": "header",
+      "content": "Banner size"
+    },
+    {
+      "type": "range",
+      "id": "banner_height_desktop",
+      "min": 0,
+      "max": 900,
+      "step": 20,
+      "unit": "px",
+      "label": "Desktop height",
+      "default": 0,
+      "info": "0 uses the setting from Loopy."
+    },
+    {
+      "type": "range",
+      "id": "banner_height_mobile",
+      "min": 0,
+      "max": 900,
+      "step": 20,
+      "unit": "px",
+      "label": "Mobile height",
+      "default": 0,
+      "info": "0 uses the setting from Loopy."
+    },
+    {
+      "type": "select",
+      "id": "banner_fit",
+      "label": "Banner video fit",
+      "options": [
+        { "value": "default", "label": "Use the Loopy setting" },
+        { "value": "cover", "label": "Fill (crop to fit)" },
+        { "value": "contain", "label": "Show whole video" }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Video tiles (carousel and stories)"
+    },
+    {
+      "type": "range",
+      "id": "tile_width_desktop",
+      "min": 0,
+      "max": 500,
+      "step": 10,
+      "unit": "px",
+      "label": "Tile width on desktop",
+      "default": 0,
+      "info": "0 uses the setting from Loopy."
+    },
+    {
+      "type": "range",
+      "id": "tile_width_mobile",
+      "min": 0,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "label": "Tile width on mobile",
+      "default": 0,
+      "info": "0 uses the setting from Loopy."
+    },
+    {
+      "type": "select",
+      "id": "tile_shape",
+      "label": "Tile shape",
+      "options": [
+        { "value": "default", "label": "Use the Loopy setting" },
+        { "value": "9/16", "label": "Tall 9:16" },
+        { "value": "4/5", "label": "Portrait 4:5" },
+        { "value": "3/4", "label": "Portrait 3:4" },
+        { "value": "1/1", "label": "Square" },
+        { "value": "4/3", "label": "Landscape 4:3" },
+        { "value": "16/9", "label": "Wide 16:9" }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "tile_fit",
+      "label": "Tile video fit",
+      "options": [
+        { "value": "default", "label": "Use the Loopy setting" },
+        { "value": "cover", "label": "Fill (crop to fit)" },
+        { "value": "contain", "label": "Show whole video" }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_width",
+      "label": "Full width",
+      "default": true,
+      "info": "Turn off to keep it inside the page margins."
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Top padding",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Bottom padding",
+      "default": 20
+    }
+  ],
+  "presets": [
+    {
+      "name": "Loopy Video",
+      "category": "Video"
+    }
+  ]
+}
+{% endschema %}

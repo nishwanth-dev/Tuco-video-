@@ -19,7 +19,7 @@ const PAGE_TYPES = {
 };
 const TITLES = { home: 'Homepage', product: 'Product Pages', collection: 'Collection Pages', pages: 'Pages' };
 
-export default function WidgetsPage({ page, widgets, videos, loadWidgets, setError, go }) {
+export default function WidgetsPage({ page, widgets, videos, settings, loadWidgets, setError, go }) {
   const [editing, setEditing] = useState(null);
   const [embed, setEmbed] = useState(null);
   const mine = widgets.filter((w) => w.page === page);
@@ -55,14 +55,14 @@ export default function WidgetsPage({ page, widgets, videos, loadWidgets, setErr
         </table>
       )}
       {page === 'product' && <p className="muted pad">Videos shown on product pages are the ones tagged to that product. Set their order from <button className="link" onClick={() => go('products')}>Products → Arrange Media</button>.</p>}
-      {editing && <Editor widget={editing} videos={videos} onClose={() => setEditing(null)} onSave={async (w) => { const m = await act(saveWidget)(w); if (!m) setEditing(null); return m; }} />}
+      {editing && <Editor widget={editing} videos={videos} settings={settings} onClose={() => setEditing(null)} onSave={async (w) => { const m = await act(saveWidget)(w); if (!m) setEditing(null); return m; }} />}
       {embed && <Embed widget={embed} onClose={() => setEmbed(null)} />}
     </>
   );
 }
 
-function Editor({ widget, videos, onClose, onSave }) {
-  const [w, setW] = useState({ collectionHandles: [], pageHandles: [], ...widget });
+function Editor({ widget, videos, settings, onClose, onSave }) {
+  const [w, setW] = useState({ collectionHandles: [], pageHandles: [], overrides: {}, ...widget });
   const [prods, setProds] = useState([]);
   const [colls, setColls] = useState([]);
   const [saveErr, setSaveErr] = useState('');
@@ -119,6 +119,7 @@ function Editor({ widget, videos, onClose, onSave }) {
           <span className="muted">Leave empty to show wherever you paste the embed code.</span>
         </label>
       )}
+      <Appearance w={w} setW={setW} settings={settings} />
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => setSaveErr((await onSave({ ...w, productHandles: w.productHandles.filter(Boolean), collectionHandles: w.collectionHandles.filter(Boolean) })) || '')}>Save widget</button></div>
       {saveErr && <p className="red small">{saveErr}</p>}
     </Modal>
@@ -138,5 +139,68 @@ function Embed({ widget, onClose }) {
       <textarea readOnly rows={2} className="code" value={full} onFocus={(e) => e.target.select()} />
       <div className="row end"><button className="btn" onClick={() => navigator.clipboard.writeText(full)}>Copy tag</button></div>
     </Modal>
+  );
+}
+
+const RATIOS_WIDE = ['16/9', '21/9', '2/1', '3/1', '4/3', '1/1'];
+const RATIOS_TALL = ['9/16', '4/5', '3/4', '1/1', '4/3', '16/9'];
+const FIT = [['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']];
+// Which settings each widget type can override, and the control to use for each.
+const OV_FIELDS = {
+  banner: [
+    ['banner', 'heightMode', 'Banner height', 'sel', [['ratio', 'By aspect ratio'], ['fixed', 'Fixed height']]],
+    ['banner', 'desktopHeight', 'Desktop height (px)', 'num'], ['banner', 'mobileHeight', 'Mobile height (px)', 'num'],
+    ['banner', 'aspectLandscape', 'Desktop aspect ratio', 'sel', RATIOS_WIDE.map((r) => [r, r])], ['banner', 'aspectPortrait', 'Mobile aspect ratio', 'sel', RATIOS_TALL.map((r) => [r, r])],
+    ['banner', 'fit', 'Video fit', 'sel', FIT], ['banner', 'focus', 'Keep when cropping', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+    ['banner', 'showDots', 'Navigation dots', 'bool'], ['banner', 'showCta', 'Call to action', 'bool'],
+  ],
+  carousel: [
+    ['carousel', 'tileAspect', 'Tile shape', 'sel', [['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]],
+    ['carousel', 'tileWidthDesktop', 'Tile width, desktop (px)', 'num'], ['carousel', 'tileWidthMobile', 'Tile width, mobile (px)', 'num'],
+    ['carousel', 'tileFit', 'Video fit', 'sel', FIT], [null, 'tileType', 'Tile style', 'sel', [['overlay', 'Overlay'], ['below', 'Info below'], ['feed', 'Feed'], ['minimal', 'Minimal']]],
+    ['carousel', 'ordering', 'Video order', 'sel', [['none', 'As arranged'], ['newest', 'Newest first'], ['shuffle', 'Shuffle']]],
+  ],
+  stories: [['stories', 'sizeFactor', 'Story size factor', 'num'], ['stories', 'spacing', 'Spacing factor', 'num']],
+  spotlight: [
+    ['spotlight', 'position', 'Position', 'sel', [['left', 'Left'], ['right', 'Right']]], ['spotlight', 'sizeFactor', 'Size factor', 'num'],
+    ['spotlight', 'bottomOffsetMobile', 'Distance from bottom, mobile (px)', 'num'], ['spotlight', 'bottomOffsetDesktop', 'Distance from bottom, desktop (px)', 'num'],
+  ],
+};
+OV_FIELDS.floating = OV_FIELDS.spotlight;
+
+// Lets one widget look different from the global Customizations. Empty fields follow the global setting.
+function Appearance({ w, setW, settings }) {
+  const fields = OV_FIELDS[w.type];
+  if (!fields) return null;
+  const ov = w.overrides || {};
+  const get = (g, k) => (g ? ov[g] && ov[g][k] : ov[k]);
+  const glob = (g, k) => (settings ? (g ? settings[g] && settings[g][k] : settings[k]) : undefined);
+  const set = (g, k, val) => setW((o) => {
+    const next = JSON.parse(JSON.stringify(o.overrides || {}));
+    const clear = val === '' || val === undefined;
+    if (g) { next[g] = next[g] || {}; if (clear) delete next[g][k]; else next[g][k] = val; if (!Object.keys(next[g]).length) delete next[g]; }
+    else if (clear) delete next[k]; else next[k] = val;
+    return { ...o, overrides: next };
+  });
+  const used = fields.filter(([g, k]) => get(g, k) !== undefined).length;
+  return (
+    <details className="appear">
+      <summary>Appearance for this widget (optional){used > 0 && <span className="pill live">{used} changed</span>}</summary>
+      <p className="muted small">Anything left on "Use global setting" follows Customizations. Change a field here to make only this widget different.</p>
+      <div className="ovgrid">
+        {fields.map(([g, k, label, kind, opts]) => {
+          const cur = get(g, k);
+          const gv = glob(g, k);
+          return (
+            <label className="lab" key={(g || 'root') + k}>{label}
+              {kind === 'num' && <input type="number" step="any" value={cur ?? ''} placeholder={gv !== undefined ? `Global: ${gv}` : ''} onChange={(e) => set(g, k, e.target.value === '' ? '' : Number(e.target.value))} />}
+              {kind === 'sel' && <select value={cur ?? ''} onChange={(e) => set(g, k, e.target.value)}><option value="">Use global setting</option>{opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
+              {kind === 'bool' && <select value={cur === undefined ? '' : String(cur)} onChange={(e) => set(g, k, e.target.value === '' ? '' : e.target.value === 'true')}><option value="">Use global setting</option><option value="true">On</option><option value="false">Off</option></select>}
+            </label>
+          );
+        })}
+      </div>
+      {used > 0 && <button type="button" className="link" onClick={() => setW((o) => ({ ...o, overrides: {} }))}>Reset all to global</button>}
+    </details>
   );
 }
