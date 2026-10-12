@@ -62,14 +62,14 @@
     '.fl.mini{width:calc(64px * var(--size))}.fx{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;font-size:11px;z-index:3}',
     '.gal{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--tile-r,var(--radius));overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
     '.snd{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:15px;cursor:pointer}',
-    '.gal iframe{width:100%;height:100%;border:0;display:block;pointer-events:none}','@media(max-width:749px){.title{font-size:22px}}'
+    '.gal iframe{position:absolute;left:0;top:-65px;width:100%;height:calc(100% + 130px);border:0;display:block;pointer-events:none}','@media(max-width:749px){.title{font-size:22px}}'
   ].join('');
 
   var PLAYER = [
     ':host{all:initial}*{box-sizing:border-box}[hidden]{display:none!important}.m{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.93);font-family:var(--font),system-ui,sans-serif}',
     '.reel{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain}.reel::-webkit-scrollbar{display:none}',
-    '.slide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center}',
-    '.slide video,.slide iframe{height:100%;width:100%;max-width:480px;object-fit:contain;background:#000;border:0}',
+    '.slide{position:relative;overflow:hidden;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center}',
+    '.slide video,.slide iframe{height:100%;width:100%;max-width:480px;object-fit:contain;background:#000;border:0}.slide iframe{height:calc(100% + 130px);margin-top:-65px;pointer-events:none}',
     '.ui{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:24px 16px calc(20px + env(safe-area-inset-bottom));color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.78))}',
     '.t{margin:0 0 8px;font-weight:600;font-size:15px}.plist{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.plist::-webkit-scrollbar{display:none}',
     '.p{flex:0 0 100%;scroll-snap-align:start;display:flex;align-items:center;gap:10px;background:#fff;color:#222;border-radius:var(--radius);padding:8px}.plist.many .p{flex-basis:88%}',
