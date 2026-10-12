@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { compressVideo, MAX_INPUT } from './compress.js';
 import { saveVideo, deleteVideo, uploadVideo, uploadFile, searchProducts, syncInstagram, reorderVideos } from './api.js';
 import { Modal, Empty } from './ui.jsx';
 import { Thumb, Player } from './media.jsx';
@@ -222,20 +223,45 @@ function AddMedia({ onClose, onSave }) {
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [staged, setStaged] = useState(null);
+  const [pct, setPct] = useState(0);
+  const [note, setNote] = useState('');
+  const send = async (f) => {
+    setBusy(true); setErr(''); setNote('');
+    try { const up = await uploadFile(f); setUrl(up.url); setSize(up.size || f.size); setStaged(null); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '').replace(/-web$/, '')); } catch (x) { setErr(x.message); }
+    setBusy(false);
+  };
   const pick = async (e) => {
     const f = e.target.files[0];
+    e.target.value = '';
     if (!f) return;
-    if (f.size > 100 * 1024 * 1024) { setErr('This file is over 100 MB. Compress it first (tools/compress-video.sh) and try again.'); e.target.value = ''; return; }
-    setBusy(true); setErr('');
-    try { const up = await uploadFile(f); setUrl(up.url); setSize(up.size || f.size); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); } catch (x) { setErr(x.message); }
-    setBusy(false);
+    setErr(''); setUrl(''); setSize(0); setStaged(null);
+    if (f.size > 5 * 1048576) { setStaged(f); return; } // big files: offer to shrink first
+    await send(f);
+  };
+  const shrink = async () => {
+    setBusy(true); setErr(''); setPct(0);
+    try {
+      const small = await compressVideo(staged, { onStatus: setNote, onProgress: setPct });
+      if (small.size >= staged.size) { setNote('It was already small, so it is uploaded as it is.'); await send(staged.size > 100 * 1048576 ? small : staged); return; }
+      setNote(`Shrunk from ${(staged.size / 1048576).toFixed(1)} MB to ${(small.size / 1048576).toFixed(1)} MB. Uploading...`);
+      await send(small);
+    } catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
     <Modal title="Add Media" onClose={onClose}>
-      <label className="lab">Upload a video file <span className="muted">(MP4, up to 100 MB)</span><input type="file" accept="video/*" onChange={pick} /></label>
+      <label className="lab">Upload a video file <span className="muted">(MP4 or MOV. Big files can be shrunk here)</span><input type="file" accept="video/*" onChange={pick} /></label>
       <label className="lab">or paste a video URL (.mp4)<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." /></label>
       <label className="lab">Title<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-      {busy && <p className="muted">Uploading...</p>}
+      {staged && !busy && (
+        <div className="shrinkbox">
+          <p><b>{staged.name}</b> is <SizeBadge bytes={staged.size} inline /> {sizeAdvice(staged.size)}</p>
+          {staged.size > MAX_INPUT && <p className="red small">Too big to shrink here. Use tools/compress-video.sh on a computer with ffmpeg.</p>}
+          <div className="row">{staged.size <= MAX_INPUT && <button className="btn" onClick={shrink}>Make smaller (recommended)</button>}{staged.size <= 100 * 1048576 && <button className="link" onClick={() => send(staged)}>Upload as it is</button>}</div>
+        </div>
+      )}
+      {busy && <p className="muted">{note || 'Uploading...'}{pct > 0 && pct < 1 ? ` ${Math.round(pct * 100)}%` : ''}</p>}
+      {busy && pct > 0 && pct < 1 && <div className="pbar"><i style={{ width: pct * 100 + '%' }} /></div>}
       {err && <p className="red small">{err}</p>}
       {size > 0 && <p className="muted"><SizeBadge bytes={size} inline /> {sizeAdvice(size)}</p>}
       <p className="muted">The video is saved as a draft. Tag products and set it live afterwards.</p>
@@ -264,7 +290,7 @@ function ArrangeVideos({ videos, onClose, onSaved, setError }) {
 // Small files make the store fast: green is great, amber is fine, red is heavy.
 const mb = (b) => b / 1048576;
 const sizeLevel = (b) => (mb(b) <= 5 ? 'ok' : mb(b) <= 15 ? 'mid' : 'heavy');
-const sizeAdvice = (b) => (sizeLevel(b) === 'ok' ? 'Light and fast.' : sizeLevel(b) === 'mid' ? 'Fine, but smaller is faster. Aim for under 5 MB.' : 'Heavy. This will slow your pages. Shrink it first (tools/compress-video.sh).');
+const sizeAdvice = (b) => (sizeLevel(b) === 'ok' ? 'Light and fast.' : sizeLevel(b) === 'mid' ? 'Fine, but smaller is faster. Aim for under 5 MB.' : 'Heavy. This will slow your pages. Use Make smaller when you upload (or tools/compress-video.sh).');
 function SizeBadge({ bytes, inline }) {
   if (!bytes) return null;
   const text = mb(bytes) < 10 ? mb(bytes).toFixed(1) : Math.round(mb(bytes));
