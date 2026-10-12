@@ -184,3 +184,7 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; paddi
 .pgrid > div { min-height: 82px; display: flex; flex-direction: column; } .pgrid small { margin-top: auto; }
 .pcard .chart.small { height: 96px; border: 0; background: #f7f7f8; border-radius: 10px; padding: 10px 12px; margin: 0; gap: 4px; } .chart.small .bar1 { min-width: 6px; max-width: 22px; }
 .pcard .psec .link { display: block; margin-top: 8px; }
+
+.hright .pcard { padding: 14px 16px; } .hright .psec { padding: 10px 0; } .hright .psec h4 { margin-bottom: 8px; }
+.hright .pgrid { gap: 8px; } .hright .pgrid > div { min-height: 0; padding: 9px 12px; } .hright .pgrid b { font-size: 18px; margin: 2px 0 1px; } .hright .pgrid small { margin-top: 0; }
+.hright .pcard .chart.small { height: 56px; padding: 6px 10px; } .hright .trow { padding: 6px 0; } .hright .phead { margin-bottom: 0; }

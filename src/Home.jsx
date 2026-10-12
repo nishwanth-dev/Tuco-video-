@@ -70,11 +70,6 @@ export default function Home(c) {
               {top.length ? top.map((r) => <div className="trow" key={r.video_id}><span>{r.v?.title || 'Deleted video'}</span><b>{plural(r.plays, 'view')}</b><small>{r.atc} add to cart{r.sale?.revenue ? ' · ' + rupees(r.sale.revenue) : ''}</small></div>)
                 : <p className="muted pad">{loaded ? 'Nothing watched yet.' : 'Loading...'}</p>}</div>
           </div>
-          <div className="stats">
-            <div className="stat"><span>Videos</span><b>{c.videos.length}</b></div>
-            <div className="stat"><span>Live</span><b>{c.videos.filter((v) => v.status === 'live').length}</b></div>
-            <div className="stat"><span>Widgets</span><b>{c.widgets.length}</b></div>
-          </div>
         </aside>
       </div>
     </>
