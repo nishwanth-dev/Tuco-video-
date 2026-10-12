@@ -296,6 +296,8 @@ async function handle(req, env, ctx) {
     const raw = await req.text();
     if (!(await validShopifyHmac(env, raw, req.headers.get('x-shopify-hmac-sha256')))) return json({ error: 'bad signature' }, 401);
     const o = JSON.parse(raw);
+    // Every order total is kept (so Home can show video sales as a share of the whole store). Never blocks attribution.
+    try { await env.DB.prepare('INSERT OR REPLACE INTO store_orders (order_id,amount,currency,at) VALUES (?,?,?,?)').bind(String(o.id), Number(o.total_price) || 0, o.currency || '', Date.parse(o.created_at) || Date.now()).run(); } catch {}
     let n = 0;
     for (const li of o.line_items || []) {
       const vid = (li.properties || []).find((x) => x.name === '_tuco_video')?.value;
@@ -415,7 +417,10 @@ async function handle(req, env, ctx) {
       q('SELECT COUNT(DISTINCT order_id) AS orders, COALESCE(SUM(amount),0) AS revenue FROM order_attrib WHERE at>=?'),
       q('SELECT video_id, COUNT(DISTINCT order_id) AS orders, SUM(amount) AS revenue FROM order_attrib WHERE at>=? GROUP BY video_id'),
     ]);
-    return json({ perVideo, perWidget, daily, byDevice, bySource, sales: sales[0] || { orders: 0, revenue: 0 }, salesByVideo }, 200, cors);
+    // null means the order webhook has not reported anything yet (or migration 005 has not been run).
+    let storeSales = null;
+    try { const r = await env.DB.prepare('SELECT COUNT(*) AS orders, COALESCE(SUM(amount),0) AS revenue FROM store_orders WHERE at>=?').bind(since).first(); if (r && r.orders) storeSales = r; } catch {}
+    return json({ perVideo, perWidget, daily, byDevice, bySource, sales: sales[0] || { orders: 0, revenue: 0 }, storeSales, salesByVideo }, 200, cors);
   }
   if (p === '/api/health' && req.method === 'GET') {
     const checks = {};
