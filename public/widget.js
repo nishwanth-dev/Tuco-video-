@@ -62,7 +62,7 @@
     '.fl.mini{width:calc(64px * var(--size))}.fx{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;font-size:11px;z-index:3}',
     '.gal{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--tile-r,var(--radius));overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
     '.snd{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:15px;cursor:pointer}',
-    '.gal iframe{width:100%;height:100%;border:0;display:block}','@media(max-width:749px){.title{font-size:22px}}'
+    '.gal iframe{width:100%;height:100%;border:0;display:block;pointer-events:none}','@media(max-width:749px){.title{font-size:22px}}'
   ].join('');
 
   var PLAYER = [
@@ -251,7 +251,7 @@
         var vid = e.target.querySelector('video'), fr = e.target.querySelector('iframe'), id = e.target.getAttribute('data-id');
         if (e.isIntersecting) {
           if (vid) { vid.muted = muted; vid.play().catch(function () {}); }
-          if (fr) fr.src = ytEmbed(fr.getAttribute('data-yt'), false);
+          if (fr) fr.src = ytEmbed(fr.getAttribute('data-yt'), false, true);
           watch[id] = Date.now(); track(ctx, { type: 'play', videoId: id });
         } else { if (vid) vid.pause(); if (fr) fr.removeAttribute('src'); flush(id); }
       });
@@ -399,7 +399,7 @@
     }
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' }), v = list[0];
     if (ytId(v.url)) {
-      root.innerHTML = '<style>' + cssVars(ctx.settings) + BASE + '</style><div class="gal"><iframe src="' + ytEmbed(ytId(v.url), true) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>';
+      root.innerHTML = '<style>' + cssVars(ctx.settings) + BASE + '</style><div class="gal"><iframe src="' + ytEmbed(ytId(v.url), false, true) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>';
       track(ctx, { type: 'play', videoId: v.id });
       return;
     }
