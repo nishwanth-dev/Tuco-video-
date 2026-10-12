@@ -179,3 +179,8 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; paddi
 .psec { padding: 12px 0; border-top: 1px solid #f0f0f2; } .psec h4 { margin: 0 0 10px; font-size: 13px; display: flex; align-items: center; gap: 7px; } .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .dot.a { background: #f5b800; } .dot.b { background: #667085; }
 .homegrid .pgrid.p4 { grid-template-columns: 1fr 1fr; } .homegrid .pgrid b { font-size: 19px; }
 @media (max-width: 1100px) { .homegrid { grid-template-columns: 1fr; } .hright { position: static; } .fcards { grid-template-columns: 1fr; } }
+
+.phead { gap: 10px; } .phead h3 { white-space: nowrap; } .phead select { width: auto; min-width: 0; flex: none; padding: 7px 28px 7px 12px; font-size: 13px; }
+.pgrid > div { min-height: 82px; display: flex; flex-direction: column; } .pgrid small { margin-top: auto; }
+.pcard .chart.small { height: 96px; border: 0; background: #f7f7f8; border-radius: 10px; padding: 10px 12px; margin: 0; gap: 4px; } .chart.small .bar1 { min-width: 6px; max-width: 22px; }
+.pcard .psec .link { display: block; margin-top: 8px; }
