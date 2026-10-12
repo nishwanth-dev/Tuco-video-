@@ -9,6 +9,7 @@ import Analytics from './Analytics.jsx';
 import Integrations from './Integrations.jsx';
 import Logo from './Logo.jsx';
 import Loader from './Loader.jsx';
+import Bot from './bot/Bot.jsx';
 
 const NAV = [
   { id: 'home', label: 'Home' }, { id: 'videos', label: 'Videos', badge: true }, { id: 'products', label: 'Products' },
@@ -80,6 +81,7 @@ export default function App() {
         {route === 'custom' && settings && <Customizations {...ctx} />}
         {route === 'integrations' && <Integrations {...ctx} />}
       </main>
+      <Bot route={route} ctx={ctx} />
     </div>
   );
 }

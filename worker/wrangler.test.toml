@@ -1,0 +1,26 @@
+name = "tuco-video-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Fill database_id after running: wrangler d1 create tuco-video
+[[d1_databases]]
+binding = "DB"
+database_name = "tuco-video"
+database_id = "274a336b-513f-4e82-a90f-324967136727"
+
+# Test copy of wrangler.toml with local R2 turned on (never deployed).
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "tuco-videos"
+
+[vars]
+# Comma-separated store origins allowed to call the public API.
+ALLOWED_ORIGINS = "https://tucokids.com,https://www.tucokids.com,https://greenspecialities.myshopify.com"
+STORE_URL = "https://tucokids.com"
+STORE_FALLBACK_URL = "https://greenspecialities.myshopify.com"
+
+# Weekly Instagram copy job (Mondays 03:00 UTC).
+[triggers]
+crons = ["0 3 * * 1"]
+
+# Secrets (never commit): wrangler secret put ADMIN_TOKEN / IG_TOKEN / IG_USER_ID

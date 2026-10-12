@@ -18,7 +18,9 @@ const send = (method, path, body) => req(path, { method, headers: { 'content-typ
 export const listVideos = () => req('/api/videos').then((d) => d.videos);
 export const saveVideo = (v) => (v.id ? send('PUT', `/api/videos/${v.id}`, v) : send('POST', '/api/videos', v));
 export const deleteVideo = (id) => req(`/api/videos/${id}`, { method: 'DELETE' });
-export const uploadVideo = (file) => req(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: 'PUT', headers: { 'content-type': file.type || 'video/mp4' }, body: file }).then((d) => d.url);
+// Returns the stored address and the file size in bytes.
+export const uploadFile = (file) => req(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: 'PUT', headers: { 'content-type': file.type || 'video/mp4' }, body: file });
+export const uploadVideo = (file) => uploadFile(file).then((d) => d.url);
 
 export const listWidgets = () => req('/api/widgets').then((d) => d.widgets);
 export const saveWidget = (w) => (w.id ? send('PUT', `/api/widgets/${w.id}`, w) : send('POST', '/api/widgets', w));
@@ -35,3 +37,16 @@ export const syncInstagram = () => send('POST', '/api/sync/instagram', {});
 
 export const listCollections = () => req('/api/store/collections').then((d) => d.collections);
 export const reorderVideos = (ids) => send('PUT', '/api/videos/order', { ids });
+
+export const getHealth = () => req('/api/health');
+// Saves the full data backup as a file in the browser.
+export async function downloadBackup() {
+  const r = await fetch(BASE + '/api/export', { headers: { authorization: `Bearer ${getToken()}` } });
+  if (!r.ok) throw new Error(`Backup failed (${r.status})`);
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `loopy-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

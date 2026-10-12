@@ -34,11 +34,11 @@
   /* ---------- styles ---------- */
   var BASE = [
     ':host{display:block;width:100%;min-width:min(300px,100vw);font-family:var(--font),system-ui,sans-serif;color:#222}*{box-sizing:border-box}[hidden]{display:none!important}',
-    '.carousel,.stories,.banner{width:100%;min-width:0}',
+    '.carousel,.stories{width:100%;min-width:0}.banner{width:100%;min-width:0;max-width:var(--banner-max,none);margin:0 auto;padding:0 var(--banner-m,0)}',
     '.head{text-align:center;margin:0 auto 14px;padding:0 16px}.title{font-size:28px;margin:0;color:var(--head-color);font-family:var(--head-font),var(--font),sans-serif;font-weight:var(--head-weight)}',
-    '.track{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 8px;scroll-snap-type:x proximity;scrollbar-width:none}.track::-webkit-scrollbar{display:none}',
+    '.track{display:flex;gap:var(--gap,12px);overflow-x:auto;padding:4px var(--pad-x,16px) 8px;scroll-snap-type:x proximity;scrollbar-width:none}.track::-webkit-scrollbar{display:none}',
     '.card{flex:0 0 var(--tw,190px);scroll-snap-align:start;display:flex;flex-direction:column;gap:8px}',
-    '.tile{position:relative;width:100%;aspect-ratio:var(--tar,9/16);border:0;padding:0;border-radius:var(--radius);overflow:hidden;background:#f3f3f3;cursor:pointer;display:block}',
+    '.tile{position:relative;width:100%;aspect-ratio:var(--tar,9/16);border:0;padding:0;border-radius:var(--tile-r,var(--radius));overflow:hidden;background:#f3f3f3;cursor:pointer;display:block}',
     '.tile video,.tile img.th{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--focus,center);display:block}',
     '.fitc .tile video,.fitc .tile img.th{object-fit:contain}.fitc .ytv{width:100cqw;height:56.25cqw}.focus-top .ytv{top:0;transform:translateX(-50%)}.focus-bottom .ytv{top:auto;bottom:0;transform:translateX(-50%)}',
     '.tile{container-type:size}.ytv{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:max(100cqw,177.78cqh);height:max(100cqh,56.25cqw);border:0;pointer-events:none;z-index:1;background:transparent}.cover{position:absolute;inset:0;z-index:2}',
@@ -50,19 +50,19 @@
     '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 11px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:9px 10px;width:100%}.abtn[disabled]{opacity:.6;cursor:default}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
     '.chip{position:absolute;left:8px;bottom:8px;z-index:2;background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600}',
-    '.stories .track{gap:calc(14px * var(--spacing))}.stories .card{flex:0 0 calc(84px * var(--size));text-align:center;gap:6px}',
-    '.stories .tile{aspect-ratio:1;border-radius:50%;border:3px solid var(--story-border)}.stories .tile img.th,.stories .tile video{border-radius:50%}',
+    '.stories .track{gap:var(--sgap,calc(14px * var(--spacing)))}.stories .card{flex:0 0 var(--ssize,calc(84px * var(--size)));text-align:center;gap:6px}',
+    '.stories .tile{aspect-ratio:1;border-radius:var(--sr,50%);border:3px solid var(--story-border)}.stories .tile img.th,.stories .tile video{border-radius:var(--sr,50%)}',
     '.lbl{font-size:12px;color:var(--story-title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory;width:100%}.banner .card{flex:0 0 100%;min-width:100%}.banner .tile{border-radius:0;aspect-ratio:var(--ar);background:var(--bbg,#f3f3f3)}.banner.fixed .tile{aspect-ratio:auto;height:var(--bh)}',
+    '.banner .track{padding:0;gap:0;scroll-snap-type:x mandatory;width:100%}.banner .card{flex:0 0 100%;min-width:100%}.banner .tile{border-radius:var(--banner-r,0);aspect-ratio:var(--ar);background:var(--bbg,#f3f3f3)}.banner.fixed .tile{aspect-ratio:auto;height:var(--bh)}',
     '.banner.full .tile{aspect-ratio:auto;height:100vh;height:100svh}',
     '.cta{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:3;background:var(--brand);color:#222;border-radius:var(--btn-radius);font:600 13px var(--font),sans-serif;padding:11px 24px}',
     '.rail{position:relative}.arr{position:absolute;top:calc(50% - 18px);z-index:6;width:36px;height:36px;border-radius:50%;border:0;background:#fff;color:#222;font-size:22px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;display:none}.arr.prev{left:6px}.arr.next{right:6px}@media(hover:hover){.arr.show{display:block}}.stories .arr{top:calc(42px * var(--size) - 18px)}',
     '.dots{display:flex;gap:6px;justify-content:center;padding:8px}.dots i{width:6px;height:6px;border-radius:50%;background:#d4d4d8}.dots i.on{background:#222}',
-    '.fl .tile{aspect-ratio:9/16}','.fl{position:fixed;bottom:var(--ob,16px);z-index:2147482000;width:calc(110px * var(--size))}.fl.right{right:16px}.fl.left{left:16px}.fl .tile{width:100%}',
+    '.fl .tile{aspect-ratio:9/16;border-radius:var(--flr,var(--radius))}','.fl{position:fixed;bottom:var(--ob,16px);z-index:2147482000;width:var(--flw,calc(110px * var(--size)))}.fl.right{right:16px}.fl.left{left:16px}.fl .tile{width:100%}',
     '.fl.mini{width:calc(64px * var(--size))}.fx{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;font-size:11px;z-index:3}',
-    '.gal{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--radius);overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
+    '.gal{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--tile-r,var(--radius));overflow:hidden;background:#f3f3f3}.gal video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}',
     '.snd{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:15px;cursor:pointer}',
-    '.gal iframe{width:100%;height:100%;border:0;display:block}','@media(max-width:749px){.title{font-size:22px}.fl{width:calc(92px * var(--size))}}'
+    '.gal iframe{width:100%;height:100%;border:0;display:block}','@media(max-width:749px){.title{font-size:22px}}'
   ].join('');
 
   var PLAYER = [
@@ -146,11 +146,24 @@
     if (mobile === undefined) mobile = isMobile();
     var c = s.carousel, st = s.stories, b = s.banner, sp = s.spotlight || {}, round = s.border !== 'square';
     var num = function (x, d) { return typeof x === 'number' && !isNaN(x) ? x : d; };
+    // A layout value must be a finite number at or above zero; anything else falls back to the default.
+    var px = function (x, d) { return typeof x === 'number' && isFinite(x) && x >= 0 ? x : d; };
+    var pos = function (x) { return typeof x === 'number' && isFinite(x) && x > 0 ? x : 0; };
+    var dev = function (a, bm, bd) { return mobile ? a[bm] : a[bd]; };
+    var baseR = round ? 16 : 4;
+    // An invalid shape (like 4/0) would collapse the box, so anything but a real ratio falls back.
+    var ratio = function (x, d) { x = String(x == null ? '' : x).replace(':', '/'); return /^[1-9]\d?\/[1-9]\d?$/.test(x) ? x : d; };
+    var sw = pos(dev(st, 'sizeMobile', 'sizeDesktop')), fw = pos(dev(sp, 'widthMobile', 'widthDesktop')), bmax = pos(b.maxWidthDesktop);
     var v = {
       '--brand': s.brandColor, '--font': s.brandFont || 'Poppins', '--radius': round ? '16px' : '4px', '--btn-radius': round ? '999px' : '4px',
       '--head-color': c.headingColor, '--head-font': c.headingFont || s.brandFont || 'Poppins', '--head-weight': c.headingWeight, '--details-color': c.detailsColor,
       '--feed-bg': c.feedAtcColor, '--feed-fg': c.feedAtcTextColor, '--ov-size': c.overlaySize + '%',
-      '--tw': (mobile ? (c.tileWidthMobile || 160) : (c.tileWidthDesktop || 220)) + 'px', '--tar': String(c.tileAspect || '9/16').replace(':', '/'), '--focus': { top: 'center top', bottom: 'center bottom' }[b.focus] || 'center', '--bh': (mobile ? (b.mobileHeight || 480) : (b.desktopHeight || 520)) + 'px', '--bbg': b.background || '#f3f3f3', '--ob': (mobile ? num(sp.bottomOffsetMobile, 84) : num(sp.bottomOffsetDesktop, 20)) + 'px',
+      '--tw': (mobile ? (c.tileWidthMobile || 160) : (c.tileWidthDesktop || 220)) + 'px', '--tar': ratio((mobile ? c.tileAspectMobile : c.tileAspectDesktop), ratio(c.tileAspect, '9/16')), '--focus': { top: 'center top', bottom: 'center bottom' }[b.focus] || 'center', '--bh': (mobile ? (b.mobileHeight || 480) : (b.desktopHeight || 520)) + 'px', '--bbg': b.background || '#f3f3f3', '--ob': (mobile ? num(sp.bottomOffsetMobile, 84) : num(sp.bottomOffsetDesktop, 20)) + 'px',
+      '--tile-r': px(dev(c, 'tileRadiusMobile', 'tileRadiusDesktop'), baseR) + 'px', '--gap': px(dev(c, 'tileGapMobile', 'tileGapDesktop'), 12) + 'px', '--pad-x': px(dev(c, 'sidePaddingMobile', 'sidePaddingDesktop'), 16) + 'px',
+      '--banner-r': px(dev(b, 'radiusMobile', 'radiusDesktop'), 0) + 'px', '--banner-m': px(dev(b, 'marginMobile', 'marginDesktop'), 0) + 'px', '--banner-max': !mobile && bmax ? bmax + 'px' : 'none',
+      '--ssize': sw ? sw + 'px' : 'calc(84px * ' + num(st.sizeFactor, 1) + ')', '--sgap': px(dev(st, 'gapMobile', 'gapDesktop'), -1) >= 0 ? px(dev(st, 'gapMobile', 'gapDesktop'), 0) + 'px' : 'calc(14px * ' + num(st.spacing, 1) + ')',
+      '--sr': { circle: '50%', rounded: '26%', square: '0' }[st.shape] || '50%',
+      '--flw': fw ? fw + 'px' : 'calc(' + (mobile ? 92 : 110) + 'px * ' + num(sp.sizeFactor, 1) + ')', '--flr': px(dev(sp, 'radiusMobile', 'radiusDesktop'), baseR) + 'px',
       '--story-border': st.borderColor, '--story-title': st.titleColor, '--size': st.sizeFactor, '--spacing': st.spacing
     };
     Object.keys(extra || {}).forEach(function (k) { v[k] = extra[k]; });
@@ -335,7 +348,8 @@
     var s = ctx.settings, w = ctx.widget || {};
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
     var banner = type === 'banner';
-    var ar = (ctx.mobile ? s.banner.aspectPortrait : s.banner.aspectLandscape) || '16/9';
+    var ar = String((ctx.mobile ? s.banner.aspectPortrait : s.banner.aspectLandscape) || '').replace(':', '/');
+    if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) ar = ctx.mobile ? '9/16' : '16/9';
     var fit = banner ? s.banner.fit : s.carousel.tileFit;
     var cls = type + (banner && s.banner.fullScreen ? ' full' : '') + (banner && s.banner.heightMode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + (s.banner.focus || 'center') : '');
     var head = w.heading && !banner ? '<div class="head"><h2 class="title">' + esc(w.heading) + '</h2></div>' : '';
@@ -404,18 +418,45 @@
   }
 
   // Per-embed overrides from data attributes (set by the Loopy Video theme section). They win over the widget's own settings.
+  // Every value is range-checked; anything missing, blank, non-numeric or out of range is ignored, never trusted.
   function applyAttrOverrides(s, el) {
     var out = JSON.parse(JSON.stringify(s));
+    ['carousel', 'stories', 'banner', 'spotlight'].forEach(function (k) { out[k] = out[k] || {}; });
     var g = function (n) { var v = el.getAttribute(n); return v == null ? '' : String(v).trim(); };
     var num = function (n, lo, hi) { var v = parseFloat(g(n)); return isFinite(v) && v >= lo && v <= hi ? v : null; };
-    var bd = num('data-banner-h-desktop', 100, 1400), bm = num('data-banner-h-mobile', 100, 1200);
-    if (bd !== null || bm !== null) { out.banner.heightMode = 'fixed'; if (bd !== null) out.banner.desktopHeight = bd; if (bm !== null) out.banner.mobileHeight = bm; }
-    var bf = g('data-banner-fit'); if (bf === 'cover' || bf === 'contain') out.banner.fit = bf;
-    var td = num('data-tile-w-desktop', 60, 700), tm = num('data-tile-w-mobile', 60, 500);
-    if (td !== null) out.carousel.tileWidthDesktop = td;
-    if (tm !== null) out.carousel.tileWidthMobile = tm;
-    var sh = g('data-tile-shape'); if (/^\d{1,2}\/\d{1,2}$/.test(sh)) out.carousel.tileAspect = sh;
-    var tf = g('data-tile-fit'); if (tf === 'cover' || tf === 'contain') out.carousel.tileFit = tf;
+    var put = function (obj, key, v) { if (v !== null) obj[key] = v; };
+    var pick = function (n, allowed) { var v = g(n); return allowed.indexOf(v) > -1 ? v : null; };
+    var ratio = function (n) { var v = g(n); return /^\d{1,2}\/\d{1,2}$/.test(v) && v.split('/')[0] !== '0' && v.split('/')[1] !== '0' ? v : null; };
+    var c = out.carousel, st = out.stories, b = out.banner, sp = out.spotlight;
+
+    // banner: an exact height wins over a ratio; with only a ratio the banner follows that shape
+    var bhd = num('data-banner-h-desktop', 100, 1400), bhm = num('data-banner-h-mobile', 100, 1200);
+    var brd = ratio('data-banner-ratio-desktop'), brm = ratio('data-banner-ratio-mobile');
+    if (bhd !== null || bhm !== null) { b.heightMode = 'fixed'; put(b, 'desktopHeight', bhd); put(b, 'mobileHeight', bhm); }
+    else if (brd !== null || brm !== null) b.heightMode = 'ratio';
+    put(b, 'aspectLandscape', brd); put(b, 'aspectPortrait', brm);
+    put(b, 'fit', pick('data-banner-fit', ['cover', 'contain'])); put(b, 'focus', pick('data-banner-focus', ['center', 'top', 'bottom']));
+    put(b, 'radiusDesktop', num('data-banner-radius-desktop', 0, 999)); put(b, 'radiusMobile', num('data-banner-radius-mobile', 0, 999));
+    put(b, 'marginDesktop', num('data-banner-margin-desktop', 0, 200)); put(b, 'marginMobile', num('data-banner-margin-mobile', 0, 200));
+    put(b, 'maxWidthDesktop', num('data-banner-max-desktop', 100, 2400));
+
+    // video tiles (carousel)
+    put(c, 'tileWidthDesktop', num('data-tile-w-desktop', 60, 700)); put(c, 'tileWidthMobile', num('data-tile-w-mobile', 60, 500));
+    var both = ratio('data-tile-shape');
+    put(c, 'tileAspectDesktop', ratio('data-tile-shape-desktop') || both); put(c, 'tileAspectMobile', ratio('data-tile-shape-mobile') || both);
+    put(c, 'tileFit', pick('data-tile-fit', ['cover', 'contain']));
+    put(c, 'tileRadiusDesktop', num('data-tile-radius-desktop', 0, 999)); put(c, 'tileRadiusMobile', num('data-tile-radius-mobile', 0, 999));
+    put(c, 'tileGapDesktop', num('data-tile-gap-desktop', 0, 80)); put(c, 'tileGapMobile', num('data-tile-gap-mobile', 0, 80));
+    put(c, 'sidePaddingDesktop', num('data-tile-pad-desktop', 0, 120)); put(c, 'sidePaddingMobile', num('data-tile-pad-mobile', 0, 120));
+
+    // stories
+    put(st, 'sizeDesktop', num('data-story-size-desktop', 30, 300)); put(st, 'sizeMobile', num('data-story-size-mobile', 30, 300));
+    put(st, 'shape', pick('data-story-shape', ['circle', 'rounded', 'square']));
+    put(st, 'gapDesktop', num('data-story-gap-desktop', 0, 80)); put(st, 'gapMobile', num('data-story-gap-mobile', 0, 80));
+
+    // spotlight and floating video
+    put(sp, 'widthDesktop', num('data-spot-w-desktop', 40, 500)); put(sp, 'widthMobile', num('data-spot-w-mobile', 40, 500));
+    put(sp, 'radiusDesktop', num('data-spot-radius-desktop', 0, 999)); put(sp, 'radiusMobile', num('data-spot-radius-mobile', 0, 999));
     return out;
   }
 

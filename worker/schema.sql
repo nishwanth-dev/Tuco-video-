@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS videos (
   cta_url TEXT DEFAULT '',
   starts_at INTEGER DEFAULT 0,
   ends_at INTEGER DEFAULT 0,
+  size INTEGER DEFAULT 0,
   sort INTEGER DEFAULT 0,
   source TEXT DEFAULT 'upload',
   source_id TEXT,

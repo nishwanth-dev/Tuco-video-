@@ -10,15 +10,19 @@ const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'galle
 const WPAGES = ['home', 'product', 'collection', 'pages'];
 
 // Per-widget appearance overrides: only these settings, with these limits, may be overridden.
-const RATIO = /^\d{1,2}\/\d{1,2}$/;
+const RATIO = /^[1-9]\d?\/[1-9]\d?$/;
 const ev = (...v) => (x) => v.includes(x);
 const nm = (lo, hi) => (x) => typeof x === 'number' && isFinite(x) && x >= lo && x <= hi;
 const OVERRIDABLE = {
   tileType: ev('overlay', 'below', 'feed', 'minimal'), showPrice: (x) => typeof x === 'boolean', showAtc: (x) => typeof x === 'boolean',
-  carousel: { tileAspect: (x) => RATIO.test(x), tileWidthDesktop: nm(60, 700), tileWidthMobile: nm(60, 500), tileFit: ev('cover', 'contain'), ordering: ev('none', 'newest', 'shuffle') },
-  stories: { sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4) },
-  banner: { heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
-  spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400) },
+  carousel: {
+    tileAspect: (x) => RATIO.test(x), tileAspectDesktop: (x) => RATIO.test(x), tileAspectMobile: (x) => RATIO.test(x), tileWidthDesktop: nm(60, 700), tileWidthMobile: nm(60, 500),
+    tileFit: ev('cover', 'contain'), ordering: ev('none', 'newest', 'shuffle'), tileRadiusDesktop: nm(0, 999), tileRadiusMobile: nm(0, 999),
+    tileGapDesktop: nm(0, 80), tileGapMobile: nm(0, 80), sidePaddingDesktop: nm(0, 120), sidePaddingMobile: nm(0, 120),
+  },
+  stories: { sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4), sizeDesktop: nm(30, 300), sizeMobile: nm(30, 300), shape: ev('circle', 'rounded', 'square'), gapDesktop: nm(0, 80), gapMobile: nm(0, 80) },
+  banner: { heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999), marginDesktop: nm(0, 200), marginMobile: nm(0, 200), maxWidthDesktop: nm(100, 2400), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
+  spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400), widthDesktop: nm(40, 500), widthMobile: nm(40, 500), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999) },
 };
 function cleanOverrides(o) {
   if (o == null) return {};
@@ -60,7 +64,8 @@ function cleanVideo(v) {
   if (!okLink(v.ctaUrl)) throw new Bad('button link must be a web address or a path starting with /');
   const products = (Array.isArray(v.products) ? v.products : []).slice(0, 20).map((p) => ({ handle: String(p.handle || ''), title: String(p.title || '').slice(0, 300), price: String(p.price || '').slice(0, 40), image: okUrl(p.image) ? p.image : '' }));
   if (products.some((p) => !HANDLE.test(p.handle))) throw new Bad('product handle is invalid');
-  return { ...v, title, products, ctaText: String(v.ctaText || '').slice(0, 60), placements: (Array.isArray(v.placements) ? v.placements : []).filter((x) => PLACEMENTS.includes(x)), audience: v.audience === 'teens' ? 'teens' : 'kids', status: v.status === 'live' ? 'live' : 'draft' };
+  const size = Number(v.size);
+  return { ...v, size: Number.isFinite(size) && size >= 0 && size <= 5e9 ? Math.round(size) : 0, title, products, ctaText: String(v.ctaText || '').slice(0, 60), placements: (Array.isArray(v.placements) ? v.placements : []).filter((x) => PLACEMENTS.includes(x)), audience: v.audience === 'teens' ? 'teens' : 'kids', status: v.status === 'live' ? 'live' : 'draft' };
 }
 function cleanWidget(w) {
   if (!w || typeof w !== 'object') throw new Bad('invalid widget');
@@ -77,10 +82,10 @@ const parse = (s, f) => { try { return JSON.parse(s); } catch { return f; } };
 const toVideo = (r, origin = '') => {
   const products = parse(r.products, []);
   return {
-    id: r.id, title: r.title, url: r.url.startsWith('/') ? origin + r.url : r.url, poster: r.poster, audience: r.audience, status: r.status,
+    id: r.id, title: r.title, url: r.url.startsWith('/') ? origin + r.url : r.url, poster: r.poster && r.poster.startsWith('/') ? origin + r.poster : r.poster, audience: r.audience, status: r.status,
     placements: parse(r.placements, []), products, product: products[0] || { title: '', handle: '', price: '' },
     archived: !!r.archived, source: r.source, sort: r.sort, createdAt: r.created_at, views: r.views || 0,
-    ctaText: r.cta_text || '', ctaUrl: r.cta_url || '', startsAt: r.starts_at || 0, endsAt: r.ends_at || 0,
+    ctaText: r.cta_text || '', ctaUrl: r.cta_url || '', startsAt: r.starts_at || 0, endsAt: r.ends_at || 0, size: r.size || 0,
   };
 };
 const toWidget = (r) => ({
@@ -117,6 +122,16 @@ async function serveMedia(req, env, key) {
   return new Response(req.method === 'HEAD' ? null : obj.body, { status, headers });
 }
 
+// If R2_PUBLIC_URL is set (an R2 custom domain or public bucket address), files are served straight from R2, which is faster and
+// does not use Worker requests. Without it, files are served by this Worker at /media.
+const fileUrl = (env, origin, key) => (env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL.replace(/\/$/, '')}/${key}` : `${origin}/media/${key}`);
+// The R2 key behind a stored video address (empty when the video is hosted elsewhere).
+const keyOf = (env, url) => {
+  const m = String(url || '').match(/\/media\/(videos\/[^?#]+)$/);
+  if (m) return decodeURIComponent(m[1]);
+  if (env.R2_PUBLIC_URL && String(url).startsWith(env.R2_PUBLIC_URL.replace(/\/$/, '') + '/')) return decodeURIComponent(String(url).slice(env.R2_PUBLIC_URL.replace(/\/$/, '').length + 1).split(/[?#]/)[0]);
+  return '';
+};
 const getSettings = async (env) => mergeSettings(parse((await env.DB.prepare("SELECT v FROM kv WHERE k='settings'").first())?.v, {}));
 const VIDEO_SQL = "SELECT v.*, (SELECT COUNT(*) FROM events e WHERE e.video_id=v.id AND e.type='play') AS views FROM videos v";
 
@@ -308,7 +323,19 @@ async function handle(req, env, ctx) {
   }
   const vm = p.match(/^\/api\/videos\/([\w-]+)$/);
   if (vm && req.method === 'PUT') { await upsertVideo(env, { ...cleanVideo(await req.json()), id: vm[1] }, false); return json({ ok: true }, 200, cors); }
-  if (vm && req.method === 'DELETE') { await env.DB.prepare('DELETE FROM videos WHERE id=?').bind(vm[1]).run(); return json({ ok: true }, 200, cors); }
+  if (vm && req.method === 'DELETE') {
+    const row = await env.DB.prepare('SELECT url, poster FROM videos WHERE id=?').bind(vm[1]).first();
+    await env.DB.prepare('DELETE FROM videos WHERE id=?').bind(vm[1]).run();
+    if (row && env.MEDIA) {
+      for (const u of [row.url, row.poster]) {
+        const key = keyOf(env, u);
+        if (!key) continue;
+        const stillUsed = await env.DB.prepare('SELECT 1 FROM videos WHERE url LIKE ? OR poster LIKE ? LIMIT 1').bind('%' + key, '%' + key).first();
+        if (!stillUsed) await env.MEDIA.delete(key).catch(() => {});
+      }
+    }
+    return json({ ok: true }, 200, cors);
+  }
 
   // Copies a video from a public link into R2 (server to server) and adds it as a video. Used by the Whatmore importer.
   if (p === '/api/import' && req.method === 'POST') {
@@ -323,11 +350,12 @@ async function handle(req, env, ctx) {
       const src = await fetch(v.url);
       if (!src.ok) return json({ error: `could not fetch the video (${src.status})` }, 502, cors);
       const key = `videos/imp-${crypto.randomUUID()}.mp4`;
-      await env.MEDIA.put(key, src.body, { httpMetadata: { contentType: 'video/mp4' } });
-      finalUrl = `/media/${key}`;
+      const put = await env.MEDIA.put(key, src.body, { httpMetadata: { contentType: 'video/mp4' } });
+      finalUrl = fileUrl(env, url.origin, key);
+      v.size = put?.size || 0;
     }
     const id = crypto.randomUUID();
-    await upsertVideo(env, { ...cleanVideo({ ...v, url: finalUrl.startsWith('/') ? finalUrl : v.url }), url: finalUrl, id, source: v.source || 'import' }, true);
+    await upsertVideo(env, { ...cleanVideo({ ...v, url: v.url }), url: finalUrl, size: v.size || 0, id, source: v.source || 'import' }, true);
     return json({ id, url: finalUrl }, 201, cors);
   }
 
@@ -342,7 +370,9 @@ async function handle(req, env, ctx) {
 
   if (p === '/api/settings' && req.method === 'GET') return json({ settings: await getSettings(env) }, 200, cors);
   if (p === '/api/settings' && req.method === 'PUT') {
-    await env.DB.prepare("INSERT INTO kv (k,v) VALUES ('settings',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(await req.json())).run();
+    const body = await req.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 20000) throw new Bad('settings are invalid or too large');
+    await env.DB.prepare("INSERT INTO kv (k,v) VALUES ('settings',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(body)).run();
     return json({ ok: true }, 200, cors);
   }
   const om = p.match(/^\/api\/order\/([\w-]+)$/);
@@ -367,8 +397,8 @@ async function handle(req, env, ctx) {
     if (!env.MEDIA) return json({ error: 'Video storage (R2) is not enabled yet. Paste a video URL instead.' }, 503, cors);
     const name = (url.searchParams.get('name') || 'video.mp4').replace(/[^\w.-]/g, '_').slice(-80);
     const key = `videos/${crypto.randomUUID()}-${name}`;
-    await env.MEDIA.put(key, req.body, { httpMetadata: { contentType: req.headers.get('content-type') || 'video/mp4' } });
-    return json({ url: `${url.origin}/media/${key}` }, 201, cors);
+    const obj = await env.MEDIA.put(key, req.body, { httpMetadata: { contentType: req.headers.get('content-type') || 'video/mp4' } });
+    return json({ url: fileUrl(env, url.origin, key), size: obj?.size || 0 }, 201, cors);
   }
 
   if (p === '/api/analytics' && req.method === 'GET') {
@@ -387,15 +417,39 @@ async function handle(req, env, ctx) {
     ]);
     return json({ perVideo, perWidget, daily, byDevice, bySource, sales: sales[0] || { orders: 0, revenue: 0 }, salesByVideo }, 200, cors);
   }
+  if (p === '/api/health' && req.method === 'GET') {
+    const checks = {};
+    const run = async (name, fn) => { try { checks[name] = await fn(); } catch (e) { checks[name] = { ok: false, note: String(e.message || e) }; } };
+    await run('database', async () => { await env.DB.prepare('SELECT 1').first(); return { ok: true, note: 'Connected' }; });
+    await run('tables', async () => {
+      const cols = (await env.DB.prepare("SELECT name FROM pragma_table_info('widgets')").all()).results.map((r) => r.name);
+      const need = ['overrides', 'collection_handles', 'page_handles'];
+      const missing = need.filter((c) => !cols.includes(c));
+      return missing.length ? { ok: false, note: `Database is missing: ${missing.join(', ')}. Run the migrations in worker/migrations.` } : { ok: true, note: 'Up to date' };
+    });
+    checks.storage = env.MEDIA ? { ok: true, note: env.R2_PUBLIC_URL ? 'R2 connected, served from the R2 address' : 'R2 connected, served through the Worker (set R2_PUBLIC_URL for faster, direct serving)' } : { ok: false, note: 'R2 is not enabled yet. Videos cannot be uploaded until it is.' };
+    await run('store', async () => { const c = await catalog(env); return { ok: true, note: `${c.list.length} store products readable` }; });
+    checks.orders = env.SHOPIFY_WEBHOOK_SECRET ? { ok: true, note: 'Order webhook secret is set' } : { ok: false, note: 'Optional: add the order webhook to see sales from videos' };
+    checks.instagram = env.IG_TOKEN ? { ok: true, note: 'Instagram token is set' } : { ok: false, note: 'Optional: add an Instagram token to copy reels automatically' };
+    checks.origins = { ok: !!env.ALLOWED_ORIGINS, note: (env.ALLOWED_ORIGINS || 'none').split(',').join(', ') };
+    const count = async (sql) => (await env.DB.prepare(sql).first()).n;
+    const totals = { videos: await count('SELECT COUNT(*) AS n FROM videos'), live: await count("SELECT COUNT(*) AS n FROM videos WHERE status='live' AND archived=0"), widgets: await count('SELECT COUNT(*) AS n FROM widgets'), events30d: await count(`SELECT COUNT(*) AS n FROM events WHERE at>${Date.now() - 30 * 86400000}`) };
+    return json({ checks, totals }, 200, cors);
+  }
+  if (p === '/api/export' && req.method === 'GET') {
+    // A full copy of your data as one file, for backups.
+    const all = async (t) => (await env.DB.prepare(`SELECT * FROM ${t}`).all()).results;
+    return json({ exportedAt: new Date().toISOString(), videos: await all('videos'), widgets: await all('widgets'), settings: await all('kv') }, 200, { ...cors, 'content-disposition': 'attachment; filename="loopy-backup.json"' });
+  }
   if (p === '/api/sync/instagram' && req.method === 'POST') return json(await syncInstagram(env), 200, cors);
 
   return json({ error: 'not found' }, 404, cors);
 }
 
 async function upsertVideo(env, v, isNew) {
-  const args = [v.title, v.url, v.poster || '', v.audience || 'kids', v.status || 'draft', JSON.stringify(v.placements || []), JSON.stringify(v.products || []), v.archived ? 1 : 0, Number(v.sort) || 0, v.ctaText || '', v.ctaUrl || '', Number(v.startsAt) || 0, Number(v.endsAt) || 0];
-  if (isNew) await env.DB.prepare('INSERT INTO videos (title,url,poster,audience,status,placements,products,archived,sort,cta_text,cta_url,starts_at,ends_at,id,source,source_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(...args, v.id, v.source || 'upload', v.sourceId ? String(v.sourceId) : null, Date.now()).run();
-  else await env.DB.prepare('UPDATE videos SET title=?,url=?,poster=?,audience=?,status=?,placements=?,products=?,archived=?,sort=?,cta_text=?,cta_url=?,starts_at=?,ends_at=? WHERE id=?').bind(...args, v.id).run();
+  const args = [v.title, v.url, v.poster || '', v.audience || 'kids', v.status || 'draft', JSON.stringify(v.placements || []), JSON.stringify(v.products || []), v.archived ? 1 : 0, Number(v.sort) || 0, v.ctaText || '', v.ctaUrl || '', Number(v.startsAt) || 0, Number(v.endsAt) || 0, Number(v.size) || 0];
+  if (isNew) await env.DB.prepare('INSERT INTO videos (title,url,poster,audience,status,placements,products,archived,sort,cta_text,cta_url,starts_at,ends_at,size,id,source,source_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(...args, v.id, v.source || 'upload', v.sourceId ? String(v.sourceId) : null, Date.now()).run();
+  else await env.DB.prepare('UPDATE videos SET title=?,url=?,poster=?,audience=?,status=?,placements=?,products=?,archived=?,sort=?,cta_text=?,cta_url=?,starts_at=?,ends_at=?,size=? WHERE id=?').bind(...args, v.id).run();
 }
 async function upsertWidget(env, w, isNew) {
   const args = [w.name, w.type, w.page, w.scope || 'tagged', JSON.stringify(w.videoIds || []), JSON.stringify(w.productHandles || []), JSON.stringify(w.collectionHandles || []), JSON.stringify(w.pageHandles || []), w.heading || '', w.enabled === false ? 0 : 1, JSON.stringify(w.overrides || {})];

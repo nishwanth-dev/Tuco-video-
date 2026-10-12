@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { saveVideo, deleteVideo, uploadVideo, searchProducts, syncInstagram, reorderVideos } from './api.js';
+import { saveVideo, deleteVideo, uploadVideo, uploadFile, searchProducts, syncInstagram, reorderVideos } from './api.js';
 import { Modal, Empty } from './ui.jsx';
 import { Thumb, Player } from './media.jsx';
 
@@ -84,6 +84,7 @@ export default function Videos({ videos, loadVideos, setError }) {
               <Thumb url={v.url} hover />
               <label className="sel" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={sel.includes(v.id)} onChange={() => toggleSel(v.id)} /></label>
               {v.source === 'instagram' && <span className="src">Social</span>}
+              <SizeBadge bytes={v.size} />
               <span className={'st ' + v.status}>{v.status}</span>
               <Menu video={v} onEdit={() => setEditing(v)} onArchive={() => patch(v, { archived: !v.archived })} onDelete={() => confirm('Delete this video?') && act(deleteVideo)(v.id)} />
               <button className="tagbtn" onClick={(e) => { e.stopPropagation(); setTagging(v); }}>
@@ -217,6 +218,7 @@ function EditVideo({ video, onClose, onSave }) {
 
 function AddMedia({ onClose, onSave }) {
   const [url, setUrl] = useState('');
+  const [size, setSize] = useState(0);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -225,7 +227,7 @@ function AddMedia({ onClose, onSave }) {
     if (!f) return;
     if (f.size > 100 * 1024 * 1024) { setErr('This file is over 100 MB. Compress it first (tools/compress-video.sh) and try again.'); e.target.value = ''; return; }
     setBusy(true); setErr('');
-    try { setUrl(await uploadVideo(f)); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); } catch (x) { setErr(x.message); }
+    try { const up = await uploadFile(f); setUrl(up.url); setSize(up.size || f.size); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); } catch (x) { setErr(x.message); }
     setBusy(false);
   };
   return (
@@ -235,8 +237,9 @@ function AddMedia({ onClose, onSave }) {
       <label className="lab">Title<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       {busy && <p className="muted">Uploading...</p>}
       {err && <p className="red small">{err}</p>}
+      {size > 0 && <p className="muted"><SizeBadge bytes={size} inline /> {sizeAdvice(size)}</p>}
       <p className="muted">The video is saved as a draft. Tag products and set it live afterwards.</p>
-      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!/^https?:\/\//i.test(url) || !title.trim() || busy} onClick={async () => { const m = await onSave({ title: title.trim(), url: url.trim(), poster: '', audience: 'kids', status: 'draft', placements: [], products: [] }); if (m) setErr(m); }}>Add</button></div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!/^https?:\/\//i.test(url) || !title.trim() || busy} onClick={async () => { const m = await onSave({ title: title.trim(), url: url.trim(), poster: '', audience: 'kids', status: 'draft', placements: [], products: [], size }); if (m) setErr(m); }}>Add</button></div>
     </Modal>
   );
 }
@@ -256,4 +259,14 @@ function ArrangeVideos({ videos, onClose, onSaved, setError }) {
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => { try { await reorderVideos(ids); await onSaved(); } catch (e) { setError(e.message); } }}>Save order</button></div>
     </Modal>
   );
+}
+
+// Small files make the store fast: green is great, amber is fine, red is heavy.
+const mb = (b) => b / 1048576;
+const sizeLevel = (b) => (mb(b) <= 5 ? 'ok' : mb(b) <= 15 ? 'mid' : 'heavy');
+const sizeAdvice = (b) => (sizeLevel(b) === 'ok' ? 'Light and fast.' : sizeLevel(b) === 'mid' ? 'Fine, but smaller is faster. Aim for under 5 MB.' : 'Heavy. This will slow your pages. Shrink it first (tools/compress-video.sh).');
+function SizeBadge({ bytes, inline }) {
+  if (!bytes) return null;
+  const text = mb(bytes) < 10 ? mb(bytes).toFixed(1) : Math.round(mb(bytes));
+  return <span className={'sz ' + sizeLevel(bytes) + (inline ? ' inl' : '')} title={sizeAdvice(bytes)}>{text} MB</span>;
 }

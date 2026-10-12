@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
 import { Modal, Toggle, Empty } from './ui.jsx';
+import LayoutField from './LayoutField.jsx';
+import { NEW_LAYOUT } from './layoutSpec.js';
 import { Thumb } from './media.jsx';
 
 const TYPES = {
@@ -166,6 +168,8 @@ const OV_FIELDS = {
     ['spotlight', 'bottomOffsetMobile', 'Distance from bottom, mobile (px)', 'num'], ['spotlight', 'bottomOffsetDesktop', 'Distance from bottom, desktop (px)', 'num'],
   ],
 };
+// The shared layout rows (sizes, corners, gaps, margins) apply to each widget type too.
+for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [...OV_FIELDS[t], ...NEW_LAYOUT[t]];
 OV_FIELDS.floating = OV_FIELDS.spotlight;
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.
@@ -193,8 +197,7 @@ function Appearance({ w, setW, settings }) {
           const gv = glob(g, k);
           return (
             <label className="lab" key={(g || 'root') + k}>{label}
-              {kind === 'num' && <input type="number" step="any" value={cur ?? ''} placeholder={gv !== undefined ? `Global: ${gv}` : ''} onChange={(e) => set(g, k, e.target.value === '' ? '' : Number(e.target.value))} />}
-              {kind === 'sel' && <select value={cur ?? ''} onChange={(e) => set(g, k, e.target.value)}><option value="">Use global setting</option>{opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
+              {['num', 'sel', 'corner'].includes(kind) && <LayoutField spec={[g, k, label, kind, opts]} value={cur} placeholder={gv !== undefined && gv !== null && gv !== '' ? `Global: ${gv}` : 'Global: default'} emptyLabel="Use global setting" onChange={(v) => set(g, k, v)} />}
               {kind === 'bool' && <select value={cur === undefined ? '' : String(cur)} onChange={(e) => set(g, k, e.target.value === '' ? '' : e.target.value === 'true')}><option value="">Use global setting</option><option value="true">On</option><option value="false">Off</option></select>}
             </label>
           );

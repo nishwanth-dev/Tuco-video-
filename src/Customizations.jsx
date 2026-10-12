@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { saveSettings } from './api.js';
 import { Field, Toggle } from './ui.jsx';
+import LayoutField from './LayoutField.jsx';
+import { NEW_LAYOUT } from './layoutSpec.js';
 
 const SECTIONS = [
   ['brand', 'Brand Theme Settings', 'carousel'], ['tile', 'Product Tile Config', 'carousel'], ['carousel', 'Carousel Configuration', 'carousel'], ['stories', 'Stories Configuration', 'stories'],
@@ -24,6 +26,10 @@ export default function Customizations({ settings, videos, loadSettings, setErro
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
+  // Renders the shared layout rows for one section; an empty value stores null (use the built-in default).
+  const layoutRows = (group) => NEW_LAYOUT[group].map((spec) => (
+    <Field key={spec[1]} label={spec[2]} hint="Empty uses the built-in default"><LayoutField spec={spec} value={s[group][spec[1]]} emptyLabel="Default" onChange={(v) => setIn(group, spec[1], v === '' ? null : v)} /></Field>
+  ));
   const save = async () => { setSaving(true); try { await saveSettings(s); await loadSettings(); } catch (e) { setError(e.message); } setSaving(false); };
 
   const previewType = SECTIONS.find((x) => x[0] === sec)[2];
@@ -73,12 +79,14 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Thumbnail overlay image URL" hint="PNG/JPG shown on top of every thumbnail"><input value={s.carousel.overlayImage} placeholder="https://..." onChange={(e) => setIn('carousel', 'overlayImage', e.target.value)} /></Field>
           <Field label="Thumbnail overlay placement"><Sel v={s.carousel.overlayPlacement} on={(v) => setIn('carousel', 'overlayPlacement', v)} opts={['bottom-right', 'bottom-left', 'top-right', 'top-left']} /></Field>
           <Field label="Thumbnail overlay size (% of width)"><input type="number" min="1" max="100" value={s.carousel.overlaySize} onChange={(e) => setIn('carousel', 'overlaySize', Number(e.target.value))} /></Field>
+          {layoutRows('carousel')}
         </>}
         {sec === 'stories' && <>
           <Field label="Stories Border Colors"><Color v={s.stories.borderColor} on={(v) => setIn('stories', 'borderColor', v)} /></Field>
           <Field label="Stories Title Font Color"><Color v={s.stories.titleColor} on={(v) => setIn('stories', 'titleColor', v)} /></Field>
           <Field label="Story Tile Size Factor" hint="1 = default size"><Num v={s.stories.sizeFactor} on={(v) => setIn('stories', 'sizeFactor', v)} /></Field>
           <Field label="Story Tiles Spacing Factor"><Num v={s.stories.spacing} on={(v) => setIn('stories', 'spacing', v)} /></Field>
+          {layoutRows('stories')}
         </>}
         {sec === 'product' && <>
           <Field label="Ultra Minimize on Scroll" hint="Shrinks the floating video when the shopper scrolls"><Toggle on={s.product.ultraMinimize} onChange={(v) => setIn('product', 'ultraMinimize', v)} /></Field>
@@ -100,6 +108,7 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Video fit" hint="Fill the banner (crops edges) or show the whole video with bars"><Sel v={s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fit', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
           <Field label="Which part to keep when cropping" hint="Only matters when the video is cropped"><Sel v={s.banner.focus || 'center'} on={(v) => setIn('banner', 'focus', v)} opts={[['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]} /></Field>
           <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
+          {layoutRows('banner')}
         </>}
         {sec === 'spotlight' && <>
           <Field label="Enable Spotlight videos" hint="Founder intros, sale announcements, moment marketing"><Toggle on={s.spotlight.enabled} onChange={(v) => setIn('spotlight', 'enabled', v)} /></Field>
@@ -108,6 +117,7 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Size Factor"><Num v={s.spotlight.sizeFactor} on={(v) => setIn('spotlight', 'sizeFactor', v)} /></Field>
           <Field label="Distance from bottom on mobile" hint="Pixels. Raise it so the video clears your bottom menu bar"><input type="number" min="0" max="300" value={s.spotlight.bottomOffsetMobile ?? 84} onChange={(e) => setIn('spotlight', 'bottomOffsetMobile', Number(e.target.value))} /></Field>
           <Field label="Distance from bottom on desktop" hint="Pixels"><input type="number" min="0" max="300" value={s.spotlight.bottomOffsetDesktop ?? 20} onChange={(e) => setIn('spotlight', 'bottomOffsetDesktop', Number(e.target.value))} /></Field>
+          {layoutRows('spotlight')}
         </>}
         {sec === 'oos' && <>
           <Field label="Show Videos When All Products Are Out of Stock" hint="Display videos for out-of-stock products"><Toggle on={s.oos.showWhenAllOut} onChange={(v) => setIn('oos', 'showWhenAllOut', v)} /></Field>
