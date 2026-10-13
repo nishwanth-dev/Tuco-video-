@@ -45,6 +45,8 @@ function cleanOverrides(o) {
       out[k][kk] = vv;
     }
   }
+  // A fixed height only takes effect in fixed-height mode, so setting one switches this widget to that mode.
+  if (out.banner && (out.banner.desktopHeight || out.banner.mobileHeight) && !out.banner.heightMode) out.banner.heightMode = 'fixed';
   return out;
 }
 const mergeOverrides = (settings, ov) => {
@@ -398,11 +400,13 @@ async function handle(req, env, ctx) {
 
   if (p === '/api/store/products' && req.method === 'GET') {
     const s = (url.searchParams.get('q') || '').toLowerCase();
-    const { list } = await catalog(env);
+    let list;
+    try { ({ list } = await catalog(env)); } catch { return json({ error: 'Could not read the product list from your store right now. You can still paste product links, or try again in a minute.' }, 502, cors); }
     return json({ products: s ? list.filter((x) => x.title.toLowerCase().includes(s) || x.handle.includes(s)) : list }, 200, cors);
   }
   if (p === '/api/store/collections' && req.method === 'GET') {
-    const { collections = [] } = await storeFetch(env, '/collections.json?limit=250');
+    let collections = [];
+    try { ({ collections = [] } = await storeFetch(env, '/collections.json?limit=250')); } catch { return json({ error: 'Could not read your store collections right now. Try again in a minute.' }, 502, cors); }
     return json({ collections: collections.map((c) => ({ handle: c.handle, title: c.title })) }, 200, cors);
   }
 

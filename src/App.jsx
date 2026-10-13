@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { listVideos, listWidgets, getSettings, getToken, setToken, apiBase } from './api.js';
+import { listVideos, listWidgets, getSettings, getToken, setToken, apiBase, checkToken } from './api.js';
 import Home from './Home.jsx';
 import Videos from './Videos.jsx';
 import Products from './Products.jsx';
@@ -88,12 +88,25 @@ export default function App() {
 
 function Login({ onDone }) {
   const [t, setT] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    const tok = t.trim();
+    if (!tok) { setErr('Enter your admin token.'); return; }
+    setBusy(true); setErr('');
+    const problem = await checkToken(tok);
+    setBusy(false);
+    if (problem) { setErr(problem); return; }
+    setToken(tok); onDone();
+  };
   return (
     <div className="overlay" style={{ background: '#fafafa' }}>
-      <form className="modal" onSubmit={(e) => { e.preventDefault(); setToken(t.trim()); onDone(); }}>
+      <form className="modal" onSubmit={submit}>
         <Logo size={36} />
-        <label className="lab">Admin token<input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} /></label>
-        <button className="btn">Sign in</button>
+        <label className="lab">Admin token<input type="password" autoFocus value={t} onChange={(e) => { setT(e.target.value); setErr(''); }} /></label>
+        {err && <p className="red small" role="alert">{err}</p>}
+        <button className="btn" disabled={busy}>{busy ? 'Checking...' : 'Sign in'}</button>
       </form>
     </div>
   );

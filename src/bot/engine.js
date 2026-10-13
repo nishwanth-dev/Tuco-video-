@@ -41,6 +41,8 @@ const lightStem = (w) => (w.length > 5 && /(ing|ed)$/.test(w) && w.replace(/(ing
 
 // Everyday multi-word phrasings, rewritten into the plain words the topics use before anything else happens.
 const PHRASES = [
+  [/back(ing)? ?up\b/g, ' backup '],
+  [/you ?tube|yt video/g, ' youtube '],
   [/throw(ing)? (it |them )?away|get(ting)? rid of|take (it |them )?down|discard|dont want (to see )?(it|this|these).*anymore|no longer need/g, ' delete remove '],
   [/(hide|put away|keep).{0,30}(might|may|could|maybe) need.{0,12}(later|again)|undo (a )?delete|restore (a |an )?(deleted|archived)/g, ' archive restore '],
   [/turn(ed|ing)? (it |this |the \w+ )?off|switch(ed|ing)? (it |this |the \w+ )?off|stop showing|take (it )?off( the)? (site|store|website)|temporar(il)?y (stop|hide)/g, ' disable widget off '],
@@ -138,6 +140,7 @@ const BOOSTS = [
   [/\bhow many\b|\bmaximum\b|\bmax\b|\blimit\b|\bquota\b/, 'limits', 0.25],
   [/^(what('?s| is| are| does)|explain|meaning of|difference)\b.*\b(carousel|stories|story|banner|spotlight|floating|gallery)\b/, 'widget-types', 0.5],
   [/\bwhatmore\b/, 'whatmore', 0.2],
+  [/\bapp block\b|\bshopify app\b|\bapp embed\b|\bapps? section\b/, 'app-block', 0.3],
   [/\bbutton (text|label|link)\b|\bshop now\b|\bcall to action\b|\bcta\b/, 'cta', 0.2],
   [/\buntagged\b|\bsearch (for )?video|\bfind (a )?video|\bfilter\b/, 'filter', 0.15],
 ];

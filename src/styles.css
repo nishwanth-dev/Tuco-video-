@@ -188,3 +188,5 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; paddi
 .hright .pcard { padding: 14px 16px; } .hright .psec { padding: 10px 0; } .hright .psec h4 { margin-bottom: 8px; }
 .hright .pgrid { gap: 8px; } .hright .pgrid > div { min-height: 0; padding: 9px 12px; } .hright .pgrid b { font-size: 18px; margin: 2px 0 1px; } .hright .pgrid small { margin-top: 0; }
 .hright .pcard .chart.small { height: 56px; padding: 6px 10px; } .hright .trow { padding: 6px 0; } .hright .phead { margin-bottom: 0; }
+.two > * { min-width: 0; } .two input, .two select { min-width: 0; width: 100%; box-sizing: border-box; } input[type=datetime-local] { max-width: 100%; }
+.brokenlink { position: absolute; inset: auto 8px 8px 8px; z-index: 4; background: #fee4e2; color: #b42318; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 7px; text-align: center; }

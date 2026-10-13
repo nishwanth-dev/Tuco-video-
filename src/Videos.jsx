@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { compressVideo, MAX_INPUT } from './compress.js';
 import { saveVideo, deleteVideo, uploadVideo, uploadFile, searchProducts, syncInstagram, reorderVideos } from './api.js';
 import { Modal, Empty } from './ui.jsx';
@@ -15,6 +15,14 @@ export default function Videos({ videos, loadVideos, setError }) {
   const [per, setPer] = useState(24);
   const [page, setPage] = useState(0);
   const [pop, setPop] = useState(false);
+  // The Filters panel closes on any click outside it, or Escape.
+  useEffect(() => {
+    if (!pop) return undefined;
+    const away = (e) => { if (!e.target.closest || !e.target.closest('.rel')) setPop(false); };
+    const esc = (e) => { if (e.key === 'Escape') setPop(false); };
+    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [pop]);
   const [sel, setSel] = useState([]);
   const [tagging, setTagging] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -37,7 +45,7 @@ export default function Videos({ videos, loadVideos, setError }) {
   const pages = Math.max(1, Math.ceil(list.length / per));
   const shown = list.slice(page * per, page * per + per);
   // Returns '' on success or the error message, so dialogs can stay open and show what went wrong.
-  const act = (fn) => async (...a) => { try { await fn(...a); await loadVideos(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
+  const act = (fn) => async (...a) => { setError(''); try { await fn(...a); await loadVideos(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
   const patch = act((v, p) => saveVideo({ ...v, ...p }));
   const bulk = act(async (fn) => { await Promise.all(sel.map((id) => fn(videos.find((v) => v.id === id)))); setSel([]); });
   const toggleSel = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -54,7 +62,7 @@ export default function Videos({ videos, loadVideos, setError }) {
         <div className="rel">
           <button className="btn ghost" onClick={() => setPop(!pop)}>Filters{(where || prod) && ' •'}</button>
           {pop && (
-            <div className="pop" onMouseLeave={() => setPop(false)}>
+            <div className="pop">
               <div className="pgroup"><span>Where</span><div className="chips">{WHERE.map(([k, l]) => <button key={k} className={'chip' + (where === k ? ' on' : '')} onClick={() => { setWhere(where === k ? '' : k); setPage(0); }}>{l}</button>)}</div></div>
               <div className="pgroup"><span>Products</span><div className="chips">{[['tagged', 'Tagged'], ['untagged', 'Untagged']].map(([k, l]) => <button key={k} className={'chip' + (prod === k ? ' on' : '')} onClick={() => { setProd(prod === k ? '' : k); setPage(0); }}>{l}</button>)}</div></div>
               <div className="pgroup"><span>Sort</span><div className="chips">{[['new', 'Newest first'], ['old', 'Oldest first']].map(([k, l]) => <button key={k} className={'chip' + (sort === k ? ' on' : '')} onClick={() => setSort(k)}>{l}</button>)}</div></div>
@@ -82,7 +90,7 @@ export default function Videos({ videos, loadVideos, setError }) {
         {shown.map((v) => (
           <div className="vtile" key={v.id}>
             <div className="vmedia" onClick={() => setEditing(v)}>
-              <Thumb url={v.url} hover />
+              <CheckedThumb url={v.url} />
               <label className="sel" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={sel.includes(v.id)} onChange={() => toggleSel(v.id)} /></label>
               {v.source === 'instagram' && <span className="src">Social</span>}
               <SizeBadge bytes={v.size} />
@@ -135,8 +143,18 @@ export function TagProducts({ video, onClose, onSave }) {
     setErr('');
     const handles = url.split(/[\s,]+/).map((u) => (u.match(/\/products\/([^/?#\s]+)/) || [])[1]).filter(Boolean);
     if (!handles.length) return setErr('Paste product links like https://tucokids.com/products/handle');
-    const all = await searchProducts('').catch((e) => { setErr(e.message); return []; });
-    handles.forEach((h) => { const p = all.find((x) => x.handle === h); if (p && !has(h)) toggle(p); });
+    let all = null;
+    try { all = await searchProducts(''); } catch { all = null; }
+    const missing = [];
+    handles.forEach((h) => {
+      const p = all && all.find((x) => x.handle === h);
+      if (p) { if (!has(h)) toggle(p); return; }
+      if (all) { missing.push(h); return; }
+      // The store list could not be read: keep the link anyway, named from its address (you can rename it later).
+      if (!has(h)) toggle({ handle: h, title: h.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), price: '' });
+    });
+    if (missing.length) setErr(`No product found for: ${missing.join(', ')}. Check the link.`);
+    else if (!all) setErr('Your store could not be reached, so the link was added without checking it. Its name comes from the link.');
     setUrl('');
   };
   return (
@@ -295,4 +313,17 @@ function SizeBadge({ bytes, inline }) {
   if (!bytes) return null;
   const text = mb(bytes) < 10 ? mb(bytes).toFixed(1) : Math.round(mb(bytes));
   return <span className={'sz ' + sizeLevel(bytes) + (inline ? ' inl' : '')} title={sizeAdvice(bytes)}>{text} MB</span>;
+}
+
+// A tile preview that tells you when the video file can no longer be loaded (deleted file, expired link),
+// because the store would silently hide that video.
+function CheckedThumb({ url }) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [url]);
+  return (
+    <>
+      <Thumb url={url} hover onError={() => setBroken(true)} />
+      {broken && <span className="brokenlink" title="This video cannot be loaded, so shoppers will not see it. Replace the link or upload it again.">Link broken</span>}
+    </>
+  );
 }

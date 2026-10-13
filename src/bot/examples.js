@@ -46,3 +46,11 @@ export const EXAMPLES = {
   'troubleshoot-save': ['i got an error while saving', 'save failed', 'failed to fetch message', 'something went wrong', 'cannot save changes', 'it says invalid', 'save nahi ho raha'],
   help: ['can you help me', 'help', 'what can you do', 'what can i ask you', 'show me topics', 'hello', 'hi there'],
 };
+
+// Added for the YouTube support, tab-pause fix, broken-link badge and the Shopify app.
+Object.assign(EXAMPLES, {
+  youtube: ['can i use a youtube video', 'how do i add a youtube video', 'put a youtube link in loopy', 'does loopy support youtube', 'how do i hide youtube controls', 'youtube title shows on my video', 'remove youtube logo from video', 'youtube video shows buttons', 'paste youtube url', 'youtube video not clean', 'youtube ka video kaise lagaye'],
+  'tab-pause': ['video pauses when i switch tabs', 'video stops when i change tab', 'video paused in background tab', 'why does my video pause', 'video does not resume when i come back', 'video keeps pausing', 'autoplay stops after switching tab', 'tab change video pause ho jata hai'],
+  'link-broken': ['what does link broken mean', 'red badge on my video', 'what is the red link broken badge', 'video shows link broken', 'video file is missing', 'video link expired', 'broken video in my list', 'why is my video link broken'],
+  'app-block': ['how do i add loopy in the theme editor', 'add loopy block to my theme', 'how do i use the shopify app', 'where is the loopy app block', 'add loopy from apps section', 'how do i add a floating video from app embeds', 'shopify app embed for floating video', 'loopy icon not showing in theme editor', 'how do i install the loopy app', 'add block apps loopy video'],
+});

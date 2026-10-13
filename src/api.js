@@ -2,6 +2,14 @@
 const BASE = import.meta.env.VITE_API_URL || '';
 const TKEY = 'tuco_admin_token';
 
+// Checks a token before it is saved, so a typo gets a clear message instead of a silent bounce back to the sign-in screen.
+export async function checkToken(t) {
+  let r;
+  try { r = await fetch(`${BASE}/api/health`, { headers: { authorization: `Bearer ${t}` } }); } catch { return 'Could not reach Loopy. Check your internet connection and try again.'; }
+  if (r.status === 401) return 'That token is not right. Check it and try again.';
+  if (!r.ok) return 'Loopy answered with an error. Try again in a minute.';
+  return '';
+}
 export const getToken = () => localStorage.getItem(TKEY) || '';
 export const setToken = (t) => (t ? localStorage.setItem(TKEY, t) : localStorage.removeItem(TKEY));
 export const apiBase = BASE;

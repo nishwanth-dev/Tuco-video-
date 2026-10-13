@@ -102,6 +102,14 @@ test('widgets: create, edit, appearance overrides, delete', async () => {
   assert.equal((await call('DELETE', '/api/widgets/' + id)).status, 200);
 });
 
+test('widgets: setting a banner height switches that widget to fixed-height mode', async () => {
+  const id = await mkWidget({ type: 'banner', overrides: { banner: { desktopHeight: 500 } } });
+  const w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === id);
+  assert.equal(w.overrides.banner.heightMode, 'fixed');
+  const keep = await mkWidget({ type: 'banner', overrides: { banner: { desktopHeight: 500, heightMode: 'ratio' } } });
+  assert.equal((await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === keep).overrides.banner.heightMode, 'ratio', 'an explicit choice is respected');
+});
+
 test('widgets: invalid values and non-overridable keys are rejected', async () => {
   const cases = [
     { name: '' }, { type: 'nonsense' }, { page: 'nowhere' },
@@ -216,6 +224,14 @@ test('health and export report real state', async () => {
   assert.ok(h.totals.videos >= 1);
   const ex = (await call('GET', '/api/export')).json;
   assert.ok(Array.isArray(ex.videos) && Array.isArray(ex.widgets) && ex.exportedAt);
+});
+
+test('store lookups: an unreachable store gives a specific, helpful message (not a generic crash)', async () => {
+  const r = await call('GET', '/api/store/products?q=sun');
+  if (r.status === 200) return; // a reachable store is fine too
+  assert.equal(r.status, 502); assert.match(r.json.error, /product list|paste product links/i);
+  const c = await call('GET', '/api/store/collections');
+  assert.equal(c.status, 502); assert.match(c.json.error, /collections/i);
 });
 
 test('upload: needs auth, rejects bad names and non-media', async () => {

@@ -48,17 +48,23 @@ export const TOPICS = [
   { id: 'help', title: 'What can you help with?', keys: 'help what can you do menu options topics commands hi hello hey namaste', answer: 'I can walk you through any part of Loopy. Try asking:', steps: ['"How do I add a video?"', '"How do I tag products?"', '"How do I create a widget?"', '"Why is my widget not showing?"', '"How do I make corners rounded on mobile?"', '"How do I move from Whatmore?"', 'Or type "check my setup" and I will look at your Loopy for problems.'], go: null },
 ];
 
+TOPICS.push(
+  { id: 'youtube', title: 'Use a YouTube video', keys: 'youtube you tube yt video link embed controls hide controls overlay title bar branding logo pause play youtube url', answer: 'Yes. Paste a YouTube link in Add Media and it plays in your widgets with YouTube\'s buttons and title hidden.', steps: ['Open Videos, click Add Media, and paste the YouTube link (youtu.be or youtube.com).', 'Add a title, then tag products and set it live as usual.', 'The video shows the thumbnail first and fades in once it plays, so YouTube\'s own title and buttons never show.', 'For the fastest pages and no YouTube logo at all, upload the video file instead (press Make smaller if it is big).'], go: 'videos' },
+  { id: 'tab-pause', title: 'A video pauses when I switch tabs', keys: 'pause paused pausing stops stop playing switch tab switching tabs background tab resumes resume come back autoplay', answer: 'Browsers pause silent videos in background tabs. Loopy restarts them when you come back.', steps: ['Switch back to the tab and give it a second. The video restarts by itself.', 'If it does not, reload the page and tell us which widget it was.', 'Make sure the widget script is the latest: hard refresh with Cmd+Shift+R.'], go: 'integrations' },
+  { id: 'link-broken', title: 'The red "Link broken" badge', keys: 'link broken red badge cannot load dead link video missing deleted file expired file not found broken video', answer: 'The video file cannot be loaded, so shoppers do not see that video.', steps: ['Open the video (Edit details) and check the video link.', 'If the file was deleted or the link expired, upload the video again with Add Media.', 'Delete the broken one, or replace its link.', 'Run the System check on Integrations if many videos show the badge.'], go: 'videos' },
+  { id: 'app-block', title: 'Add Loopy from the Shopify theme editor (app block)', keys: 'shopify app app block add block apps theme editor loopy app install app embed icon floating embed draft theme dev dashboard', answer: 'The Loopy app adds a Loopy Video block you can place from the theme editor.', steps: ['In Shopify, open Online Store, Themes, then Customize on your draft theme.', 'On a page, open the Apps section in the template list, click Add block, and choose Loopy Video.', 'Paste the widget ID (Loopy: Widgets, Get embed code). Set sizes for desktop and mobile in the block settings.', 'For a floating video, open Theme settings, App embeds, and switch on Loopy floating video.', 'Nothing goes live until you publish that theme.'], go: 'w:home' },
+);
 export const SUGGESTIONS = ['How do I add a video?', 'How do I tag products?', 'How do I create a widget?', 'Why is my widget not showing?', 'Change corners and sizes', 'Move from Whatmore'];
 
 // How topics are grouped in "Browse topics".
 export const CATEGORIES = [
   ['Videos', ['add-video', 'upload-fail', 'tag', 'live', 'edit-video', 'poster', 'archive-delete', 'filter', 'arrange-videos', 'cta', 'schedule']],
   ['Widgets', ['widget-create', 'widget-types', 'widget-pick', 'stories', 'spotlight', 'product-page', 'collection-target', 'enable-disable', 'delete-widget', 'embed-id']],
-  ['Putting it on your store', ['embed', 'theme-section']],
+  ['Putting it on your store', ['embed', 'theme-section', 'app-block', 'youtube']],
   ['Look and size', ['customizations', 'sizes', 'fit', 'banner-size', 'overrides']],
   ['Numbers and sales', ['analytics', 'sales']],
   ['Moving and speed', ['whatmore', 'instagram', 'speed']],
-  ['Problems', ['widget-not-showing', 'video-not-playing', 'cart', 'troubleshoot-save', 'syscheck']],
+  ['Problems', ['widget-not-showing', 'video-not-playing', 'tab-pause', 'link-broken', 'cart', 'troubleshoot-save', 'syscheck']],
   ['Account and data', ['signin', 'backup', 'limits', 'start', 'what']],
 ];
 // Tips shown when the chat opens on a page.

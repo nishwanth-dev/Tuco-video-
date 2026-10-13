@@ -25,7 +25,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
   const [editing, setEditing] = useState(null);
   const [embed, setEmbed] = useState(null);
   const mine = widgets.filter((w) => w.page === page);
-  const act = (fn) => async (...a) => { try { await fn(...a); await loadWidgets(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
+  const act = (fn) => async (...a) => { setError(''); try { await fn(...a); await loadWidgets(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
   const typeName = (t) => TYPES[t][0];
 
   return (
