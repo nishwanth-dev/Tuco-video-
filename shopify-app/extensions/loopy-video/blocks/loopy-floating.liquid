@@ -1,0 +1,44 @@
+{%- comment -%}
+  Loopy app embed: loads the Loopy script on every page and, optionally, shows one floating or spotlight widget.
+{%- endcomment -%}
+{%- assign wid = app.metafields.loopy.widget | default: block.settings.widget_id | strip -%}
+{%- if wid != blank -%}
+  <div data-tuco-video data-widget="{{ wid | escape }}"{% if block.settings.product_handle != blank %} data-product="{{ block.settings.product_handle | strip | escape }}"{% endif %}></div>
+{%- endif -%}
+
+<script>
+  (function () {
+    if (window.__tucoLoaded || document.querySelector('script[data-loopy]')) return;
+    var s = document.createElement('script');
+    s.src = 'https://loopy.tucokids.workers.dev/widget.js';
+    s.defer = true;
+    s.setAttribute('data-loopy', '');
+    s.setAttribute('data-api', 'https://tuco-video-api.tucokids.workers.dev');
+    document.head.appendChild(s);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Loopy floating video",
+  "target": "body",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows one Loopy floating or spotlight widget on every page. Create it in Loopy and paste its widget ID."
+    },
+    {
+      "type": "text",
+      "id": "widget_id",
+      "label": "Loopy widget ID",
+      "info": "Looks like wgt_ab12cd34"
+    },
+    {
+      "type": "text",
+      "id": "product_handle",
+      "label": "Product handle (optional)",
+      "info": "Leave empty to use the product of the page it is on."
+    }
+  ]
+}
+{% endschema %}

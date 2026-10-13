@@ -1,0 +1,10 @@
+{
+  "name": "loopy-shopify-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "regenerate": "python3 ../tools/build-theme-section.py ../theme-section-loopy-video.liquid extensions/loopy-video/blocks/loopy-video.liquid extensions/loopy-video/blocks/loopy-floating.liquid",
+    "dev": "shopify app dev",
+    "deploy": "shopify app deploy"
+  }
+}

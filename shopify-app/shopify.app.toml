@@ -1,0 +1,23 @@
+# Loopy, a custom Shopify app for tucokids.com. It only adds theme blocks (no server of its own).
+# Before the first deploy, replace client_id with the one shown in the Dev Dashboard
+# (your app > Settings > Client ID), or run:  shopify app config link
+client_id = "REPLACE_WITH_CLIENT_ID_FROM_DEV_DASHBOARD"
+name = "Loopy"
+application_url = "https://loopy.tucokids.workers.dev"
+embedded = false
+
+[access_scopes]
+# No store data is read. Leave empty unless you add the order webhook (then: read_orders).
+scopes = ""
+
+[auth]
+redirect_urls = ["https://loopy.tucokids.workers.dev/"]
+
+[webhooks]
+api_version = "2026-04"
+
+# Optional, later: let Shopify send paid orders to Loopy so "Whole store" sales appear on Home.
+# Needs scopes = "read_orders" above and the app's client secret set as SHOPIFY_WEBHOOK_SECRET on the Loopy API.
+# [[webhooks.subscriptions]]
+# topics = ["orders/paid"]
+# uri = "https://tuco-video-api.tucokids.workers.dev/api/webhooks/shopify/orders"
