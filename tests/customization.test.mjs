@@ -315,3 +315,19 @@ test('independent: the API accepts the per-device settings and rejects junk', as
   for (const good of [{ banner: { heightModeDesktop: 'fixed', heightModeMobile: 'ratio', fitDesktop: 'contain', fitMobile: 'cover', focusDesktop: 'top', focusMobile: 'bottom' } }, { carousel: { tileFitDesktop: 'contain', tileFitMobile: 'cover' } }]) assert.ok([200, 201].includes((await mk(good)).status), JSON.stringify(good));
   for (const bad of [{ banner: { heightModeMobile: 'tall' } }, { banner: { fitDesktop: 'stretch' } }, { banner: { focusMobile: 'left' } }, { carousel: { tileFitMobile: 5 } }]) assert.equal((await mk(bad)).status, 400, JSON.stringify(bad));
 });
+
+// ---------------- A page whose address has an emoji handle (percent-encoded) ----------------
+test('widget limited to an emoji product handle shows on that product page and nowhere else', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const handle = '🎁-test-product';
+  await api('PUT', '/api/settings', {});
+  const w = (await api('POST', '/api/widgets', { name: 'Emoji handle', type: 'carousel', page: 'product', scope: 'custom', enabled: true, videoIds: ids, productHandles: [handle], heading: '' })).json.id;
+  const visit = async (path) => {
+    const page = await browser.newPage(); await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(`http://localhost:8124${path}?w=${w}&attrs=%7B%7D`);
+    await new Promise((r) => setTimeout(r, 1500));
+    const n = await page.evaluate(() => { const h = document.querySelector('[data-tuco-video]'); return h && h.shadowRoot ? h.shadowRoot.querySelectorAll('.tile').length : 0; });
+    await page.close(); return n;
+  };
+  assert.ok((await visit('/products/' + encodeURIComponent(handle))) >= 1, 'shows on the emoji product page');
+  assert.equal(await visit('/products/another-product'), 0, 'hidden on other products');
+});

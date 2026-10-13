@@ -24,7 +24,7 @@ export function startPageServer() {
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, `http://localhost:${PORT}`);
     if (u.pathname === '/widget.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end(widgetJs()); }
-    if (u.pathname === '/page') {
+    if (u.pathname === '/page' || u.pathname.startsWith('/products/')) {
       const wid = u.searchParams.get('w') || '';
       const attrs = JSON.parse(u.searchParams.get('attrs') || '{}');
       const extra = Object.entries(attrs).map(([k, v]) => ` ${k}="${String(v).replace(/"/g, '&quot;')}"`).join('');

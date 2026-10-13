@@ -5,7 +5,8 @@ class Bad extends Error {}
 // https only: an http:// video on the https store would be blocked by the browser. localhost is allowed for local testing.
 const okUrl = (u) => typeof u === 'string' && u.length <= 2000 && (/^https:\/\//i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(u) || u.startsWith('/media/'));
 const okLink = (u) => !u || (typeof u === 'string' && u.length <= 2000 && (/^https?:\/\//i.test(u) || /^\/(?!\/)/.test(u)));
-const HANDLE = /^[\w.-]{1,255}$/;
+// Product, collection and page names from the store (Shopify allows letters of any language and emoji in them; no spaces, slashes or markup characters).
+const HANDLE = /^[^\s/\\?#&%"'<>]{1,255}$/u;
 const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
 const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery'];
 const WPAGES = ['home', 'product', 'collection', 'pages'];

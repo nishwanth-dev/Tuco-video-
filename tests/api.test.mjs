@@ -256,6 +256,22 @@ test('media addresses are saved in the short form, even when the admin sends the
   assert.equal((await call('GET', '/api/export')).json.videos.find((x) => x.id === ext).url, 'https://cdn.example.com/other.mp4', 'other addresses are left alone');
 });
 
+test('widgets limited to products: handles with emoji or other languages work, other products get nothing', async () => {
+  const handle = '🎁-soap-pack-of-2';
+  const vid = await mkVideo({ status: 'live', title: 'Emoji product video' });
+  const wid = await mkWidget({ scope: 'custom', videoIds: [vid], productHandles: [handle, 'plain-handle', 'साबुन'] });
+  const w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === wid);
+  assert.deepEqual(w.productHandles, [handle, 'plain-handle', 'साबुन'], 'all three handles are kept');
+  const ask = (p) => call('GET', '/api/public/config?widget=' + wid + '&product=' + encodeURIComponent(p), { auth: false, headers: { origin: STORE } });
+  assert.equal((await ask(handle)).json.videos.length, 1);
+  assert.equal((await ask('साबुन')).json.videos.length, 1);
+  assert.equal((await ask('some-other-product')).json.videos.length, 0, 'a product outside the list shows nothing');
+  const bad = await call('POST', '/api/widgets', { body: goodWidget({ productHandles: ['has space', 'a/b', '%F0%9F', '<script>', 'ok-one'] }) });
+  const kept = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === bad.json.id);
+  if (bad.json.id) made.widgets.push(bad.json.id);
+  assert.deepEqual(kept.productHandles, ['ok-one'], 'unsafe handles are dropped');
+});
+
 test('upload: needs auth, rejects bad names and non-media', async () => {
   assert.equal((await call('PUT', '/api/upload?name=a.mp4', { auth: false, raw: 'x' })).status, 401);
   const ok = await call('PUT', '/api/upload?name=tiny.mp4', { raw: Buffer.from('not a real video but small'), headers: { 'content-type': 'video/mp4' } });

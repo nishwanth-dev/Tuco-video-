@@ -554,14 +554,16 @@
     var q = [];
     var wid = el.getAttribute('data-widget');
     if (wid) q.push('widget=' + encodeURIComponent(wid));
+    // Names in the address can be percent-encoded (letters of other languages, emoji); the API expects them decoded.
+    var dec = function (s) { try { return decodeURIComponent(s); } catch (x) { return s; } };
     var cm = location.pathname.match(/\/collections\/([^/?#]+)(?:\/products\/[^/?#]+)?$/);
-    var coll = el.getAttribute('data-collection') || (cm && cm[1]);
+    var coll = el.getAttribute('data-collection') || (cm && dec(cm[1]));
     if (coll) q.push('collection=' + encodeURIComponent(coll));
     var pm = location.pathname.match(/\/pages\/([^/?#]+)/);
-    var pg = el.getAttribute('data-page') || (pm && pm[1]);
+    var pg = el.getAttribute('data-page') || (pm && dec(pm[1]));
     if (pg) q.push('page=' + encodeURIComponent(pg));
     var m = location.pathname.match(/\/products\/([^/?#]+)/);
-    var product = el.getAttribute('data-product') || (m && m[1]);
+    var product = el.getAttribute('data-product') || (m && dec(m[1]));
     if (product) q.push('product=' + encodeURIComponent(product));
     ['placement', 'audience'].forEach(function (k) { var v = el.getAttribute('data-' + k); if (v) q.push(k + '=' + encodeURIComponent(v)); });
     // Reserve the height this widget had last time so the page does not jump when it appears.
