@@ -2,7 +2,8 @@ import { syncInstagram } from './instagram.js';
 import { mergeSettings } from './defaults.js';
 
 class Bad extends Error {}
-const okUrl = (u) => typeof u === 'string' && u.length <= 2000 && (/^https?:\/\//i.test(u) || u.startsWith('/media/'));
+// https only: an http:// video on the https store would be blocked by the browser. localhost is allowed for local testing.
+const okUrl = (u) => typeof u === 'string' && u.length <= 2000 && (/^https:\/\//i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(u) || u.startsWith('/media/'));
 const okLink = (u) => !u || (typeof u === 'string' && u.length <= 2000 && (/^https?:\/\//i.test(u) || /^\/(?!\/)/.test(u)));
 const HANDLE = /^[\w.-]{1,255}$/;
 const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
@@ -94,13 +95,21 @@ const toWidget = (r) => ({
 });
 
 // Public endpoints only answer to the store origins; admin endpoints need the bearer token.
-const storeOrigin = (origin, env) => (env.ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).includes(origin) || origin.startsWith('http://localhost');
+// Only the listed store origins (exact match). For local testing, add http://localhost:PORT to ALLOWED_ORIGINS.
+const storeOrigin = (origin, env) => (env.ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).includes(origin);
 const corsFor = (req, env) => {
   const origin = req.headers.get('origin') || '';
-  const ok = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).includes(origin) || origin.startsWith('http://localhost') || (!!origin && !!req.headers.get('authorization')) || (req.method === 'OPTIONS' && !!origin);
+  const ok = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).includes(origin) || (!!origin && !!req.headers.get('authorization')) || (req.method === 'OPTIONS' && !!origin);
   return { 'access-control-allow-origin': ok ? origin : 'null', 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS', vary: 'origin' };
 };
-const isAdmin = (req, env) => !!env.ADMIN_TOKEN && req.headers.get('authorization') === `Bearer ${env.ADMIN_TOKEN}`;
+// Constant-time comparison of the bearer token (hashes first so lengths always match).
+async function isAdmin(req, env) {
+  const got = req.headers.get('authorization') || '';
+  if (!env.ADMIN_TOKEN || !got) return false;
+  const h = async (t) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)));
+  const [a, b] = [await h(got), await h(`Bearer ${env.ADMIN_TOKEN}`)];
+  return crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(a, b) : a.every((x, i) => x === b[i]);
+}
 
 async function serveMedia(req, env, key) {
   if (!env.MEDIA) return new Response('Video storage (R2) is not enabled yet', { status: 503 });
@@ -195,7 +204,7 @@ async function videosForWidget(env, origin, widget, settings, ctx) {
   const { results } = await env.DB.prepare(`${VIDEO_SQL} WHERE v.status='live' AND v.archived=0 ORDER BY v.sort ASC, v.created_at DESC`).all();
   let list = results.map((r) => toVideo(r, origin)).filter((v) => (!v.startsAt || v.startsAt <= now) && (!v.endsAt || v.endsAt > now));
   const { product, collection, placement } = ctx;
-  if (widget && widget.scope === 'custom' && widget.videoIds.length) {
+  if (widget && widget.scope === 'custom') { // hand-picked: only those videos, and nothing at all if none are picked
     list = widget.videoIds.map((id) => list.find((v) => v.id === id)).filter(Boolean);
   } else if (product) {
     let own = list.filter((v) => v.products.some((p) => p.handle === product));
@@ -310,7 +319,7 @@ async function handle(req, env, ctx) {
   }
 
   if (!p.startsWith('/api/')) return json({ error: 'not found' }, 404, cors);
-  if (!isAdmin(req, env)) return json({ error: 'unauthorized' }, 401, cors);
+  if (!(await isAdmin(req, env))) return json({ error: 'unauthorized' }, 401, cors);
 
   // ---- admin ----
   if (p === '/api/videos' && req.method === 'GET') {
@@ -319,7 +328,9 @@ async function handle(req, env, ctx) {
   }
   if (p === '/api/videos' && req.method === 'POST') { const id = crypto.randomUUID(); await upsertVideo(env, { ...cleanVideo(await req.json()), id }, true); return json({ id }, 201, cors); }
   if (p === '/api/videos/order' && req.method === 'PUT') {
-    const { ids = [] } = await req.json();
+    const body = await req.json().catch(() => null);
+    const ids = body && body.ids;
+    if (!Array.isArray(ids) || ids.length > 2000 || ids.some((x) => typeof x !== 'string' || !/^[\w-]{1,64}$/.test(x))) return json({ error: 'ids must be a list of video ids' }, 400, cors);
     await env.DB.batch(ids.map((id, i) => env.DB.prepare('UPDATE videos SET sort=? WHERE id=?').bind(i, id)));
     return json({ ok: true }, 200, cors);
   }
@@ -463,6 +474,12 @@ async function upsertWidget(env, w, isNew) {
 }
 
 export default {
-  fetch: (req, env, ctx) => handle(req, env, ctx).catch((e) => json({ error: String(e.message || e) }, e instanceof Bad ? 400 : 500, corsFor(req, env))),
+  fetch: (req, env, ctx) => handle(req, env, ctx).catch((e) => {
+    const cors = corsFor(req, env);
+    if (e instanceof Bad) return json({ error: e.message }, 400, cors);
+    if (e instanceof SyntaxError) return json({ error: 'The request was not valid JSON.' }, 400, cors);
+    console.error('Loopy error', req.method, new URL(req.url).pathname, e && e.stack || e); // details stay in the log, not in the response
+    return json({ error: 'Something went wrong on the server. Please try again, and check the System check on the Integrations page.' }, 500, cors);
+  }),
   scheduled: (_e, env, ctx) => ctx.waitUntil(syncInstagram(env)),
 };

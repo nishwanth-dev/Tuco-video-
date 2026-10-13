@@ -265,7 +265,7 @@ function AddMedia({ onClose, onSave }) {
       {err && <p className="red small">{err}</p>}
       {size > 0 && <p className="muted"><SizeBadge bytes={size} inline /> {sizeAdvice(size)}</p>}
       <p className="muted">The video is saved as a draft. Tag products and set it live afterwards.</p>
-      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!/^https?:\/\//i.test(url) || !title.trim() || busy} onClick={async () => { const m = await onSave({ title: title.trim(), url: url.trim(), poster: '', audience: 'kids', status: 'draft', placements: [], products: [], size }); if (m) setErr(m); }}>Add</button></div>
+      <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" disabled={!/^https:\/\//i.test(url) && !/^http:\/\/localhost/i.test(url) || !title.trim() || busy} onClick={async () => { const m = await onSave({ title: title.trim(), url: url.trim(), poster: '', audience: 'kids', status: 'draft', placements: [], products: [], size }); if (m) setErr(m); }}>Add</button></div>
     </Modal>
   );
 }

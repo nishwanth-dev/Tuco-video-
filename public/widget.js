@@ -69,7 +69,7 @@
     '.views{position:absolute;top:8px;left:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:999px;padding:3px 8px}',
     '.sold{position:absolute;top:8px;right:8px;z-index:2;background:#fff;color:#222;font-size:11px;font-weight:600;border-radius:999px;padding:3px 8px}',
     '.info{z-index:3;position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
-    '.info b{display:block;font-size:13px}.meta{font-size:12px;line-height:1.3;color:var(--details-color)}.meta b{display:block;font-size:13px;font-weight:600}',
+    '.info b{display:block;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:12px;line-height:1.3;color:var(--details-color)}.meta b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:13px;font-weight:600}',
     '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 11px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:9px 10px;width:100%}.abtn[disabled]{opacity:.6;cursor:default}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
     '.chip{position:absolute;left:8px;bottom:8px;z-index:2;background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600}',
@@ -314,6 +314,13 @@
   // Respect reduced-motion and data-saver: show posters only, load video when tapped.
   var calm = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || !!(navigator.connection && navigator.connection.saveData);
   function lazyVideos(root, ctx) {
+    // A video that cannot be loaded (deleted file, expired link) would leave an empty box, so its tile is removed.
+    root.addEventListener('error', function (e) {
+      var t = e.target;
+      if (!t || t.tagName !== 'VIDEO' || !t.getAttribute('src')) return;
+      var card = t.closest ? t.closest('.card') : null;
+      if (card) card.style.display = 'none';
+    }, true);
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var vid = e.target;
@@ -543,8 +550,8 @@
     }).catch(function (e) { settle(false); note(el, 'could not load from ' + API + ' (' + (e && e.message ? e.message : 'network or blocked store address') + ').'); });
   }
   // A bare widget id typed on its own (for example in a Custom Liquid box) becomes a widget.
-  function scanBare() {
-    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), hits = [], n;
+  function scanBare(root) {
+    var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT), hits = [], n;
     while ((n = walker.nextNode())) {
       if (/^wgt_[a-z0-9]{4,}$/i.test(n.nodeValue.trim()) && !/^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|NOSCRIPT|TITLE|OPTION)$/.test(n.parentNode.nodeName)) hits.push(n);
     }
@@ -558,4 +565,21 @@
   function boot() { scanBare(); document.querySelectorAll('[data-tuco-video]').forEach(init); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   document.addEventListener('shopify:section:load', boot);
+  // Widgets that a theme adds later (quick view, infinite scroll, AJAX sections) start up too. Only newly added parts of the page are looked at.
+  if (typeof MutationObserver === 'function') {
+    var pending = [], timer = 0;
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) { for (var i = 0; i < m.addedNodes.length && pending.length < 300; i++) if (m.addedNodes[i].nodeType === 1) pending.push(m.addedNodes[i]); });
+      if (!pending.length || timer) return;
+      timer = setTimeout(function () {
+        var nodes = pending; pending = []; timer = 0;
+        nodes.forEach(function (n) {
+          if (!n.isConnected) return;
+          try { scanBare(n); } catch (e) { /* ignore */ }
+          if (n.matches && n.matches('[data-tuco-video]')) init(n);
+          if (n.querySelectorAll) n.querySelectorAll('[data-tuco-video]').forEach(init);
+        });
+      }, 120);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

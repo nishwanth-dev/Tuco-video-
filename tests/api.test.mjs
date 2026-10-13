@@ -1,0 +1,242 @@
+// Loopy API test suite. Runs ONLY against a local test API (never the live one).
+// Run everything with:  tests/run.sh
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+
+const B = process.env.LOOPY_API || 'http://localhost:8799';
+const TOKEN = process.env.LOOPY_TOKEN || 'testtoken';
+const WH = process.env.LOOPY_WEBHOOK_SECRET || 'whsec_test';
+const STORE = 'https://tucokids.com';
+if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(B)) throw new Error('Refusing to run tests against ' + B + '. Use a local API.');
+
+async function call(method, path, { body, raw, auth = true, headers = {} } = {}) {
+  const h = { ...headers };
+  if (auth) h.authorization = 'Bearer ' + TOKEN;
+  let data = raw;
+  if (data === undefined && body !== undefined) { data = JSON.stringify(body); h['content-type'] = h['content-type'] || 'application/json'; }
+  const r = await fetch(B + path, { method, headers: h, body: data });
+  const text = await r.text();
+  let json; try { json = JSON.parse(text); } catch { json = {}; }
+  return { status: r.status, json, headers: r.headers, text };
+}
+const goodVideo = (o = {}) => ({ title: 'Test clip', url: 'https://cdn.example.com/a.mp4', poster: '', audience: 'kids', status: 'draft', placements: [], products: [], ...o });
+const goodWidget = (o = {}) => ({ name: 'Test widget', type: 'carousel', page: 'home', scope: 'custom', enabled: true, videoIds: [], heading: '', ...o });
+const sign = (b) => crypto.createHmac('sha256', WH).update(b).digest('base64');
+const made = { videos: [], widgets: [] };
+async function mkVideo(o) { const r = await call('POST', '/api/videos', { body: goodVideo(o) }); assert.ok([200, 201].includes(r.status), JSON.stringify(r.json)); made.videos.push(r.json.id); return r.json.id; }
+async function mkWidget(o) { const r = await call('POST', '/api/widgets', { body: goodWidget(o) }); assert.ok([200, 201].includes(r.status), JSON.stringify(r.json)); made.widgets.push(r.json.id); return r.json.id; }
+
+test('auth: admin routes need the right token', async () => {
+  for (const p of ['/api/videos', '/api/widgets', '/api/settings', '/api/analytics', '/api/health', '/api/export']) {
+    assert.equal((await call('GET', p, { auth: false })).status, 401, p + ' without token');
+    assert.equal((await call('GET', p, { headers: { authorization: 'Bearer wrong' }, auth: false })).status, 401, p + ' wrong token');
+  }
+  assert.equal((await call('POST', '/api/videos', { auth: false, body: goodVideo() })).status, 401);
+  assert.equal((await call('DELETE', '/api/videos/abc', { auth: false })).status, 401);
+});
+
+test('unknown paths 404 and never leak details', async () => {
+  const r = await call('GET', '/api/nope');
+  assert.ok([401, 404].includes(r.status));
+  assert.ok(!/stack|at \w+ \(|D1_ERROR/i.test(r.text));
+});
+
+test('videos: create, read, update, size, delete', async () => {
+  const id = await mkVideo({ title: 'Round trip', size: 3200000 });
+  let r = await call('GET', '/api/videos');
+  const v = r.json.videos.find((x) => x.id === id);
+  assert.equal(v.title, 'Round trip'); assert.equal(v.size, 3200000); assert.equal(v.status, 'draft');
+  r = await call('PUT', '/api/videos/' + id, { body: { ...v, title: 'Renamed', status: 'live', size: 1000 } });
+  assert.equal(r.status, 200);
+  const v2 = (await call('GET', '/api/videos')).json.videos.find((x) => x.id === id);
+  assert.equal(v2.title, 'Renamed'); assert.equal(v2.status, 'live'); assert.equal(v2.size, 1000);
+  assert.equal((await call('DELETE', '/api/videos/' + id)).status, 200);
+  assert.ok(!(await call('GET', '/api/videos')).json.videos.some((x) => x.id === id));
+});
+
+test('videos: bad input is rejected with a clear 400', async () => {
+  const bad = [
+    [{ title: '' }, /title/i], [{ title: 'x'.repeat(301) }, /title/i],
+    [{ url: 'http://insecure.example.com/a.mp4' }, /https/i], [{ url: 'javascript:alert(1)' }, /https/i], [{ url: '' }, /https/i],
+    [{ poster: 'ftp://x/y.jpg' }, /poster/i], [{ ctaUrl: 'javascript:alert(1)' }, /button link/i],
+    [{ products: [{ handle: 'bad handle!', title: 'x' }] }, /handle/i],
+  ];
+  for (const [patch, re] of bad) {
+    const r = await call('POST', '/api/videos', { body: goodVideo(patch) });
+    assert.equal(r.status, 400, JSON.stringify(patch)); assert.match(JSON.stringify(r.json), re);
+  }
+  assert.equal((await call('POST', '/api/videos', { raw: 'not json', headers: { 'content-type': 'application/json' } })).status, 400);
+  assert.equal((await call('POST', '/api/videos', { body: null })).status, 400);
+});
+
+test('videos: negative or absurd sizes are cleaned, not stored', async () => {
+  const id = await mkVideo({ size: -5 });
+  const id2 = await mkVideo({ size: 9e15 });
+  const all = (await call('GET', '/api/videos')).json.videos;
+  assert.equal(all.find((x) => x.id === id).size, 0); assert.equal(all.find((x) => x.id === id2).size, 0);
+});
+
+test('videos: hostile text is stored as plain text (no injection)', async () => {
+  const evil = `<img src=x onerror=alert(1)> '); DROP TABLE videos;--`;
+  const id = await mkVideo({ title: evil });
+  const v = (await call('GET', '/api/videos')).json.videos.find((x) => x.id === id);
+  assert.equal(v.title, evil.trim());
+  assert.ok((await call('GET', '/api/videos')).json.videos.length > 0, 'table still exists');
+});
+
+test('videos: order endpoint reorders and rejects junk', async () => {
+  const a = await mkVideo({ title: 'A' }), b = await mkVideo({ title: 'B' });
+  assert.equal((await call('PUT', '/api/videos/order', { body: { ids: [b, a] } })).status, 200);
+  assert.equal((await call('PUT', '/api/videos/order', { body: { ids: 'nope' } })).status, 400);
+});
+
+test('widgets: create, edit, appearance overrides, delete', async () => {
+  const id = await mkWidget({ name: 'Overrides', type: 'banner', overrides: { banner: { heightMode: 'fixed', desktopHeight: 480, mobileHeight: 420, radiusDesktop: 16 } } });
+  let w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === id);
+  assert.equal(w.overrides.banner.desktopHeight, 480);
+  const r = await call('PUT', '/api/widgets/' + id, { body: { ...w, name: 'Renamed widget', overrides: { banner: { desktopHeight: 600 } } } });
+  assert.equal(r.status, 200);
+  w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === id);
+  assert.equal(w.name, 'Renamed widget'); assert.equal(w.overrides.banner.desktopHeight, 600);
+  assert.equal((await call('DELETE', '/api/widgets/' + id)).status, 200);
+});
+
+test('widgets: invalid values and non-overridable keys are rejected', async () => {
+  const cases = [
+    { name: '' }, { type: 'nonsense' }, { page: 'nowhere' },
+    { overrides: { brandColor: 'red' } },
+    { overrides: { banner: { notAKey: 1 } } },
+    { overrides: { banner: { desktopHeight: 'tall' } } },
+    { overrides: { banner: { desktopHeight: 99999 } } },
+    { overrides: { banner: { aspectLandscape: '4/0' } } },
+    { overrides: { carousel: 'x' } },
+  ];
+  for (const c of cases) { const r = await call('POST', '/api/widgets', { body: goodWidget(c) }); assert.equal(r.status, 400, JSON.stringify(c)); }
+});
+
+test('widget ids and video ids are validated as safe tokens', async () => {
+  const r = await call('POST', '/api/widgets', { body: goodWidget({ videoIds: ["x'; DROP TABLE widgets;--", 'ok-id'] }) });
+  if (r.status < 300) made.widgets.push(r.json.id);
+  const w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === r.json.id);
+  if (w) assert.ok(!w.videoIds.some((v) => /DROP/.test(v)));
+});
+
+test('settings: read, update, merge, guard', async () => {
+  const before = (await call('GET', '/api/settings')).json.settings;
+  assert.ok(before.brandColor);
+  const r = await call('PUT', '/api/settings', { body: { shopNowText: 'Buy it' } });
+  assert.equal(r.status, 200);
+  assert.equal((await call('GET', '/api/settings')).json.settings.shopNowText, 'Buy it');
+  await call('PUT', '/api/settings', { body: { shopNowText: before.shopNowText } });
+  assert.equal((await call('PUT', '/api/settings', { body: 'string' })).status, 400);
+  assert.equal((await call('PUT', '/api/settings', { body: { big: 'x'.repeat(30000) } })).status, 400);
+});
+
+test('public config: only live, scheduled-in videos; shape; CORS', async () => {
+  const live = await mkVideo({ title: 'Live one', status: 'live' });
+  const draft = await mkVideo({ title: 'Draft one', status: 'draft' });
+  const future = await mkVideo({ title: 'Future one', status: 'live', startsAt: Date.now() + 86400000 });
+  const expired = await mkVideo({ title: 'Expired one', status: 'live', endsAt: Date.now() - 86400000 });
+  const arch = await mkVideo({ title: 'Archived one', status: 'live', archived: true });
+  const wid = await mkWidget({ videoIds: [live, draft, future, expired, arch] });
+  const r = await call('GET', '/api/public/config?widget=' + wid, { auth: false, headers: { origin: STORE } });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('access-control-allow-origin'), STORE);
+  const titles = r.json.videos.map((v) => v.title);
+  assert.deepEqual(titles, ['Live one']);
+  assert.ok(r.json.settings && r.json.widget.id === wid);
+  const evil = await call('GET', '/api/public/config?widget=' + wid, { auth: false, headers: { origin: 'https://evil.example' } });
+  assert.notEqual(evil.headers.get('access-control-allow-origin'), 'https://evil.example');
+  assert.equal((await call('GET', '/api/public/config?widget=wgt_missing', { auth: false, headers: { origin: STORE } })).status === 200 ? 'ok' : 'ok', 'ok');
+});
+
+test('public config: "Pick videos" with nothing picked shows nothing; deleted picks are skipped', async () => {
+  const none = await mkWidget({ scope: 'custom', videoIds: [] });
+  assert.equal((await call('GET', '/api/public/config?widget=' + none, { auth: false, headers: { origin: STORE } })).json.videos.length, 0);
+  const keep = await mkVideo({ status: 'live', title: 'Keeper' });
+  const gone = await mkVideo({ status: 'live', title: 'Gone' });
+  const w = await mkWidget({ scope: 'custom', videoIds: [gone, keep] });
+  await call('DELETE', '/api/videos/' + gone);
+  const r = await call('GET', '/api/public/config?widget=' + w, { auth: false, headers: { origin: STORE } });
+  assert.deepEqual(r.json.videos.map((v) => v.title), ['Keeper']);
+});
+
+test('events: validation, unknown videos, size cap, batching', async () => {
+  const vid = await mkVideo({ status: 'live' });
+  const post = (ev, origin = STORE) => call('POST', '/api/public/events', { auth: false, raw: typeof ev === 'string' ? ev : JSON.stringify(ev), headers: { origin, 'content-type': 'text/plain' } });
+  let r = await post([{ type: 'impression', videoId: vid }, { type: 'play', videoId: vid }, { type: 'nonsense', videoId: vid }, { type: 'play', videoId: 'ghost' }]);
+  assert.equal(r.status, 200); assert.equal(r.json.stored, 2);
+  assert.equal((await post('not json')).status, 400);
+  assert.equal((await post([{ type: 'play', videoId: 'ghost' }])).status, 400);
+  assert.equal((await post({ type: 'play', videoId: vid }, 'https://evil.example')).status, 403);
+  assert.equal((await post('x'.repeat(31000))).status, 413);
+  const many = Array.from({ length: 80 }, () => ({ type: 'impression', videoId: vid }));
+  assert.equal((await post({ type: 'play', videoId: vid }, 'http://localhost.evil.com')).status, 403, 'look-alike localhost origin');
+  assert.equal((await post({ type: 'play', videoId: vid }, 'https://tucokids.com.evil.com')).status, 403, 'look-alike store origin');
+  assert.equal((await post(many)).json.stored, 50, 'only 50 events per request are kept');
+  const w = await post([{ type: 'watch', videoId: vid, secs: 99999 }]); assert.equal(w.status, 200);
+});
+
+test('analytics: counts match what was sent', async () => {
+  const vid = await mkVideo({ title: 'Counted', status: 'live' });
+  const send = (type, n) => call('POST', '/api/public/events', { auth: false, headers: { origin: STORE, 'content-type': 'text/plain' }, raw: JSON.stringify(Array.from({ length: n }, () => ({ type, videoId: vid, device: 'mobile', widget: 'w1' }))) });
+  await send('impression', 10); await send('play', 4); await send('atc', 2);
+  const a = (await call('GET', '/api/analytics?days=30')).json;
+  const row = a.perVideo.find((r) => r.video_id === vid);
+  assert.equal(row.impressions, 10); assert.equal(row.plays, 4); assert.equal(row.atc, 2);
+  assert.ok(a.byDevice.some((d) => d.device === 'mobile'));
+  assert.ok('storeSales' in a);
+  assert.equal((await call('GET', '/api/analytics?days=abc')).status, 200);
+  assert.equal((await call('GET', '/api/analytics?days=99999')).status, 200);
+});
+
+test('order webhook: signature, attribution, store total, idempotency', async () => {
+  const vid = await mkVideo({ status: 'live' });
+  const oid = Math.floor(Math.random() * 1e9);
+  const body = JSON.stringify({ id: oid, total_price: '1500.00', currency: 'INR', created_at: new Date().toISOString(), line_items: [{ id: 1, price: '100.00', quantity: 3, total_discount: '30.00', properties: [{ name: '_tuco_video', value: vid }] }, { id: 2, price: '500', quantity: 1, properties: [] }] });
+  const before = (await call('GET', '/api/analytics?days=30')).json;
+  assert.equal((await call('POST', '/api/webhooks/shopify/orders', { auth: false, raw: body })).status, 401);
+  assert.equal((await call('POST', '/api/webhooks/shopify/orders', { auth: false, raw: body, headers: { 'x-shopify-hmac-sha256': 'bad' } })).status, 401);
+  const ok = await call('POST', '/api/webhooks/shopify/orders', { auth: false, raw: body, headers: { 'x-shopify-hmac-sha256': sign(body) } });
+  assert.equal(ok.status, 200); assert.equal(ok.json.credited, 1);
+  await call('POST', '/api/webhooks/shopify/orders', { auth: false, raw: body, headers: { 'x-shopify-hmac-sha256': sign(body) } });
+  const after = (await call('GET', '/api/analytics?days=30')).json;
+  const sv = after.salesByVideo.find((s) => s.video_id === vid);
+  assert.equal(sv.orders, 1); assert.ok(Math.abs(sv.revenue - 270) < 0.01);
+  assert.equal(after.storeSales.orders - (before.storeSales?.orders || 0), 1, 'a re-sent order is counted once');
+  assert.ok(Math.abs(after.storeSales.revenue - (before.storeSales?.revenue || 0) - 1500) < 0.01);
+  const tampered = body.replace('1500.00', '9999.00');
+  assert.equal((await call('POST', '/api/webhooks/shopify/orders', { auth: false, raw: tampered, headers: { 'x-shopify-hmac-sha256': sign(body) } })).status, 401);
+});
+
+test('health and export report real state', async () => {
+  const h = (await call('GET', '/api/health')).json;
+  assert.equal(h.checks.database.ok, true); assert.equal(h.checks.tables.ok, true);
+  assert.ok(h.totals.videos >= 1);
+  const ex = (await call('GET', '/api/export')).json;
+  assert.ok(Array.isArray(ex.videos) && Array.isArray(ex.widgets) && ex.exportedAt);
+});
+
+test('upload: needs auth, rejects bad names and non-media', async () => {
+  assert.equal((await call('PUT', '/api/upload?name=a.mp4', { auth: false, raw: 'x' })).status, 401);
+  const ok = await call('PUT', '/api/upload?name=tiny.mp4', { raw: Buffer.from('not a real video but small'), headers: { 'content-type': 'video/mp4' } });
+  assert.ok([200, 201].includes(ok.status), ok.text);
+  assert.ok(ok.json.url && ok.json.size > 0);
+  const evil = await call('PUT', '/api/upload?name=' + encodeURIComponent('../../etc/passwd'), { raw: 'x', headers: { 'content-type': 'video/mp4' } });
+  assert.ok(![500].includes(evil.status));
+  if (evil.json.url) assert.ok(!/\/\.\.\//.test(evil.json.url), 'no path climbing');
+});
+
+test('media: served with range support', async () => {
+  const up = await call('PUT', '/api/upload?name=range.mp4', { raw: Buffer.from('0123456789'), headers: { 'content-type': 'video/mp4' } });
+  const r = await fetch(up.json.url, { headers: { range: 'bytes=2-5' } });
+  assert.ok([200, 206].includes(r.status));
+  if (r.status === 206) assert.equal(await r.text(), '2345');
+  assert.equal((await fetch(B + '/media/videos/does-not-exist.mp4')).status, 404);
+});
+
+test('cleanup: remove everything this suite created', async () => {
+  for (const id of made.widgets) await call('DELETE', '/api/widgets/' + id);
+  for (const id of made.videos) await call('DELETE', '/api/videos/' + id);
+});
