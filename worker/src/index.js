@@ -152,6 +152,10 @@ const keyOf = (env, url) => {
   if (env.R2_PUBLIC_URL && String(url).startsWith(env.R2_PUBLIC_URL.replace(/\/$/, '') + '/')) return decodeURIComponent(String(url).slice(env.R2_PUBLIC_URL.replace(/\/$/, '').length + 1).split(/[?#]/)[0]);
   return '';
 };
+// Our own storage addresses are always saved in the short form /media/videos/..., whatever form the admin sends back,
+// so that moving to a custom domain later (R2_PUBLIC_URL) changes every video at once.
+const shortMedia = (env, u) => { const k = typeof u === 'string' && /^(https?:\/\/|\/media\/)/.test(u) ? keyOf(env, u) : ''; return k ? `/media/${k}` : u; };
+const withShortMedia = (env, v) => ({ ...v, url: shortMedia(env, v.url), poster: shortMedia(env, v.poster) });
 const getSettings = async (env) => mergeSettings(parse((await env.DB.prepare("SELECT v FROM kv WHERE k='settings'").first())?.v, {}));
 const VIDEO_SQL = "SELECT v.*, (SELECT COUNT(*) FROM events e WHERE e.video_id=v.id AND e.type='play') AS views FROM videos v";
 
@@ -337,7 +341,7 @@ async function handle(req, env, ctx) {
     const { results } = await env.DB.prepare(`${VIDEO_SQL} ORDER BY v.sort ASC, v.created_at DESC`).all();
     return json({ videos: results.map((r) => toVideo(r, url.origin, env.R2_PUBLIC_URL)) }, 200, cors);
   }
-  if (p === '/api/videos' && req.method === 'POST') { const id = crypto.randomUUID(); await upsertVideo(env, { ...cleanVideo(await req.json()), id }, true); return json({ id }, 201, cors); }
+  if (p === '/api/videos' && req.method === 'POST') { const id = crypto.randomUUID(); await upsertVideo(env, { ...withShortMedia(env, cleanVideo(await req.json())), id }, true); return json({ id }, 201, cors); }
   if (p === '/api/videos/order' && req.method === 'PUT') {
     const body = await req.json().catch(() => null);
     const ids = body && body.ids;
@@ -346,7 +350,7 @@ async function handle(req, env, ctx) {
     return json({ ok: true }, 200, cors);
   }
   const vm = p.match(/^\/api\/videos\/([\w-]+)$/);
-  if (vm && req.method === 'PUT') { await upsertVideo(env, { ...cleanVideo(await req.json()), id: vm[1] }, false); return json({ ok: true }, 200, cors); }
+  if (vm && req.method === 'PUT') { await upsertVideo(env, { ...withShortMedia(env, cleanVideo(await req.json())), id: vm[1] }, false); return json({ ok: true }, 200, cors); }
   if (vm && req.method === 'DELETE') {
     const row = await env.DB.prepare('SELECT url, poster FROM videos WHERE id=?').bind(vm[1]).first();
     await env.DB.prepare('DELETE FROM videos WHERE id=?').bind(vm[1]).run();
@@ -380,7 +384,7 @@ async function handle(req, env, ctx) {
       v.size = put?.size || 0;
     }
     const id = crypto.randomUUID();
-    await upsertVideo(env, { ...clean, url: finalUrl, size: v.size || 0, id, source: v.source || 'import' }, true);
+    await upsertVideo(env, { ...withShortMedia(env, { ...clean, url: finalUrl }), size: v.size || 0, id, source: v.source || 'import' }, true);
     return json({ id, url: finalUrl }, 201, cors);
   }
 

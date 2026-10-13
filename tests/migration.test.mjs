@@ -197,6 +197,25 @@ test('importer: a widget you already switched on is never changed by a re-run', 
   assert.equal((await api('GET', '/api/widgets')).json.widgets.find((w) => w.id === top.id).videoIds.length, 1);
 });
 
+test('importer --live-ids: videos active in Whatmore become live, and a default product-page widget is created', { skip: !FFMPEG && 'ffmpeg is not installed' }, async () => {
+  const idsFile = join(dir, 'active-ids.json'); writeFileSync(idsFile, JSON.stringify([3]));
+  const before = (await videosBySource('whatmore')).find((x) => x.title === 'Has its own title');
+  assert.equal(before.status, 'draft', 'c3 is in no widget, so it came in as a draft');
+  const dry = await exec(['tools/import-whatmore.mjs', exp2File, '--dry-run', '--live-ids', idsFile], { PATH: process.env.PATH });
+  assert.match(dry.out, /active in Whatmore: 0/);
+  const r = await run2('--compress', '--compress-over', '0', '--live', '--live-ids', idsFile);
+  assert.equal(r.code, 0, r.out);
+  const idsFile2 = join(dir, 'active-ids2.json'); writeFileSync(idsFile2, JSON.stringify(['c3']));
+  const r2 = await run2('--compress', '--compress-over', '0', '--live', '--live-ids', idsFile2);
+  assert.match(r2.out, /set live: Has its own title/);
+  assert.equal((await videosBySource('whatmore')).find((x) => x.title === 'Has its own title').status, 'live');
+  const raw = (await api('GET', '/api/export')).json.videos.find((x) => x.title === 'Has its own title');
+  assert.match(raw.url, /^\/media\/videos\//, 'still stored in the short form after the status change');
+  const ws = (await api('GET', '/api/widgets')).json.widgets.filter((w) => w.page === 'product' && w.scope === 'tagged');
+  assert.equal(ws.length, 1, 'exactly one default product widget, even after several runs');
+  assert.equal(ws[0].enabled, false);
+});
+
 test.after(() => fx.close());
 
 // ---------------- Instagram ----------------

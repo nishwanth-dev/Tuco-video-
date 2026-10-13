@@ -12,6 +12,7 @@
 //   --compress-over MB  with --compress, only re-encode files bigger than this (default 5); smaller ones are uploaded as they are
 //   --copy              copy files into storage on the server without shrinking (use when ffmpeg is not installed)
 //   --live              videos that are in an active Whatmore widget are set live (everything else stays a draft)
+//   --live-ids FILE     a JSON list of Whatmore video ids that are active in Whatmore (they are what its product pages show); they are set live too
 //   --parallel N        videos handled at the same time (default 2 with --compress, otherwise 1)
 // Without --compress or --copy the videos are only linked to Whatmore's files (not recommended: they vanish when Whatmore does).
 // Safe to run again: videos already imported are skipped, and widgets that are still switched off are topped up.
@@ -25,11 +26,13 @@ let file = '';
 let limit = Infinity;
 let compressOver = 5;
 let parallel = 0;
+let liveIdsFile = '';
 const flags = new Set();
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--limit') limit = Number(args[++i]);
   else if (args[i] === '--compress-over') compressOver = Number(args[++i]);
   else if (args[i] === '--parallel') parallel = Number(args[++i]);
+  else if (args[i] === '--live-ids') liveIdsFile = args[++i];
   else if (args[i].startsWith('--')) flags.add(args[i].slice(2));
   else file = args[i];
 }
@@ -78,7 +81,9 @@ const widgetPlan = (() => {
   });
 })();
 
+const liveIds = new Set(liveIdsFile ? JSON.parse(readFileSync(liveIdsFile, 'utf8')).map(String) : []);
 const inWidget = new Set(data.videos.filter((v) => v.widgets.length).map((v) => v.id));
+const wantsLive = (v) => v.widgets.length > 0 || liveIds.has(String(v.id));
 const videos = data.videos.filter((v) => v.url).slice(0, limit);
 
 // ---------- dry run ----------
@@ -86,7 +91,7 @@ if (DRY) {
   console.log(`${videos.length} of ${data.videos.length} videos, ${data.widgets.length} widgets (dry run: nothing is written, nothing is downloaded)\n`);
   const how = flag('compress') ? 'download, shrink with ffmpeg, make a poster, upload to Loopy storage' : flag('copy') ? 'copy into Loopy storage as they are' : 'link only (NOT recommended)';
   console.log(`Plan for videos: ${how}`);
-  console.log(`  tagged with products: ${videos.filter((v) => v.products.length).length}   |   in an active widget: ${videos.filter((v) => inWidget.has(v.id)).length} (set live with --live)   |   everything else becomes a draft`);
+  console.log(`  tagged with products: ${videos.filter((v) => v.products.length).length}   |   in an active widget: ${videos.filter((v) => inWidget.has(v.id)).length}, active in Whatmore: ${videos.filter((v) => liveIds.has(String(v.id))).length}; ${videos.filter(wantsLive).length} would be set live with --live   |   everything else becomes a draft`);
   console.log(`  untitled: ${videos.filter((v) => !(v.title || '').trim()).length}, named from their first product: ${videos.filter((v) => !(v.title || '').trim() && v.products[0] && v.products[0].title).length}, the rest named "Whatmore video <id>"`);
   console.log('  examples of the new names:', videos.slice(0, 3).map((v) => `"${titleOf(v)}"`).join(', '));
   const byKind = {};
@@ -167,7 +172,7 @@ const worker = async () => {
       const extra = !already && flag('compress') ? await prepare(v) : {};
       const body = {
         url: extra.url || v.url, copy: !flag('compress') && flag('copy'), poster: extra.poster || (already ? '' : v.poster || ''), title: label,
-        status: flag('live') && v.widgets.length ? 'live' : 'draft', placements: v.widgets.length ? ['home'] : [], products: v.products.map((p) => ({ handle: p.handle, title: p.title })),
+        status: flag('live') && wantsLive(v) ? 'live' : 'draft', placements: v.widgets.length ? ['home'] : [], products: v.products.map((p) => ({ handle: p.handle, title: p.title })),
         source: 'whatmore', sourceId: `wm:${v.id}`,
       };
       if (extra.size) body.size = extra.size;
@@ -180,8 +185,24 @@ const worker = async () => {
 };
 await Promise.all(Array.from({ length: Math.max(1, parallel) }, worker));
 
+// A video imported earlier as a draft is switched to live if Whatmore shows it (only ever draft to live, never the other way).
+if (flag('live')) {
+  const now = (await call('GET', '/api/videos')).videos;
+  for (const v of videos.filter(wantsLive)) {
+    const have = now.find((x) => x.sourceId === `wm:${v.id}`);
+    if (!have || have.status === 'live' || have.archived) continue;
+    try { await call('PUT', `/api/videos/${have.id}`, { ...have, status: 'live' }); report.madeLive = (report.madeLive || 0) + 1; console.log(`set live: ${have.title}`); }
+    catch (e) { report.failed.push({ id: v.id, title: have.title, error: `could not set live: ${e.message}` }); console.error(`could not set live ${have.title}: ${e.message}`); }
+  }
+}
+
 // ---------- widgets ----------
 const widgets = (await call('GET', '/api/widgets')).widgets;
+// Whatmore's default product-page widget shows each product's own tagged videos; Loopy's equivalent is a "tagged" carousel on product pages.
+if (!widgets.some((x) => x.page === 'product' && x.scope === 'tagged')) {
+  try { await call('POST', '/api/widgets', { name: 'Product page videos (all tagged)', type: 'carousel', page: 'product', scope: 'tagged', videoIds: [], enabled: false }); report.widgets.created++; console.log('widget created (switched off): Product page videos (all tagged), shows each product\'s own tagged videos'); }
+  catch (e) { report.widgets.failed.push({ name: 'Product page videos (all tagged)', error: e.message }); console.error(`default product widget failed: ${e.message}`); }
+}
 for (const { w, m } of widgetPlan) {
   const members = data.videos.filter((v) => v.widgets.some((x) => x.id === w.id) && idMap.has(v.id))
     .sort((a, b) => (a.widgets.find((x) => x.id === w.id).rank || 0) - (b.widgets.find((x) => x.id === w.id).rank || 0))
@@ -207,6 +228,7 @@ report.finishedAt = new Date().toISOString();
 const reportFile = join(dirname(resolve(file)), 'whatmore-import-report.json');
 writeFileSync(reportFile, JSON.stringify(report, null, 2));
 console.log(`\nVideos: ${report.imported} imported, ${report.skipped} skipped, ${report.failed.length} failed.${report.savedBytes ? ` Shrinking saved ${mb(report.savedBytes)} MB.` : ''}`);
+if (report.madeLive) console.log(`Set live because Whatmore shows them: ${report.madeLive}.`);
 console.log(`Widgets: ${report.widgets.created} created, ${report.widgets.updated} topped up, ${report.widgets.skipped} left alone, ${report.widgets.failed.length} failed.`);
 console.log(`A report was saved to ${reportFile}`);
 console.log('Done. Review the widgets in Loopy, set the right collection or page for each, then switch them on.');

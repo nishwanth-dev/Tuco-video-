@@ -242,6 +242,20 @@ test('media addresses: videos are served from this API unless a public R2 addres
   assert.match(v.url, /\/media\/videos\//);
 });
 
+test('media addresses are saved in the short form, even when the admin sends the full address back', async () => {
+  const up = await call('PUT', '/api/upload?name=short.mp4', { raw: Buffer.from('abc'), headers: { 'content-type': 'video/mp4' } });
+  const id = await mkVideo({ url: up.json.url, poster: up.json.url });
+  const v = (await call('GET', '/api/videos')).json.videos.find((x) => x.id === id);
+  assert.match(v.url, /^http/, 'the API shows full addresses');
+  const edited = await call('PUT', '/api/videos/' + id, { body: { ...v, title: 'Edited once' } });
+  assert.equal(edited.status, 200);
+  const raw = (await call('GET', '/api/export')).json.videos.find((x) => x.id === id);
+  assert.match(raw.url, /^\/media\/videos\//, 'stored short: ' + raw.url);
+  assert.match(raw.poster, /^\/media\/videos\//);
+  const ext = await mkVideo({ url: 'https://cdn.example.com/other.mp4' });
+  assert.equal((await call('GET', '/api/export')).json.videos.find((x) => x.id === ext).url, 'https://cdn.example.com/other.mp4', 'other addresses are left alone');
+});
+
 test('upload: needs auth, rejects bad names and non-media', async () => {
   assert.equal((await call('PUT', '/api/upload?name=a.mp4', { auth: false, raw: 'x' })).status, 401);
   const ok = await call('PUT', '/api/upload?name=tiny.mp4', { raw: Buffer.from('not a real video but small'), headers: { 'content-type': 'video/mp4' } });
