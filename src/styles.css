@@ -196,3 +196,8 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; paddi
 .appear summary .pill { white-space: nowrap; margin-left: 8px; display: inline-block; vertical-align: middle; }
 
 .setrow { display: flex; align-items: center; gap: 8px; margin: 3px 0; flex-wrap: wrap; } .copyid { display: inline-flex; align-items: center; gap: 6px; } .copyid code { background: #f4f4f5; border: 1px solid #e5e7eb; border-radius: 6px; padding: 2px 7px; font-size: 12px; user-select: all; } .copyid .link { padding: 0; font-size: 12px; }
+.setrow { flex-wrap: nowrap; gap: 12px; margin: 6px 0; white-space: nowrap; } .setrow .pill { flex: none; white-space: nowrap; } .copyid { flex: none; white-space: nowrap; }
+td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
+.setrow { display: flex; align-items: center; gap: 14px; }
+.setname { display: inline-block; flex: none; font-size: 12px; font-weight: 500; line-height: 1.4; padding: 4px 10px; border-radius: 6px; white-space: nowrap; position: static; }
+.setname.on { background: #ecfdf3; color: #067647; } .setname.off { background: #fffaeb; color: #b54708; }

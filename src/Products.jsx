@@ -40,7 +40,7 @@ export default function Products({ videos, widgets = [], loadWidgets, setError }
               <td>{p.price}</td>
               <td><span className={'pill ' + (p.available ? 'live' : 'draft')}>{p.available ? 'Active' : 'Sold out'}</span></td>
               <td>{p.vids.length}</td>
-              <td>{p.sets.length ? p.sets.map((w) => <div key={w.id} className="setrow"><span className={'pill ' + (w.enabled ? 'live' : 'draft')} title={w.enabled ? 'Switched on' : 'Switched off. Turn it on under Product Pages.'}>{w.name} ({w.videoIds.length})</span> <CopyId id={w.id} /></div>) : <span className="muted">none</span>}</td>
+              <td>{p.sets.length ? p.sets.map((w) => <div key={w.id} className="setrow"><span className={'setname ' + (w.enabled ? 'on' : 'off')} title={w.enabled ? 'Switched on' : 'Switched off. Turn it on under Product Pages.'}>{w.name} ({w.videoIds.length})</span> <CopyId id={w.id} /></div>) : <span className="muted">none</span>}</td>
               <td><button className="btn ghost sm" disabled={!p.sets.length && p.vids.length < 2} title={!p.sets.length && p.vids.length < 2 ? 'Nothing to arrange: this product has no video set and fewer than 2 tagged videos.' : ''} onClick={() => setArrange(p)}>Arrange Media</button></td>
             </tr>))}</tbody>
         </table>
