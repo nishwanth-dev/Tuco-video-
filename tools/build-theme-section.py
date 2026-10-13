@@ -170,7 +170,16 @@ if len(sys.argv) >= 4:
     document.head.appendChild(s);
   })();
 </script>"""
-    block_settings = [x for x in schema_settings if x.get('id') not in ('padding_top', 'padding_bottom', 'full_width') and x.get('type') != 'header' or x.get('type') == 'header' and x.get('content') != 'Spacing']
+    # Shopify allows at most 6 header/paragraph lines in an app block, so the section headers become name prefixes instead.
+    block_settings, group = [], ''
+    for x in schema_settings:
+        if x.get('type') == 'header':
+            group = '' if x.get('content') in ('Spacing',) else x['content']
+            continue
+        if x.get('id') in ('padding_top', 'padding_bottom', 'full_width'): continue
+        y = dict(x)
+        if group and y.get('id') and y.get('label'): y['label'] = f"{group}: {y['label']}"
+        block_settings.append(y)
     block_settings += [
       {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Top padding', 'default': 20},
       {'type': 'range', 'id': 'padding_bottom', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Bottom padding', 'default': 20},

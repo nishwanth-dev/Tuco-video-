@@ -1,6 +1,7 @@
-api_version = "2026-04"
+api_version = "2026-10"
 
 [[extensions]]
 type = "theme"
 name = "Loopy Video"
 handle = "loopy-video"
+uid = "af21cde0-78d8-e71d-be1e-e559ee5f5a28dce8ccbe"
