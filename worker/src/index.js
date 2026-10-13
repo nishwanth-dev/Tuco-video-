@@ -14,15 +14,21 @@ const WPAGES = ['home', 'product', 'collection', 'pages'];
 const RATIO = /^[1-9]\d?\/[1-9]\d?$/;
 const ev = (...v) => (x) => v.includes(x);
 const nm = (lo, hi) => (x) => typeof x === 'number' && isFinite(x) && x >= lo && x <= hi;
+// Colours, fonts and text are checked strictly: a #rrggbb colour, a plain font name, and short text without markup characters.
+const hex = (x) => typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x);
+const font = (x) => typeof x === 'string' && /^[\w .,'-]{1,60}$/.test(x.trim());
+const txt = (max) => (x) => typeof x === 'string' && x.trim().length > 0 && x.length <= max && !/[<>{};\\]/.test(x);
 const OVERRIDABLE = {
+  brandColor: hex, brandFont: font, shopNowText: txt(40), showViews: (x) => typeof x === 'boolean',
   tileType: ev('overlay', 'below', 'feed', 'minimal'), showPrice: (x) => typeof x === 'boolean', showAtc: (x) => typeof x === 'boolean',
   carousel: {
+    headingColor: hex, headingFont: font, headingWeight: ev('400', '500', '600', '700', '800'), detailsColor: hex, feedAtcColor: hex, feedAtcTextColor: hex,
     tileAspect: (x) => RATIO.test(x), tileAspectDesktop: (x) => RATIO.test(x), tileAspectMobile: (x) => RATIO.test(x), tileWidthDesktop: nm(60, 700), tileWidthMobile: nm(60, 500),
     tileFit: ev('cover', 'contain'), ordering: ev('none', 'newest', 'shuffle'), tileRadiusDesktop: nm(0, 999), tileRadiusMobile: nm(0, 999),
     tileGapDesktop: nm(0, 80), tileGapMobile: nm(0, 80), sidePaddingDesktop: nm(0, 120), sidePaddingMobile: nm(0, 120),
   },
-  stories: { sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4), sizeDesktop: nm(30, 300), sizeMobile: nm(30, 300), shape: ev('circle', 'rounded', 'square'), gapDesktop: nm(0, 80), gapMobile: nm(0, 80) },
-  banner: { heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999), marginDesktop: nm(0, 200), marginMobile: nm(0, 200), maxWidthDesktop: nm(100, 2400), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
+  stories: { borderColor: hex, titleColor: hex, sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4), sizeDesktop: nm(30, 300), sizeMobile: nm(30, 300), shape: ev('circle', 'rounded', 'square'), gapDesktop: nm(0, 80), gapMobile: nm(0, 80) },
+  banner: { background: hex, heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999), marginDesktop: nm(0, 200), marginMobile: nm(0, 200), maxWidthDesktop: nm(100, 2400), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
   spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400), widthDesktop: nm(40, 500), widthMobile: nm(40, 500), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999) },
 };
 function cleanOverrides(o) {

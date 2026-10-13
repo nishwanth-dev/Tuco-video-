@@ -16,7 +16,7 @@ TALL = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait
 TILE_SHAPE = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
 FIT = [USE, {'value': 'cover', 'label': 'Fill (crop to fit)'}, {'value': 'contain', 'label': 'Show whole video'}]
 
-# (id, attribute, type, label, extra)  type: text | range | select ; attribute None = not sent to the widget
+# (id, attribute, type, label, extra)  type: text | range | select | color ; attribute None = not sent to the widget
 S = [
  ('header', 'Banner on desktop'),
  ('banner_height_desktop', 'data-banner-h-desktop', 'range', 'Height', dict(min=0, max=900, step=20, unit='px', default=0, info='0 uses the Loopy setting. A height wins over the shape below.')),
@@ -57,9 +57,24 @@ S = [
  ('spot_width_mobile', 'data-spot-w-mobile', 'range', 'Width on mobile', dict(min=0, max=220, step=10, unit='px', default=0, info='0 uses the Loopy setting.')),
  ('spot_radius_desktop', 'data-spot-radius-desktop', 'select', 'Corners on desktop', dict(options=CORNER)),
  ('spot_radius_mobile', 'data-spot-radius-mobile', 'select', 'Corners on mobile', dict(options=CORNER)),
+ ('header', 'Colours, fonts and text'),
+ ('brand_color', 'data-brand-color', 'color', 'Button and highlight colour', {}),
+ ('font', 'data-font', 'text', 'Font name', dict(info='A font your theme already loads, for example Poppins. Empty uses the Loopy setting.')),
+ ('button_text', 'data-button-text', 'text', 'Button text', dict(info='For example Shop now. Empty uses the Loopy setting.')),
+ ('heading_color', 'data-heading-color', 'color', 'Heading colour', {}),
+ ('heading_font', 'data-heading-font', 'text', 'Heading font', dict(info='Empty uses the font above.')),
+ ('text_color', 'data-text-color', 'color', 'Product text colour (info below tiles)', {}),
+ ('feed_button_color', 'data-feed-button-color', 'color', 'Feed add-to-cart button colour', {}),
+ ('feed_button_text_color', 'data-feed-button-text-color', 'color', 'Feed add-to-cart text colour', {}),
+ ('story_ring_color', 'data-story-ring-color', 'color', 'Story ring colour', {}),
+ ('story_label_color', 'data-story-label-color', 'color', 'Story label colour', {}),
+ ('banner_bg', 'data-banner-bg', 'color', 'Banner bar colour', {}),
 ]
 
 def attr_line(sid, attr, typ, scope='section'):
+    if typ in ('color', 'text'):
+        # Empty means "use the Loopy setting", so nothing is sent.
+        return f'      {{%- if {scope}.settings.{sid} != blank %}} {attr}="{{{{ {scope}.settings.{sid} | escape }}}}"{{% endif -%}}'
     if typ == 'range':
         return f'      {{%- if {scope}.settings.{sid} > 0 %}} {attr}="{{{{ {scope}.settings.{sid} }}}}"{{% endif -%}}'
     return f"      {{%- if {scope}.settings.{sid} != 'default' %}} {attr}=\"{{{{ {scope}.settings.{sid} }}}}\"{{% endif -%}}"
@@ -82,6 +97,10 @@ for s in S:
     item = {'type': typ, 'id': sid, 'label': label}
     if typ == 'range':
         item.update({'min': extra['min'], 'max': extra['max'], 'step': extra['step'], 'unit': extra['unit'], 'default': extra['default'], 'info': extra['info']})
+    elif typ == 'color':
+        pass  # no default: left unset means "use the Loopy setting"
+    elif typ == 'text':
+        item.update({'info': extra['info']})
     else:
         item.update({'options': extra['options'], 'default': D})
     schema_settings.append(item)

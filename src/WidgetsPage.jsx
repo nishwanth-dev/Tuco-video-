@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
 import { Modal, Toggle, Empty } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
@@ -170,6 +170,15 @@ const OV_FIELDS = {
 };
 // The shared layout rows (sizes, corners, gaps, margins) apply to each widget type too.
 for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [...OV_FIELDS[t], ...NEW_LAYOUT[t]];
+// Colours, fonts and text: empty means "use the global setting". Every widget type can change its main colour, font and button text.
+const WEIGHTS = [['400', 'Regular'], ['500', 'Medium'], ['600', 'Semi-bold'], ['700', 'Bold'], ['800', 'Extra bold']];
+const LOOK = {
+  all: [[null, 'brandColor', 'Button and highlight colour', 'color'], [null, 'brandFont', 'Font', 'font'], [null, 'shopNowText', 'Button text', 'text']],
+  carousel: [['carousel', 'headingColor', 'Heading colour', 'color'], ['carousel', 'headingFont', 'Heading font', 'font'], ['carousel', 'headingWeight', 'Heading weight', 'sel', WEIGHTS], ['carousel', 'detailsColor', 'Product text colour', 'color'], ['carousel', 'feedAtcColor', 'Feed button colour', 'color'], ['carousel', 'feedAtcTextColor', 'Feed button text colour', 'color'], [null, 'showViews', 'Show view counts', 'bool']],
+  stories: [['stories', 'borderColor', 'Story ring colour', 'color'], ['stories', 'titleColor', 'Story label colour', 'color']],
+  banner: [['banner', 'background', 'Banner bar colour', 'color']],
+};
+for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [...OV_FIELDS[t], ...LOOK.all, ...(LOOK[t] || [])];
 OV_FIELDS.floating = OV_FIELDS.spotlight;
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.
@@ -198,6 +207,8 @@ function Appearance({ w, setW, settings }) {
           return (
             <label className="lab" key={(g || 'root') + k}>{label}
               {['num', 'sel', 'corner'].includes(kind) && <LayoutField spec={[g, k, label, kind, opts]} value={cur} placeholder={gv !== undefined && gv !== null && gv !== '' ? `Global: ${gv}` : 'Global: default'} emptyLabel="Use global setting" onChange={(v) => set(g, k, v)} />}
+              {kind === 'color' && <OvColor value={cur} placeholder={gv ? `Global: ${gv}` : 'Global: default'} fallback={gv} onChange={(v) => set(g, k, v)} />}
+              {(kind === 'font' || kind === 'text') && <input value={cur || ''} maxLength={kind === 'font' ? 60 : 40} placeholder={gv ? `Global: ${gv}` : 'Use global setting'} onChange={(e) => set(g, k, e.target.value)} />}
               {kind === 'bool' && <select value={cur === undefined ? '' : String(cur)} onChange={(e) => set(g, k, e.target.value === '' ? '' : e.target.value === 'true')}><option value="">Use global setting</option><option value="true">On</option><option value="false">Off</option></select>}
             </label>
           );
@@ -205,5 +216,20 @@ function Appearance({ w, setW, settings }) {
       </div>
       {used > 0 && <button type="button" className="link" onClick={() => setW((o) => ({ ...o, overrides: {} }))}>Reset all to global</button>}
     </details>
+  );
+}
+
+// A colour that can be left empty (follow the global setting). Typing is only applied once it is a full #rrggbb colour.
+const HEX = /^#[0-9a-fA-F]{6}$/;
+function OvColor({ value, placeholder, fallback, onChange }) {
+  const [draft, setDraft] = useState(value || '');
+  useEffect(() => setDraft(value || ''), [value]);
+  const ok = draft === '' || HEX.test(draft);
+  return (
+    <span className="ovcolor">
+      <input className={ok ? '' : 'bad'} value={draft} maxLength={7} placeholder={placeholder} aria-invalid={!ok}
+        onChange={(e) => { const v = e.target.value.trim(); setDraft(v); if (v === '') onChange(''); else if (HEX.test(v)) onChange(v); }} />
+      <input type="color" aria-label="Pick a colour" value={HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#ffffff'} onChange={(e) => onChange(e.target.value)} />
+    </span>
   );
 }

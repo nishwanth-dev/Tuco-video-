@@ -63,6 +63,17 @@
       {%- if section.settings.spot_width_mobile > 0 %} data-spot-w-mobile="{{ section.settings.spot_width_mobile }}"{% endif -%}
       {%- if section.settings.spot_radius_desktop != 'default' %} data-spot-radius-desktop="{{ section.settings.spot_radius_desktop }}"{% endif -%}
       {%- if section.settings.spot_radius_mobile != 'default' %} data-spot-radius-mobile="{{ section.settings.spot_radius_mobile }}"{% endif -%}
+      {%- if section.settings.brand_color != blank %} data-brand-color="{{ section.settings.brand_color | escape }}"{% endif -%}
+      {%- if section.settings.font != blank %} data-font="{{ section.settings.font | escape }}"{% endif -%}
+      {%- if section.settings.button_text != blank %} data-button-text="{{ section.settings.button_text | escape }}"{% endif -%}
+      {%- if section.settings.heading_color != blank %} data-heading-color="{{ section.settings.heading_color | escape }}"{% endif -%}
+      {%- if section.settings.heading_font != blank %} data-heading-font="{{ section.settings.heading_font | escape }}"{% endif -%}
+      {%- if section.settings.text_color != blank %} data-text-color="{{ section.settings.text_color | escape }}"{% endif -%}
+      {%- if section.settings.feed_button_color != blank %} data-feed-button-color="{{ section.settings.feed_button_color | escape }}"{% endif -%}
+      {%- if section.settings.feed_button_text_color != blank %} data-feed-button-text-color="{{ section.settings.feed_button_text_color | escape }}"{% endif -%}
+      {%- if section.settings.story_ring_color != blank %} data-story-ring-color="{{ section.settings.story_ring_color | escape }}"{% endif -%}
+      {%- if section.settings.story_label_color != blank %} data-story-label-color="{{ section.settings.story_label_color | escape }}"{% endif -%}
+      {%- if section.settings.banner_bg != blank %} data-banner-bg="{{ section.settings.banner_bg | escape }}"{% endif -%}
     ></div>
   {%- elsif request.design_mode -%}
     <p style="margin:0;padding:12px 16px;border:1px dashed #b0b0b0;border-radius:8px;font:13px/1.4 sans-serif;color:#555;text-align:center">
@@ -986,6 +997,68 @@
         }
       ],
       "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Colours, fonts and text"
+    },
+    {
+      "type": "color",
+      "id": "brand_color",
+      "label": "Button and highlight colour"
+    },
+    {
+      "type": "text",
+      "id": "font",
+      "label": "Font name",
+      "info": "A font your theme already loads, for example Poppins. Empty uses the Loopy setting."
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button text",
+      "info": "For example Shop now. Empty uses the Loopy setting."
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading colour"
+    },
+    {
+      "type": "text",
+      "id": "heading_font",
+      "label": "Heading font",
+      "info": "Empty uses the font above."
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Product text colour (info below tiles)"
+    },
+    {
+      "type": "color",
+      "id": "feed_button_color",
+      "label": "Feed add-to-cart button colour"
+    },
+    {
+      "type": "color",
+      "id": "feed_button_text_color",
+      "label": "Feed add-to-cart text colour"
+    },
+    {
+      "type": "color",
+      "id": "story_ring_color",
+      "label": "Story ring colour"
+    },
+    {
+      "type": "color",
+      "id": "story_label_color",
+      "label": "Story label colour"
+    },
+    {
+      "type": "color",
+      "id": "banner_bg",
+      "label": "Banner bar colour"
     },
     {
       "type": "header",

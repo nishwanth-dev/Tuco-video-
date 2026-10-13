@@ -507,6 +507,16 @@
     // spotlight and floating video
     put(sp, 'widthDesktop', num('data-spot-w-desktop', 40, 500)); put(sp, 'widthMobile', num('data-spot-w-mobile', 40, 500));
     put(sp, 'radiusDesktop', num('data-spot-radius-desktop', 0, 999)); put(sp, 'radiusMobile', num('data-spot-radius-mobile', 0, 999));
+
+    // colours, fonts and text (a #rrggbb colour, a plain font name, short text)
+    var col = function (n) { var v = g(n); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : null; };
+    var fnt = function (n) { var v = g(n); return /^[\w .,'-]{1,60}$/.test(v) ? v : null; };
+    var txt = function (n, max) { var v = g(n); return v && v.length <= max && !/[<>{};\\]/.test(v) ? v : null; };
+    put(out, 'brandColor', col('data-brand-color')); put(out, 'brandFont', fnt('data-font')); put(out, 'shopNowText', txt('data-button-text', 40));
+    put(c, 'headingColor', col('data-heading-color')); put(c, 'headingFont', fnt('data-heading-font')); put(c, 'detailsColor', col('data-text-color'));
+    put(c, 'feedAtcColor', col('data-feed-button-color')); put(c, 'feedAtcTextColor', col('data-feed-button-text-color'));
+    put(st, 'borderColor', col('data-story-ring-color')); put(st, 'titleColor', col('data-story-label-color'));
+    put(b, 'background', col('data-banner-bg'));
     return out;
   }
 

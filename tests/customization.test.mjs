@@ -238,3 +238,48 @@ test('every layout option offered in the admin is accepted by the API', async ()
     assert.ok([200, 201].includes(r.status), `${type}: ${JSON.stringify(r.json)}`);
   }
 });
+
+// ---------------- Colours, fonts and text: global, per widget, and theme block ----------------
+const RED = '#cc0000', BLUE = '#0000cc', GREEN = '#00aa00';
+const banner = (global = {}) => ({ type: 'banner', global: { banner: { showCta: true }, ...global } });
+// [name, type, global settings, widget override, theme-block attribute, check]
+const LOOK = [
+  ['button and highlight colour', 'banner', { brandColor: RED }, { brandColor: BLUE }, ['data-brand-color', GREEN], (m, want) => assert.equal(m.ctaBg, rgb(want))],
+  ['font', 'banner', { brandFont: 'Georgia' }, { brandFont: 'Courier New' }, ['data-font', 'Verdana'], (m, want) => assert.match(m.ctaFont, new RegExp(want.split(' ')[0]))],
+  ['button text', 'banner', { shopNowText: 'Global text' }, { shopNowText: 'Widget text' }, ['data-button-text', 'Block text'], (m, want) => assert.equal(m.ctaText, want)],
+  ['heading colour', 'carousel', { carousel: { headingColor: RED } }, { carousel: { headingColor: BLUE } }, ['data-heading-color', GREEN], (m, want) => assert.equal(m.title.color, rgb(want))],
+  ['heading font', 'carousel', { carousel: { headingFont: 'Georgia' } }, { carousel: { headingFont: 'Courier New' } }, ['data-heading-font', 'Verdana'], (m, want) => assert.match(m.title.family, new RegExp(want.split(' ')[0]))],
+  ['product text colour', 'carousel', { tileType: 'below', carousel: { detailsColor: RED } }, { carousel: { detailsColor: BLUE } }, ['data-text-color', GREEN], (m, want) => assert.equal(m.metaColor, rgb(want))],
+  ['feed button colour', 'carousel', { tileType: 'feed', carousel: { feedAtcColor: RED } }, { carousel: { feedAtcColor: BLUE } }, ['data-feed-button-color', GREEN], (m, want) => assert.equal(m.ctaBg, rgb(want))],
+  ['feed button text colour', 'carousel', { tileType: 'feed', carousel: { feedAtcTextColor: RED } }, { carousel: { feedAtcTextColor: BLUE } }, ['data-feed-button-text-color', GREEN], (m, want) => assert.equal(m.ctaColor, rgb(want))],
+  ['story ring colour', 'stories', { stories: { borderColor: RED } }, { stories: { borderColor: BLUE } }, ['data-story-ring-color', GREEN], (m, want) => assert.equal(m.storyRing, rgb(want))],
+  ['story label colour', 'stories', { stories: { titleColor: RED } }, { stories: { titleColor: BLUE } }, ['data-story-label-color', GREEN], (m, want) => assert.equal(m.lblColor, rgb(want))],
+  ['banner bar colour', 'banner', { banner: { background: RED } }, { banner: { background: BLUE } }, ['data-banner-bg', GREEN], (m, want) => assert.equal(m.bg, rgb(want))],
+];
+const wantOf = { 'data-brand-color': GREEN };
+for (const [name, type, global, override, [attr, attrValue], check] of LOOK) {
+  const ovKey = Object.keys(override)[0];
+  const ovValue = typeof override[ovKey] === 'object' ? Object.values(override[ovKey])[0] : override[ovKey];
+  const gValue = typeof global[Object.keys(global).find((k) => k !== 'tileType')] === 'object' ? Object.values(global[Object.keys(global).find((k) => k !== 'tileType' && typeof global[k] === 'object')])[0] : global[Object.keys(global).find((k) => k !== 'tileType')];
+  const base = type === 'banner' ? { banner: { showCta: true } } : {};
+  const merge = (g) => ({ ...base, ...g, ...(g.banner && base.banner ? { banner: { ...base.banner, ...g.banner } } : {}) });
+  run(`look, global setting: ${name}`, { type, global: merge(global) }, (m) => check(m, gValue));
+  run(`look, widget override beats global: ${name}`, { type, global: merge(global), overrides: override }, (m) => check(m, ovValue));
+  run(`look, theme block beats widget and global: ${name}`, { type, global: merge(global), overrides: override, attrs: { [attr]: attrValue } }, (m) => check(m, attrValue));
+}
+run('look: widget colour does not leak into the global look (second widget keeps the global colour)', banner({ brandColor: RED }), (m) => assert.equal(m.ctaBg, rgb(RED)));
+run('look: show view counts per widget', { type: 'carousel', global: { showViews: false }, overrides: { showViews: true } }, (m) => assert.equal(m.counts.views, 4));
+run('look: heading weight per widget', { type: 'carousel', global: { carousel: { headingWeight: '400' } }, overrides: { carousel: { headingWeight: '800' } } }, (m) => assert.equal(m.title.weight, '800'));
+run('look: invalid colour in a theme block is ignored', { type: 'banner', global: { brandColor: RED, banner: { showCta: true } }, attrs: { 'data-brand-color': 'red; background:url(x)' } }, (m) => assert.equal(m.ctaBg, rgb(RED)));
+run('look: invalid font in a theme block is ignored', { type: 'carousel', global: { brandFont: 'Georgia' }, attrs: { 'data-font': 'x}</style><script>window.__pwn=1</script>' } }, (m) => assert.match(m.title.family, /Georgia/));
+run('look: button text with markup is shown as plain text', { type: 'banner', global: { banner: { showCta: true } }, attrs: { 'data-button-text': 'Buy <b>now</b>' } }, (m) => assert.notEqual(m.ctaText, 'Buy <b>now</b>'));
+
+test('look: the API accepts good colours, fonts and text, and rejects unsafe ones', async () => {
+  const mk = (overrides) => api('POST', '/api/widgets', { name: 'Look check', type: 'carousel', page: 'home', scope: 'custom', videoIds: [], overrides });
+  for (const good of [{ brandColor: '#ffd94a' }, { brandFont: 'Poppins' }, { brandFont: "Playfair Display, serif" }, { shopNowText: 'Buy now 🛍' }, { carousel: { headingColor: '#4D4747', headingWeight: '700' } }, { stories: { borderColor: '#000000' } }, { banner: { background: '#ffffff' } }, { showViews: true }]) {
+    const r = await mk(good); assert.ok([200, 201].includes(r.status), JSON.stringify(good) + ' ' + JSON.stringify(r.json));
+  }
+  for (const bad of [{ brandColor: 'red' }, { brandColor: '#fff' }, { brandColor: '#gggggg' }, { brandColor: 'url(javascript:alert(1))' }, { brandFont: 'a;b' }, { brandFont: '}</style><script>' }, { brandFont: 'x'.repeat(61) }, { brandFont: '' }, { shopNowText: '<b>hi</b>' }, { shopNowText: 'x'.repeat(41) }, { shopNowText: '   ' }, { carousel: { headingWeight: '900' } }, { carousel: { headingColor: 5 } }, { showViews: 'yes' }, { banner: { background: '#12345' } }]) {
+    const r = await mk(bad); assert.equal(r.status, 400, JSON.stringify(bad));
+  }
+});
