@@ -82,7 +82,8 @@ test('importer: first batch (--limit 3 --copy) copies files into storage', async
 
 test('importer: full run imports the rest, skips repeats, survives a dead link and bad rows', async () => {
   const r = await run('--copy');
-  assert.equal(r.code, 0, r.out);
+  assert.equal(r.code, 2, 'a run with failures ends with an error code so nobody misses it: ' + r.out);
+  assert.match(r.out, /2 failed/);
   assert.match(r.out, /skipped \(already imported\)/);
   assert.match(r.out, /failed e10/, 'dead link is reported, not hidden');
   const got = await videosBySource('whatmore');
@@ -123,6 +124,80 @@ test('importer: link-only mode (no --copy) keeps the original address', async ()
   const v = (await videosBySource('whatmore')).find((x) => x.title === 'Link only');
   assert.equal(v.url, `${SRC}/wm/clip1.mp4`);
 });
+
+// ---------------- Importer: shrink, poster, naming, top-up (needs ffmpeg) ----------------
+import { readFileSync as readF } from 'node:fs';
+const FFMPEG = ['/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg'].find((p) => { try { execFileSync(p, ['-version'], { stdio: 'ignore' }); return true; } catch { return false; } });
+import { execFileSync } from 'node:child_process';
+const fixture = readF(join(ROOT, 'tests/fixtures/clip.mp4'));
+const hits = {};
+const fx = http.createServer((req, res) => {
+  const m = /^\/fx\/(c\d)\.mp4$/.exec(req.url);
+  if (!m) { res.writeHead(404); return res.end(); }
+  if (req.method !== 'HEAD') hits[m[1]] = (hits[m[1]] || 0) + 1;
+  res.writeHead(200, { 'content-type': m[1] === 'c2' ? 'video/quicktime' : 'video/mp4', 'content-length': fixture.length }); res.end(req.method === 'HEAD' ? undefined : fixture);
+});
+await new Promise((r) => fx.listen(8092, r));
+const exp2 = {
+  exportedAt: new Date().toISOString(),
+  widgets: [{ id: 'a1', name: 'Same name', type: 'banner' }, { id: 'a2', name: 'Same name', type: 'banner' }, { id: 'a3', name: 'Top up me', type: 'carousel' }],
+  videos: [
+    { id: 'c1', url: 'http://localhost:8092/fx/c1.mp4', poster: '', title: '', sourceHandle: '', products: [{ handle: 'prod-c1', title: 'Sunscreen SPF 50' }], widgets: [{ id: 'a1', rank: 1 }, { id: 'a3', rank: 2 }] },
+    { id: 'c2', url: 'http://localhost:8092/fx/c2.mp4', poster: '', title: '', sourceHandle: '', products: [], widgets: [{ id: 'a2', rank: 1 }, { id: 'a3', rank: 1 }] },
+    { id: 'c3', url: 'http://localhost:8092/fx/c1.mp4', poster: '', title: 'Has its own title', sourceHandle: '', products: [{ handle: 'prod-c3', title: 'Other product' }], widgets: [] },
+  ],
+};
+const exp2File = join(dir, 'whatmore-export-2.json'); writeFileSync(exp2File, JSON.stringify(exp2));
+const run2 = (...a) => exec(['tools/import-whatmore.mjs', exp2File, ...a], { ...process.env, LOOPY_API: B, LOOPY_TOKEN: TOKEN, ...(FFMPEG ? { FFMPEG } : {}) });
+
+test('importer dry run: gives a readable plan, checks sizes without downloading, needs no token', async () => {
+  const r = await exec(['tools/import-whatmore.mjs', exp2File, '--dry-run', '--compress', '--sizes'], { PATH: process.env.PATH });
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /Plan for videos: download, shrink/); assert.match(r.out, /Sunscreen SPF 50/);
+  assert.match(r.out, /2 share a name|1 share a name/); assert.match(r.out, /Sizes \(checked 3 of 3 files, nothing downloaded\)/);
+  assert.equal(hits.c1 || 0, 0, 'a dry run downloads nothing');
+});
+
+test('importer --compress: shrinks, makes a poster, names untitled videos, keeps relative addresses', { skip: !FFMPEG && 'ffmpeg is not installed' }, async () => {
+  const r1 = await run2('--compress', '--compress-over', '0', '--live', '--limit', '1');
+  assert.equal(r1.code, 0, r1.out);
+  const v = (await videosBySource('whatmore')).find((x) => x.title === 'Sunscreen SPF 50');
+  assert.ok(v, 'an untitled video is named after its first product: ' + r1.out);
+  assert.equal(v.status, 'live', 'a video in an active widget is set live with --live');
+  assert.ok(v.url.includes('/media/videos/') && v.size > 0, v.url);
+  assert.ok(v.poster && (await fetch(v.poster)).status === 200, 'a poster was generated and stored');
+  assert.equal((await fetch(v.url)).status, 200);
+  const raw = (await api('GET', '/api/videos')).json.videos.find((x) => x.id === v.id);
+  assert.ok(raw.sourceId === 'wm:c1');
+  const report = JSON.parse(readF(join(dir, 'whatmore-import-report.json'), 'utf8')); assert.equal(report.imported, 1);
+});
+
+test('importer re-run: skips what is done without downloading again, tops up partial widgets, keeps duplicate names apart', { skip: !FFMPEG && 'ffmpeg is not installed' }, async () => {
+  const before = hits.c1;
+  const r2 = await run2('--compress', '--compress-over', '0');
+  assert.equal(r2.code, 0, r2.out);
+  assert.match(r2.out, /skipped \(already imported\): Sunscreen SPF 50/);
+  assert.equal(hits.c1, before + 1, 'only the new video c3 downloaded c1.mp4 again; the already imported c1 was not fetched');
+  const vids = await videosBySource('whatmore');
+  assert.ok(vids.some((x) => x.title === 'Has its own title'), 'a real title is kept');
+  const ws = (await api('GET', '/api/widgets')).json.widgets;
+  assert.ok(ws.find((w) => w.name === 'Same name') && ws.find((w) => w.name === 'Same name (2)'), 'two widgets with one name both survive');
+  const top = ws.find((w) => w.name === 'Top up me');
+  assert.equal(top.videoIds.length, 2, 'the widget created by the partial run now has all its videos');
+  assert.equal(top.enabled, false);
+  const r3 = await run2('--compress', '--compress-over', '0');
+  assert.match(r3.out, /0 imported/); assert.match(r3.out, /0 failed/);
+});
+
+test('importer: a widget you already switched on is never changed by a re-run', { skip: !FFMPEG && 'ffmpeg is not installed' }, async () => {
+  const ws = (await api('GET', '/api/widgets')).json.widgets; const top = ws.find((w) => w.name === 'Top up me');
+  await api('PUT', '/api/widgets/' + top.id, { ...top, enabled: true, videoIds: [top.videoIds[0]] });
+  const r = await run2('--compress', '--compress-over', '0');
+  assert.match(r.out, /left alone: Top up me/);
+  assert.equal((await api('GET', '/api/widgets')).json.widgets.find((w) => w.id === top.id).videoIds.length, 1);
+});
+
+test.after(() => fx.close());
 
 // ---------------- Instagram ----------------
 const igMedia = [];

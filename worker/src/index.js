@@ -97,7 +97,7 @@ const toVideo = (r, origin = '', pub = '') => {
     id: r.id, title: r.title, url: abs(r.url), poster: abs(r.poster), audience: r.audience, status: r.status,
     placements: parse(r.placements, []), products, product: products[0] || { title: '', handle: '', price: '' },
     archived: !!r.archived, source: r.source, sort: r.sort, createdAt: r.created_at, views: r.views || 0,
-    ctaText: r.cta_text || '', ctaUrl: r.cta_url || '', startsAt: r.starts_at || 0, endsAt: r.ends_at || 0, size: r.size || 0,
+    sourceId: r.source_id || '', ctaText: r.cta_text || '', ctaUrl: r.cta_url || '', startsAt: r.starts_at || 0, endsAt: r.ends_at || 0, size: r.size || 0,
   };
 };
 const toWidget = (r) => ({
