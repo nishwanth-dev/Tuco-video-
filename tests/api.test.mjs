@@ -234,6 +234,14 @@ test('store lookups: an unreachable store gives a specific, helpful message (not
   assert.equal(c.status, 502); assert.match(c.json.error, /collections/i);
 });
 
+test('media addresses: videos are served from this API unless a public R2 address is configured', async () => {
+  const up = await call('PUT', '/api/upload?name=addr.mp4', { raw: Buffer.from('abc'), headers: { 'content-type': 'video/mp4' } });
+  assert.match(up.json.url, new RegExp('^' + B.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/media/videos/'));
+  const id = await mkVideo({ url: up.json.url });
+  const v = (await call('GET', '/api/videos')).json.videos.find((x) => x.id === id);
+  assert.match(v.url, /\/media\/videos\//);
+});
+
 test('upload: needs auth, rejects bad names and non-media', async () => {
   assert.equal((await call('PUT', '/api/upload?name=a.mp4', { auth: false, raw: 'x' })).status, 401);
   const ok = await call('PUT', '/api/upload?name=tiny.mp4', { raw: Buffer.from('not a real video but small'), headers: { 'content-type': 'video/mp4' } });

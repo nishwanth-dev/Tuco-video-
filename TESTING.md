@@ -50,7 +50,7 @@ Stop with `pkill -f "wrangler dev"; pkill -f "http.server 8123"`.
 
 ## Not verified yet (do these before cancelling Whatmore)
 
-- Real R2 storage (needs the R2 subscription) and the Whatmore migration with your real videos.
+- Whatmore migration with your real videos (R2 is now live and passed a real upload, seek and delete test).
 - Instagram sync with a real token.
 - The Shopify order webhook with real orders, and migration 005 on the live database.
 - Safari and iPhone.

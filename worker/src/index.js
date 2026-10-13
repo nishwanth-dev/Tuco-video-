@@ -88,10 +88,13 @@ const json = (data, status = 200, extra = {}) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...extra } });
 const parse = (s, f) => { try { return JSON.parse(s); } catch { return f; } };
 
-const toVideo = (r, origin = '') => {
+// Stored addresses like /media/videos/x.mp4 become full addresses. If a public R2 address is configured (R2_PUBLIC_URL),
+// they point straight at R2 (fast, cached, no Worker request); otherwise at this API. Changing R2_PUBLIC_URL later moves every video at once.
+const toVideo = (r, origin = '', pub = '') => {
+  const abs = (u) => (!u ? u : u.startsWith('/media/') && pub ? `${pub.replace(/\/$/, '')}${u.slice(6)}` : u.startsWith('/') ? origin + u : u);
   const products = parse(r.products, []);
   return {
-    id: r.id, title: r.title, url: r.url.startsWith('/') ? origin + r.url : r.url, poster: r.poster && r.poster.startsWith('/') ? origin + r.poster : r.poster, audience: r.audience, status: r.status,
+    id: r.id, title: r.title, url: abs(r.url), poster: abs(r.poster), audience: r.audience, status: r.status,
     placements: parse(r.placements, []), products, product: products[0] || { title: '', handle: '', price: '' },
     archived: !!r.archived, source: r.source, sort: r.sort, createdAt: r.created_at, views: r.views || 0,
     ctaText: r.cta_text || '', ctaUrl: r.cta_url || '', startsAt: r.starts_at || 0, endsAt: r.ends_at || 0, size: r.size || 0,
@@ -210,7 +213,7 @@ async function enrich(env, videos) {
 async function videosForWidget(env, origin, widget, settings, ctx) {
   const now = Date.now();
   const { results } = await env.DB.prepare(`${VIDEO_SQL} WHERE v.status='live' AND v.archived=0 ORDER BY v.sort ASC, v.created_at DESC`).all();
-  let list = results.map((r) => toVideo(r, origin)).filter((v) => (!v.startsAt || v.startsAt <= now) && (!v.endsAt || v.endsAt > now));
+  let list = results.map((r) => toVideo(r, origin, env.R2_PUBLIC_URL)).filter((v) => (!v.startsAt || v.startsAt <= now) && (!v.endsAt || v.endsAt > now));
   const { product, collection, placement } = ctx;
   if (widget && widget.scope === 'custom') { // hand-picked: only those videos, and nothing at all if none are picked
     list = widget.videoIds.map((id) => list.find((v) => v.id === id)).filter(Boolean);
@@ -332,7 +335,7 @@ async function handle(req, env, ctx) {
   // ---- admin ----
   if (p === '/api/videos' && req.method === 'GET') {
     const { results } = await env.DB.prepare(`${VIDEO_SQL} ORDER BY v.sort ASC, v.created_at DESC`).all();
-    return json({ videos: results.map((r) => toVideo(r, url.origin)) }, 200, cors);
+    return json({ videos: results.map((r) => toVideo(r, url.origin, env.R2_PUBLIC_URL)) }, 200, cors);
   }
   if (p === '/api/videos' && req.method === 'POST') { const id = crypto.randomUUID(); await upsertVideo(env, { ...cleanVideo(await req.json()), id }, true); return json({ id }, 201, cors); }
   if (p === '/api/videos/order' && req.method === 'PUT') {
