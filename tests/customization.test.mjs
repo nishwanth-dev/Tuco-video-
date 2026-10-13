@@ -283,3 +283,35 @@ test('look: the API accepts good colours, fonts and text, and rejects unsafe one
     const r = await mk(bad); assert.equal(r.status, 400, JSON.stringify(bad));
   }
 });
+
+// ---------------- Desktop and mobile are fully independent (banner mode, fit, focus) ----------------
+const BN = (o = {}) => ({ banner: { showCta: true, ...o } });
+run('independent: desktop exact height, mobile shape 1:1 gives 430 x 430 on a 430 px phone', { type: 'banner', global: BN({ heightModeDesktop: 'fixed', desktopHeight: 520, heightModeMobile: 'ratio', aspectPortrait: '1/1' }), device: 'phone430' }, (m) => { near(m.tiles[0].w, 430, 'width'); near(m.tiles[0].h, 430, 'height'); });
+run('independent: the same settings keep the desktop at its exact height', { type: 'banner', global: BN({ heightModeDesktop: 'fixed', desktopHeight: 520, heightModeMobile: 'ratio', aspectPortrait: '1/1' }) }, (m) => near(m.tiles[0].h, 520, 'desktop height'));
+run('independent: desktop shape 2:1, mobile exact 300 (desktop)', { type: 'banner', global: BN({ heightModeDesktop: 'ratio', aspectLandscape: '2/1', heightModeMobile: 'fixed', mobileHeight: 300 }) }, (m) => near(m.tiles[0].h, m.tiles[0].w / 2, 'desktop 2:1', 2));
+run('independent: desktop shape 2:1, mobile exact 300 (mobile)', { type: 'banner', global: BN({ heightModeDesktop: 'ratio', aspectLandscape: '2/1', heightModeMobile: 'fixed', mobileHeight: 300 }), device: 'mobile' }, (m) => near(m.tiles[0].h, 300, 'mobile height'));
+run('independent: the older single mode still applies to both when per-device is empty', { type: 'banner', global: BN({ heightMode: 'ratio', aspectLandscape: '2/1', aspectPortrait: '1/1' }), device: 'mobile' }, (m) => near(m.tiles[0].h, m.tiles[0].w, 'mobile square via the old setting'));
+run('independent: per-device mode beats the older single mode', { type: 'banner', global: BN({ heightMode: 'fixed', desktopHeight: 480, heightModeMobile: 'ratio', aspectPortrait: '1/1' }) }, (m) => near(m.tiles[0].h, 480, 'desktop still exact'));
+run('independent: widget sets its own mobile mode', { type: 'banner', global: BN({ heightMode: 'fixed', mobileHeight: 420 }), overrides: { banner: { heightModeMobile: 'ratio', aspectPortrait: '1/1' } }, device: 'mobile' }, (m) => near(m.tiles[0].h, m.tiles[0].w, 'square on this widget only'));
+run('independent: widget mobile mode leaves its desktop alone', { type: 'banner', global: BN({ heightMode: 'fixed', desktopHeight: 480 }), overrides: { banner: { heightModeMobile: 'ratio', aspectPortrait: '1/1' } } }, (m) => near(m.tiles[0].h, 480, 'desktop exact'));
+run('independent: full screen still wins', { type: 'banner', global: BN({ heightModeMobile: 'ratio', aspectPortrait: '1/1', fullScreen: true }), device: 'mobile' }, (m) => near(m.tiles[0].h, 844, 'viewport height', 2));
+run('independent: theme block shape for mobile does not change desktop', { type: 'banner', global: BN({ heightMode: 'fixed', desktopHeight: 480 }), attrs: { 'data-banner-ratio-mobile': '1/1' } }, (m) => near(m.tiles[0].h, 480, 'desktop unchanged'));
+run('independent: theme block shape for mobile applies on mobile', { type: 'banner', global: BN({ heightMode: 'fixed', mobileHeight: 420 }), attrs: { 'data-banner-ratio-mobile': '1/1' }, device: 'phone430' }, (m) => { near(m.tiles[0].w, 430, 'w'); near(m.tiles[0].h, 430, 'h'); });
+run('independent: theme block exact desktop height does not change mobile', { type: 'banner', global: BN({ heightMode: 'ratio', aspectPortrait: '1/1' }), attrs: { 'data-banner-h-desktop': '600' }, device: 'mobile' }, (m) => near(m.tiles[0].h, m.tiles[0].w, 'mobile stays square'));
+run('independent: banner video fit, desktop contain / mobile cover (desktop)', { type: 'banner', global: BN({ fitDesktop: 'contain', fitMobile: 'cover' }) }, (m) => assert.equal(m.fit, 'contain'));
+run('independent: banner video fit, desktop contain / mobile cover (mobile)', { type: 'banner', global: BN({ fitDesktop: 'contain', fitMobile: 'cover' }), device: 'mobile' }, (m) => assert.equal(m.fit, 'cover'));
+run('independent: banner video fit, mobile contain only', { type: 'banner', global: BN({ fitMobile: 'contain' }), device: 'mobile' }, (m) => assert.equal(m.fit, 'contain'));
+run('independent: banner video fit, mobile contain leaves desktop alone', { type: 'banner', global: BN({ fitMobile: 'contain' }) }, (m) => assert.equal(m.fit, 'cover'));
+run('independent: banner crop focus, desktop top / mobile middle (desktop)', { type: 'banner', global: BN({ focusDesktop: 'top', focusMobile: 'center' }) }, (m) => assert.match(m.objPos, /^50% 0%|center top|50% 0px/));
+run('independent: banner crop focus, desktop top / mobile middle (mobile)', { type: 'banner', global: BN({ focusDesktop: 'top', focusMobile: 'center' }), device: 'mobile' }, (m) => assert.match(m.objPos, /^50% 50%|center center|center$/));
+run('independent: tile video fit, desktop contain / mobile cover (desktop)', { type: 'carousel', global: { carousel: { tileFitDesktop: 'contain', tileFitMobile: 'cover' } } }, (m) => assert.equal(m.fit, 'contain'));
+run('independent: tile video fit, desktop contain / mobile cover (mobile)', { type: 'carousel', global: { carousel: { tileFitDesktop: 'contain', tileFitMobile: 'cover' } }, device: 'mobile' }, (m) => assert.equal(m.fit, 'cover'));
+run('independent: widget fit override per device', { type: 'carousel', global: { carousel: { tileFit: 'cover' } }, overrides: { carousel: { tileFitMobile: 'contain' } }, device: 'mobile' }, (m) => assert.equal(m.fit, 'contain'));
+run('independent: theme block fit for mobile only', { type: 'carousel', attrs: { 'data-tile-fit-mobile': 'contain' } }, (m) => assert.equal(m.fit, 'cover'));
+run('independent: theme block fit for both replaces saved per-device values', { type: 'carousel', global: { carousel: { tileFitMobile: 'cover' } }, attrs: { 'data-tile-fit': 'contain' }, device: 'mobile' }, (m) => assert.equal(m.fit, 'contain'));
+run('independent: theme block device fit beats its own "both" value', { type: 'banner', global: BN(), attrs: { 'data-banner-fit': 'contain', 'data-banner-fit-mobile': 'cover' }, device: 'mobile' }, (m) => assert.equal(m.fit, 'cover'));
+test('independent: the API accepts the per-device settings and rejects junk', async () => {
+  const mk = (o) => api('POST', '/api/widgets', { name: 'Per-device check', type: 'banner', page: 'home', scope: 'custom', videoIds: [], overrides: o });
+  for (const good of [{ banner: { heightModeDesktop: 'fixed', heightModeMobile: 'ratio', fitDesktop: 'contain', fitMobile: 'cover', focusDesktop: 'top', focusMobile: 'bottom' } }, { carousel: { tileFitDesktop: 'contain', tileFitMobile: 'cover' } }]) assert.ok([200, 201].includes((await mk(good)).status), JSON.stringify(good));
+  for (const bad of [{ banner: { heightModeMobile: 'tall' } }, { banner: { fitDesktop: 'stretch' } }, { banner: { focusMobile: 'left' } }, { carousel: { tileFitMobile: 5 } }]) assert.equal((await mk(bad)).status, 400, JSON.stringify(bad));
+});

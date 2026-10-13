@@ -194,7 +194,7 @@
       '--brand': s.brandColor, '--font': s.brandFont || 'Poppins', '--radius': round ? '16px' : '4px', '--btn-radius': round ? '999px' : '4px',
       '--head-color': c.headingColor, '--head-font': c.headingFont || s.brandFont || 'Poppins', '--head-weight': c.headingWeight, '--details-color': c.detailsColor,
       '--feed-bg': c.feedAtcColor, '--feed-fg': c.feedAtcTextColor, '--ov-size': c.overlaySize + '%',
-      '--tw': (mobile ? (c.tileWidthMobile || 160) : (c.tileWidthDesktop || 220)) + 'px', '--tar': ratio((mobile ? c.tileAspectMobile : c.tileAspectDesktop), ratio(c.tileAspect, '9/16')), '--focus': { top: 'center top', bottom: 'center bottom' }[b.focus] || 'center', '--bh': (mobile ? (b.mobileHeight || 480) : (b.desktopHeight || 520)) + 'px', '--bbg': b.background || '#f3f3f3', '--ob': (mobile ? num(sp.bottomOffsetMobile, 84) : num(sp.bottomOffsetDesktop, 20)) + 'px',
+      '--tw': (mobile ? (c.tileWidthMobile || 160) : (c.tileWidthDesktop || 220)) + 'px', '--tar': ratio((mobile ? c.tileAspectMobile : c.tileAspectDesktop), ratio(c.tileAspect, '9/16')), '--focus': { top: 'center top', bottom: 'center bottom' }[(mobile ? b.focusMobile : b.focusDesktop) || b.focus] || 'center', '--bh': (mobile ? (b.mobileHeight || 480) : (b.desktopHeight || 520)) + 'px', '--bbg': b.background || '#f3f3f3', '--ob': (mobile ? num(sp.bottomOffsetMobile, 84) : num(sp.bottomOffsetDesktop, 20)) + 'px',
       '--tile-r': px(dev(c, 'tileRadiusMobile', 'tileRadiusDesktop'), baseR) + 'px', '--gap': px(dev(c, 'tileGapMobile', 'tileGapDesktop'), 12) + 'px', '--pad-x': px(dev(c, 'sidePaddingMobile', 'sidePaddingDesktop'), 16) + 'px',
       '--banner-r': px(dev(b, 'radiusMobile', 'radiusDesktop'), 0) + 'px', '--banner-m': px(dev(b, 'marginMobile', 'marginDesktop'), 0) + 'px', '--banner-max': !mobile && bmax ? bmax + 'px' : 'none',
       '--ssize': sw ? sw + 'px' : 'calc(84px * ' + num(st.sizeFactor, 1) + ')', '--sgap': px(dev(st, 'gapMobile', 'gapDesktop'), -1) >= 0 ? px(dev(st, 'gapMobile', 'gapDesktop'), 0) + 'px' : 'calc(14px * ' + num(st.spacing, 1) + ')',
@@ -397,10 +397,14 @@
     var s = ctx.settings, w = ctx.widget || {};
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
     var banner = type === 'banner';
-    var ar = String((ctx.mobile ? s.banner.aspectPortrait : s.banner.aspectLandscape) || '').replace(':', '/');
+    // Desktop and mobile each have their own height mode ("exact height" or "shape"), video fit and crop focus. The older shared value is the fallback.
+    var bb = s.banner, cc = s.carousel, mob = !!ctx.mobile;
+    var bmode = (mob ? bb.heightModeMobile : bb.heightModeDesktop) || bb.heightMode;
+    var ar = String((mob ? bb.aspectPortrait : bb.aspectLandscape) || '').replace(':', '/');
     if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) ar = ctx.mobile ? '9/16' : '16/9';
-    var fit = banner ? s.banner.fit : s.carousel.tileFit;
-    var cls = type + (banner && s.banner.fullScreen ? ' full' : '') + (banner && s.banner.heightMode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + (s.banner.focus || 'center') : '');
+    var fit = banner ? ((mob ? bb.fitMobile : bb.fitDesktop) || bb.fit) : ((mob ? cc.tileFitMobile : cc.tileFitDesktop) || cc.tileFit);
+    var focusV = (mob ? bb.focusMobile : bb.focusDesktop) || bb.focus || 'center';
+    var cls = type + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
     var head = w.heading && !banner ? '<div class="head"><h2 class="title">' + esc(w.heading) + '</h2></div>' : '';
     root.innerHTML = '<style>' + cssVars(s, { '--ar': ar.replace(':', '/') }, ctx.mobile) + BASE + '</style><div class="' + cls + '">' + head + '<div class="rail"><div class="track">' + list.map(function (v, i) { return tileHTML(v, i, s, type); }).join('') + '</div><button class="arr prev" aria-label="Previous">&#8249;</button><button class="arr next" aria-label="Next">&#8250;</button></div>' +
       (banner && s.banner.showDots && list.length > 1 ? '<div class="dots">' + list.map(function (_, i) { return '<i class="' + (i ? '' : 'on') + '"></i>'; }).join('') + '</div>' : '') + '</div>';
@@ -482,10 +486,13 @@
     // banner: an exact height wins over a ratio; with only a ratio the banner follows that shape
     var bhd = num('data-banner-h-desktop', 100, 1400), bhm = num('data-banner-h-mobile', 100, 1200);
     var brd = ratio('data-banner-ratio-desktop'), brm = ratio('data-banner-ratio-mobile');
-    if (bhd !== null || bhm !== null) { b.heightMode = 'fixed'; put(b, 'desktopHeight', bhd); put(b, 'mobileHeight', bhm); }
-    else if (brd !== null || brm !== null) b.heightMode = 'ratio';
+    // each device decides for itself: an exact height there means "exact height", otherwise a shape there means "shape"
+    if (bhd !== null) { b.heightModeDesktop = 'fixed'; put(b, 'desktopHeight', bhd); } else if (brd !== null) b.heightModeDesktop = 'ratio';
+    if (bhm !== null) { b.heightModeMobile = 'fixed'; put(b, 'mobileHeight', bhm); } else if (brm !== null) b.heightModeMobile = 'ratio';
     put(b, 'aspectLandscape', brd); put(b, 'aspectPortrait', brm);
-    put(b, 'fit', pick('data-banner-fit', ['cover', 'contain'])); put(b, 'focus', pick('data-banner-focus', ['center', 'top', 'bottom']));
+    // a value for "both" replaces what was saved for either device; a device value after it wins
+    var bothDev = function (key, name, allowed) { var v = pick(name, allowed); if (v !== null) { b[key] = v; b[key + 'Desktop'] = ''; b[key + 'Mobile'] = ''; } put(b, key + 'Desktop', pick(name + '-desktop', allowed)); put(b, key + 'Mobile', pick(name + '-mobile', allowed)); };
+    bothDev('fit', 'data-banner-fit', ['cover', 'contain']); bothDev('focus', 'data-banner-focus', ['center', 'top', 'bottom']);
     put(b, 'radiusDesktop', num('data-banner-radius-desktop', 0, 999)); put(b, 'radiusMobile', num('data-banner-radius-mobile', 0, 999));
     put(b, 'marginDesktop', num('data-banner-margin-desktop', 0, 200)); put(b, 'marginMobile', num('data-banner-margin-mobile', 0, 200));
     put(b, 'maxWidthDesktop', num('data-banner-max-desktop', 100, 2400));
@@ -494,7 +501,8 @@
     put(c, 'tileWidthDesktop', num('data-tile-w-desktop', 60, 700)); put(c, 'tileWidthMobile', num('data-tile-w-mobile', 60, 500));
     var both = ratio('data-tile-shape');
     put(c, 'tileAspectDesktop', ratio('data-tile-shape-desktop') || both); put(c, 'tileAspectMobile', ratio('data-tile-shape-mobile') || both);
-    put(c, 'tileFit', pick('data-tile-fit', ['cover', 'contain']));
+    var tf = pick('data-tile-fit', ['cover', 'contain']); if (tf !== null) { c.tileFit = tf; c.tileFitDesktop = ''; c.tileFitMobile = ''; }
+    put(c, 'tileFitDesktop', pick('data-tile-fit-desktop', ['cover', 'contain'])); put(c, 'tileFitMobile', pick('data-tile-fit-mobile', ['cover', 'contain']));
     put(c, 'tileRadiusDesktop', num('data-tile-radius-desktop', 0, 999)); put(c, 'tileRadiusMobile', num('data-tile-radius-mobile', 0, 999));
     put(c, 'tileGapDesktop', num('data-tile-gap-desktop', 0, 80)); put(c, 'tileGapMobile', num('data-tile-gap-mobile', 0, 80));
     put(c, 'sidePaddingDesktop', num('data-tile-pad-desktop', 0, 120)); put(c, 'sidePaddingMobile', num('data-tile-pad-mobile', 0, 120));

@@ -75,7 +75,8 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Tile shape" hint="Shape of each video tile"><Sel v={s.carousel.tileAspect || '9/16'} on={(v) => setIn('carousel', 'tileAspect', v)} opts={[['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
           <Field label="Tile width on desktop" hint="In pixels"><input type="number" min="100" max="600" value={s.carousel.tileWidthDesktop ?? 220} onChange={(e) => setIn('carousel', 'tileWidthDesktop', Number(e.target.value))} /></Field>
           <Field label="Tile width on mobile" hint="In pixels"><input type="number" min="80" max="400" value={s.carousel.tileWidthMobile ?? 160} onChange={(e) => setIn('carousel', 'tileWidthMobile', Number(e.target.value))} /></Field>
-          <Field label="Video fit in tile" hint="Fill the tile (crops edges) or show the whole video"><Sel v={s.carousel.tileFit || 'cover'} on={(v) => setIn('carousel', 'tileFit', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
+          <Field label="Video fit in tile, desktop" hint="Fill the tile (crops edges) or show the whole video"><Sel v={s.carousel.tileFitDesktop || s.carousel.tileFit || 'cover'} on={(v) => setIn('carousel', 'tileFitDesktop', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
+          <Field label="Video fit in tile, mobile"><Sel v={s.carousel.tileFitMobile || s.carousel.tileFit || 'cover'} on={(v) => setIn('carousel', 'tileFitMobile', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
           <Field label="Thumbnail overlay image URL" hint="PNG/JPG shown on top of every thumbnail"><input value={s.carousel.overlayImage} placeholder="https://..." onChange={(e) => setIn('carousel', 'overlayImage', e.target.value)} /></Field>
           <Field label="Thumbnail overlay placement"><Sel v={s.carousel.overlayPlacement} on={(v) => setIn('carousel', 'overlayPlacement', v)} opts={['bottom-right', 'bottom-left', 'top-right', 'top-left']} /></Field>
           <Field label="Thumbnail overlay size (% of width)"><input type="number" min="1" max="100" value={s.carousel.overlaySize} onChange={(e) => setIn('carousel', 'overlaySize', Number(e.target.value))} /></Field>
@@ -97,16 +98,30 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Is Full Screen" hint="Banner fills the screen height"><Toggle on={s.banner.fullScreen} onChange={(v) => setIn('banner', 'fullScreen', v)} /></Field>
           <Field label="Show Call to Action"><Toggle on={s.banner.showCta} onChange={(v) => setIn('banner', 'showCta', v)} /></Field>
           <Field label="Show Navigation Dots"><Toggle on={s.banner.showDots} onChange={(v) => setIn('banner', 'showDots', v)} /></Field>
-          <Field label="Banner height" hint="Follow a shape, or set an exact height in pixels"><Sel v={s.banner.heightMode || 'ratio'} on={(v) => setIn('banner', 'heightMode', v)} opts={[['ratio', 'By aspect ratio'], ['fixed', 'Fixed height']]} /></Field>
-          {(s.banner.heightMode || 'ratio') === 'ratio' ? <>
-            <Field label="Desktop aspect ratio" hint="Used on wide screens"><Sel v={s.banner.aspectLandscape} on={(v) => setIn('banner', 'aspectLandscape', v)} opts={['16/9', '21/9', '2/1', '3/1', '4/3', '1/1']} /></Field>
-            <Field label="Mobile aspect ratio" hint="Used on phones"><Sel v={s.banner.aspectPortrait} on={(v) => setIn('banner', 'aspectPortrait', v)} opts={['9/16', '4/5', '3/4', '1/1', '4/3', '16/9']} /></Field>
-          </> : <>
-            <Field label="Desktop height" hint="In pixels"><input type="number" min="120" max="1200" value={s.banner.desktopHeight ?? 520} onChange={(e) => setIn('banner', 'desktopHeight', Number(e.target.value))} /></Field>
-            <Field label="Mobile height" hint="In pixels"><input type="number" min="120" max="1000" value={s.banner.mobileHeight ?? 480} onChange={(e) => setIn('banner', 'mobileHeight', Number(e.target.value))} /></Field>
-          </>}
-          <Field label="Video fit" hint="Fill the banner (crops edges) or show the whole video with bars"><Sel v={s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fit', v)} opts={[['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']]} /></Field>
-          <Field label="Which part to keep when cropping" hint="Only matters when the video is cropped"><Sel v={s.banner.focus || 'center'} on={(v) => setIn('banner', 'focus', v)} opts={[['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]} /></Field>
+          {(() => {
+            const ratioOpts = (list) => list;
+            const WIDE = [['16/9', 'Wide 16:9'], ['21/9', 'Ultra-wide 21:9'], ['2/1', '2:1'], ['3/1', 'Panorama 3:1'], ['4/3', 'Landscape 4:3'], ['1/1', 'Square 1:1']];
+            const TALL = [['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1 (430 × 430)'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
+            const MODES = [['ratio', 'By shape'], ['fixed', 'Exact height']];
+            const FITS = [['cover', 'Fill (crops edges)'], ['contain', 'Show whole video']];
+            const FOCI = [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']];
+            const modeD = s.banner.heightModeDesktop || s.banner.heightMode || 'ratio';
+            const modeM = s.banner.heightModeMobile || s.banner.heightMode || 'ratio';
+            return <>
+              <Field label="Banner on desktop" hint="Desktop and mobile are set separately. Pick a shape, or an exact height in pixels."><Sel v={modeD} on={(v) => setIn('banner', 'heightModeDesktop', v)} opts={MODES} /></Field>
+              {modeD === 'ratio'
+                ? <Field label="Desktop shape" hint="Used on wide screens"><Sel v={s.banner.aspectLandscape} on={(v) => setIn('banner', 'aspectLandscape', v)} opts={ratioOpts(WIDE)} /></Field>
+                : <Field label="Desktop height" hint="In pixels"><input type="number" min="120" max="1400" value={s.banner.desktopHeight ?? 520} onChange={(e) => setIn('banner', 'desktopHeight', Number(e.target.value))} /></Field>}
+              <Field label="Banner on phones" hint="Pick a shape (Square 1:1 gives 430 × 430 on a 430 px phone), or an exact height."><Sel v={modeM} on={(v) => setIn('banner', 'heightModeMobile', v)} opts={MODES} /></Field>
+              {modeM === 'ratio'
+                ? <Field label="Mobile shape" hint="Used on phones"><Sel v={s.banner.aspectPortrait} on={(v) => setIn('banner', 'aspectPortrait', v)} opts={ratioOpts(TALL)} /></Field>
+                : <Field label="Mobile height" hint="In pixels"><input type="number" min="120" max="1200" value={s.banner.mobileHeight ?? 480} onChange={(e) => setIn('banner', 'mobileHeight', Number(e.target.value))} /></Field>}
+              <Field label="Video fit on desktop" hint="Fill the banner (crops edges) or show the whole video with bars"><Sel v={s.banner.fitDesktop || s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fitDesktop', v)} opts={FITS} /></Field>
+              <Field label="Video fit on mobile"><Sel v={s.banner.fitMobile || s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fitMobile', v)} opts={FITS} /></Field>
+              <Field label="Part kept when cropping, desktop" hint="Only matters when the video is cropped"><Sel v={s.banner.focusDesktop || s.banner.focus || 'center'} on={(v) => setIn('banner', 'focusDesktop', v)} opts={FOCI} /></Field>
+              <Field label="Part kept when cropping, mobile"><Sel v={s.banner.focusMobile || s.banner.focus || 'center'} on={(v) => setIn('banner', 'focusMobile', v)} opts={FOCI} /></Field>
+            </>;
+          })()}
           <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
           {layoutRows('banner')}
         </>}

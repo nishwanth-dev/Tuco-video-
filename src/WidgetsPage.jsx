@@ -150,16 +150,17 @@ const FIT = [['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']];
 // Which settings each widget type can override, and the control to use for each.
 const OV_FIELDS = {
   banner: [
-    ['banner', 'heightMode', 'Banner height', 'sel', [['ratio', 'By aspect ratio'], ['fixed', 'Fixed height']]],
+    ['banner', 'heightModeDesktop', 'Banner on desktop', 'sel', [['ratio', 'By shape'], ['fixed', 'Exact height']]], ['banner', 'heightModeMobile', 'Banner on phones', 'sel', [['ratio', 'By shape'], ['fixed', 'Exact height']]],
     ['banner', 'desktopHeight', 'Desktop height (px)', 'num'], ['banner', 'mobileHeight', 'Mobile height (px)', 'num'],
-    ['banner', 'aspectLandscape', 'Desktop aspect ratio', 'sel', RATIOS_WIDE.map((r) => [r, r])], ['banner', 'aspectPortrait', 'Mobile aspect ratio', 'sel', RATIOS_TALL.map((r) => [r, r])],
-    ['banner', 'fit', 'Video fit', 'sel', FIT], ['banner', 'focus', 'Keep when cropping', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+    ['banner', 'aspectLandscape', 'Desktop aspect ratio', 'sel', RATIOS_WIDE.map((r) => [r, r])], ['banner', 'aspectPortrait', 'Mobile aspect ratio', 'sel', RATIOS_TALL.map((r) => [r, r === '1/1' ? '1/1 (square, e.g. 430 × 430)' : r])],
+    ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
+    ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
     ['banner', 'showDots', 'Navigation dots', 'bool'], ['banner', 'showCta', 'Call to action', 'bool'],
   ],
   carousel: [
     ['carousel', 'tileAspect', 'Tile shape', 'sel', [['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]],
     ['carousel', 'tileWidthDesktop', 'Tile width, desktop (px)', 'num'], ['carousel', 'tileWidthMobile', 'Tile width, mobile (px)', 'num'],
-    ['carousel', 'tileFit', 'Video fit', 'sel', FIT], [null, 'tileType', 'Tile style', 'sel', [['overlay', 'Overlay'], ['below', 'Info below'], ['feed', 'Feed'], ['minimal', 'Minimal']]],
+    ['carousel', 'tileFitDesktop', 'Video fit, desktop', 'sel', FIT], ['carousel', 'tileFitMobile', 'Video fit, mobile', 'sel', FIT], [null, 'tileType', 'Tile style', 'sel', [['overlay', 'Overlay'], ['below', 'Info below'], ['feed', 'Feed'], ['minimal', 'Minimal']]],
     ['carousel', 'ordering', 'Video order', 'sel', [['none', 'As arranged'], ['newest', 'Newest first'], ['shuffle', 'Shuffle']]],
   ],
   stories: [['stories', 'sizeFactor', 'Story size factor', 'num'], ['stories', 'spacing', 'Spacing factor', 'num']],

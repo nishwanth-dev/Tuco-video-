@@ -23,11 +23,15 @@
       {%- if block.settings.banner_ratio_desktop != 'default' %} data-banner-ratio-desktop="{{ block.settings.banner_ratio_desktop }}"{% endif -%}
       {%- if block.settings.banner_radius_desktop != 'default' %} data-banner-radius-desktop="{{ block.settings.banner_radius_desktop }}"{% endif -%}
       {%- if block.settings.banner_margin_desktop != 'default' %} data-banner-margin-desktop="{{ block.settings.banner_margin_desktop }}"{% endif -%}
+      {%- if block.settings.banner_fit_desktop != 'default' %} data-banner-fit-desktop="{{ block.settings.banner_fit_desktop }}"{% endif -%}
+      {%- if block.settings.banner_focus_desktop != 'default' %} data-banner-focus-desktop="{{ block.settings.banner_focus_desktop }}"{% endif -%}
       {%- if block.settings.banner_max_desktop > 0 %} data-banner-max-desktop="{{ block.settings.banner_max_desktop }}"{% endif -%}
       {%- if block.settings.banner_height_mobile > 0 %} data-banner-h-mobile="{{ block.settings.banner_height_mobile }}"{% endif -%}
       {%- if block.settings.banner_ratio_mobile != 'default' %} data-banner-ratio-mobile="{{ block.settings.banner_ratio_mobile }}"{% endif -%}
       {%- if block.settings.banner_radius_mobile != 'default' %} data-banner-radius-mobile="{{ block.settings.banner_radius_mobile }}"{% endif -%}
       {%- if block.settings.banner_margin_mobile != 'default' %} data-banner-margin-mobile="{{ block.settings.banner_margin_mobile }}"{% endif -%}
+      {%- if block.settings.banner_fit_mobile != 'default' %} data-banner-fit-mobile="{{ block.settings.banner_fit_mobile }}"{% endif -%}
+      {%- if block.settings.banner_focus_mobile != 'default' %} data-banner-focus-mobile="{{ block.settings.banner_focus_mobile }}"{% endif -%}
       {%- if block.settings.banner_fit != 'default' %} data-banner-fit="{{ block.settings.banner_fit }}"{% endif -%}
       {%- if block.settings.banner_focus != 'default' %} data-banner-focus="{{ block.settings.banner_focus }}"{% endif -%}
       {%- if block.settings.tile_width_desktop > 0 %} data-tile-w-desktop="{{ block.settings.tile_width_desktop }}"{% endif -%}
@@ -35,11 +39,13 @@
       {%- if block.settings.tile_radius_desktop != 'default' %} data-tile-radius-desktop="{{ block.settings.tile_radius_desktop }}"{% endif -%}
       {%- if block.settings.tile_gap_desktop != 'default' %} data-tile-gap-desktop="{{ block.settings.tile_gap_desktop }}"{% endif -%}
       {%- if block.settings.tile_pad_desktop != 'default' %} data-tile-pad-desktop="{{ block.settings.tile_pad_desktop }}"{% endif -%}
+      {%- if block.settings.tile_fit_desktop != 'default' %} data-tile-fit-desktop="{{ block.settings.tile_fit_desktop }}"{% endif -%}
       {%- if block.settings.tile_width_mobile > 0 %} data-tile-w-mobile="{{ block.settings.tile_width_mobile }}"{% endif -%}
       {%- if block.settings.tile_shape_mobile != 'default' %} data-tile-shape-mobile="{{ block.settings.tile_shape_mobile }}"{% endif -%}
       {%- if block.settings.tile_radius_mobile != 'default' %} data-tile-radius-mobile="{{ block.settings.tile_radius_mobile }}"{% endif -%}
       {%- if block.settings.tile_gap_mobile != 'default' %} data-tile-gap-mobile="{{ block.settings.tile_gap_mobile }}"{% endif -%}
       {%- if block.settings.tile_pad_mobile != 'default' %} data-tile-pad-mobile="{{ block.settings.tile_pad_mobile }}"{% endif -%}
+      {%- if block.settings.tile_fit_mobile != 'default' %} data-tile-fit-mobile="{{ block.settings.tile_fit_mobile }}"{% endif -%}
       {%- if block.settings.tile_fit != 'default' %} data-tile-fit="{{ block.settings.tile_fit }}"{% endif -%}
       {%- if block.settings.story_size_desktop > 0 %} data-story-size-desktop="{{ block.settings.story_size_desktop }}"{% endif -%}
       {%- if block.settings.story_size_mobile > 0 %} data-story-size-mobile="{{ block.settings.story_size_mobile }}"{% endif -%}
@@ -236,6 +242,50 @@
       "default": "default"
     },
     {
+      "type": "select",
+      "id": "banner_fit_desktop",
+      "label": "Banner on desktop: Video fit",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "cover",
+          "label": "Fill (crop to fit)"
+        },
+        {
+          "value": "contain",
+          "label": "Show whole video"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "banner_focus_desktop",
+      "label": "Banner on desktop: Part kept when cropping",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "default"
+    },
+    {
       "type": "range",
       "id": "banner_max_desktop",
       "label": "Banner on desktop: Maximum width",
@@ -357,6 +407,50 @@
         {
           "value": "64",
           "label": "64 px"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "banner_fit_mobile",
+      "label": "Banner on mobile: Video fit",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "cover",
+          "label": "Fill (crop to fit)"
+        },
+        {
+          "value": "contain",
+          "label": "Show whole video"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "banner_focus_mobile",
+      "label": "Banner on mobile: Part kept when cropping",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
         }
       ],
       "default": "default"
@@ -561,6 +655,26 @@
       "default": "default"
     },
     {
+      "type": "select",
+      "id": "tile_fit_desktop",
+      "label": "Video tiles on desktop (carousel): Video fit",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "cover",
+          "label": "Fill (crop to fit)"
+        },
+        {
+          "value": "contain",
+          "label": "Show whole video"
+        }
+      ],
+      "default": "default"
+    },
+    {
       "type": "range",
       "id": "tile_width_mobile",
       "label": "Video tiles on mobile (carousel): Tile width",
@@ -711,6 +825,26 @@
         {
           "value": "64",
           "label": "64 px"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "tile_fit_mobile",
+      "label": "Video tiles on mobile (carousel): Video fit",
+      "options": [
+        {
+          "value": "default",
+          "label": "Use the Loopy setting"
+        },
+        {
+          "value": "cover",
+          "label": "Fill (crop to fit)"
+        },
+        {
+          "value": "contain",
+          "label": "Show whole video"
         }
       ],
       "default": "default"

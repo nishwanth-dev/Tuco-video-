@@ -48,7 +48,7 @@ export async function seedVideos(n = 4) {
   return ids;
 }
 
-export const sizes = { desktop: { width: 1280, height: 800 }, mobile: { width: 390, height: 844 } };
+export const sizes = { desktop: { width: 1280, height: 800 }, mobile: { width: 390, height: 844 }, phone430: { width: 430, height: 932 } };
 
 // Renders one widget in headless Chrome with the given global settings, per-widget overrides and data-* attributes.
 // A fresh widget id is used every time, so the API's 60 second cache never returns an older look.

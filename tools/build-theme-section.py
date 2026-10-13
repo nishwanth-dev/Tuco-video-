@@ -14,6 +14,7 @@ def ratios(vals): return [USE] + [{'value': v, 'label': l} for v, l in vals]
 WIDE = ratios([('16/9', 'Wide 16:9'), ('21/9', 'Ultra-wide 21:9'), ('2/1', '2:1'), ('3/1', 'Panorama 3:1'), ('4/3', 'Landscape 4:3'), ('1/1', 'Square')])
 TALL = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
 TILE_SHAPE = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
+FOCUS = [USE, {'value': 'center', 'label': 'Middle'}, {'value': 'top', 'label': 'Top'}, {'value': 'bottom', 'label': 'Bottom'}]
 FIT = [USE, {'value': 'cover', 'label': 'Fill (crop to fit)'}, {'value': 'contain', 'label': 'Show whole video'}]
 
 # (id, attribute, type, label, extra)  type: text | range | select | color ; attribute None = not sent to the widget
@@ -23,12 +24,16 @@ S = [
  ('banner_ratio_desktop', 'data-banner-ratio-desktop', 'select', 'Shape (used when height is 0)', dict(options=WIDE)),
  ('banner_radius_desktop', 'data-banner-radius-desktop', 'select', 'Corners', dict(options=CORNER)),
  ('banner_margin_desktop', 'data-banner-margin-desktop', 'select', 'Side margin', dict(options=MARGIN)),
+ ('banner_fit_desktop', 'data-banner-fit-desktop', 'select', 'Video fit', dict(options=FIT)),
+ ('banner_focus_desktop', 'data-banner-focus-desktop', 'select', 'Part kept when cropping', dict(options=FOCUS)),
  ('banner_max_desktop', 'data-banner-max-desktop', 'range', 'Maximum width', dict(min=0, max=1600, step=20, unit='px', default=0, info='0 = full width.')),
  ('header', 'Banner on mobile'),
  ('banner_height_mobile', 'data-banner-h-mobile', 'range', 'Height', dict(min=0, max=900, step=20, unit='px', default=0, info='0 uses the Loopy setting. A height wins over the shape below.')),
  ('banner_ratio_mobile', 'data-banner-ratio-mobile', 'select', 'Shape (used when height is 0)', dict(options=TALL)),
  ('banner_radius_mobile', 'data-banner-radius-mobile', 'select', 'Corners', dict(options=CORNER)),
  ('banner_margin_mobile', 'data-banner-margin-mobile', 'select', 'Side margin', dict(options=MARGIN)),
+ ('banner_fit_mobile', 'data-banner-fit-mobile', 'select', 'Video fit', dict(options=FIT)),
+ ('banner_focus_mobile', 'data-banner-focus-mobile', 'select', 'Part kept when cropping', dict(options=FOCUS)),
  ('header', 'Banner on both'),
  ('banner_fit', 'data-banner-fit', 'select', 'Video fit', dict(options=FIT)),
  ('banner_focus', 'data-banner-focus', 'select', 'Part kept when cropping', dict(options=[USE, {'value': 'center', 'label': 'Middle'}, {'value': 'top', 'label': 'Top'}, {'value': 'bottom', 'label': 'Bottom'}])),
@@ -38,12 +43,14 @@ S = [
  ('tile_radius_desktop', 'data-tile-radius-desktop', 'select', 'Corners', dict(options=CORNER)),
  ('tile_gap_desktop', 'data-tile-gap-desktop', 'select', 'Space between tiles', dict(options=GAP)),
  ('tile_pad_desktop', 'data-tile-pad-desktop', 'select', 'Side margin', dict(options=MARGIN)),
+ ('tile_fit_desktop', 'data-tile-fit-desktop', 'select', 'Video fit', dict(options=FIT)),
  ('header', 'Video tiles on mobile (carousel)'),
  ('tile_width_mobile', 'data-tile-w-mobile', 'range', 'Tile width', dict(min=0, max=400, step=10, unit='px', default=0, info='0 uses the Loopy setting.')),
  ('tile_shape_mobile', 'data-tile-shape-mobile', 'select', 'Tile shape', dict(options=TILE_SHAPE)),
  ('tile_radius_mobile', 'data-tile-radius-mobile', 'select', 'Corners', dict(options=CORNER)),
  ('tile_gap_mobile', 'data-tile-gap-mobile', 'select', 'Space between tiles', dict(options=GAP)),
  ('tile_pad_mobile', 'data-tile-pad-mobile', 'select', 'Side margin', dict(options=MARGIN)),
+ ('tile_fit_mobile', 'data-tile-fit-mobile', 'select', 'Video fit', dict(options=FIT)),
  ('header', 'Video tiles on both'),
  ('tile_fit', 'data-tile-fit', 'select', 'Video fit', dict(options=FIT)),
  ('header', 'Stories'),

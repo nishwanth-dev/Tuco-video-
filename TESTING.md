@@ -9,7 +9,7 @@ Nothing here touches the live Loopy, the live database or tucokids.com. Tests ru
 tests/run.sh
 ```
 
-Starts a fresh local API, runs all checks (227), stops it. Covers: admin login and token checks, every video and widget
+Starts a fresh local API, runs all checks (252), stops it. Covers: admin login and token checks, every video and widget
 rule (bad links, long text, negative sizes, injection text, appearance overrides), "Pick videos" with nothing picked,
 scheduled and archived videos, store-only origins (including look-alike domains), event validation and limits,
 analytics counts, the Shopify order webhook (signature, tampering, re-sent orders, store totals), uploads, range
@@ -22,7 +22,7 @@ setting, in all three places (global Customizations, each widget's Appearance, a
 for desktop and mobile separately, and checks sizes, shapes, corners, gaps, margins, heights, colours, fonts, text,
 ordering and switches. It also checks that values for one device never leak to the other (the switch is at 750 px),
 that a widget override beats the global setting and a theme block option beats both, and that junk or extreme
-values (negative, huge, `4/0`, script text) never break the page. 196 checks, including per-widget colours, fonts and text.
+values (negative, huge, `4/0`, script text) never break the page. 221 checks, including per-widget colours, fonts and text and fully separate desktop and mobile banner mode, fit and focus.
 
 ## Browser checks (needs ffmpeg)
 
