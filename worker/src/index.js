@@ -357,6 +357,7 @@ async function handle(req, env, ctx) {
       const dup = await env.DB.prepare('SELECT id FROM videos WHERE source_id=?').bind(String(v.sourceId)).first();
       if (dup) return json({ id: dup.id, skipped: 'already imported' }, 200, cors);
     }
+    const clean = cleanVideo({ ...v, url: v.url }); // check everything first, so a bad entry never leaves a stray file in storage
     let finalUrl = v.url;
     if (v.copy !== false) {
       if (!env.MEDIA) return json({ error: 'Video storage (R2) is not enabled yet. Import with copy:false to link instead.' }, 503, cors);
@@ -368,7 +369,7 @@ async function handle(req, env, ctx) {
       v.size = put?.size || 0;
     }
     const id = crypto.randomUUID();
-    await upsertVideo(env, { ...cleanVideo({ ...v, url: v.url }), url: finalUrl, size: v.size || 0, id, source: v.source || 'import' }, true);
+    await upsertVideo(env, { ...clean, url: finalUrl, size: v.size || 0, id, source: v.source || 'import' }, true);
     return json({ id, url: finalUrl }, 201, cors);
   }
 

@@ -29,7 +29,19 @@
   var ytEmbed = function (id, controls, quiet) { return 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=' + (controls ? 1 : 0) + (quiet ? '&disablekb=1&fs=0&iv_load_policy=3' : ''); };
   // YouTube draws its own title bar and buttons while it loads. Keep each frame invisible until it reports "playing".
   var ytFrames = [];
-  function ytShow(fr) {
+  function ytPlay(fr) { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (x) { /* ignore */ } }
+  function inView(el) { var r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 0) && r.right > 0 && r.left < (window.innerWidth || 0); }
+  // Browsers pause silent autoplay video in background tabs. These tiles cannot be paused by visitors, so any pause is resumed.
+  function resumeAll() {
+    ytFrames = ytFrames.filter(function (f) { return f.isConnected; });
+    ytFrames.forEach(function (f) { if (f.__auto && f.getAttribute('src') && inView(f)) ytPlay(f); });
+    resumers.forEach(function (fn) { try { fn(); } catch (x) { /* ignore */ } });
+  }
+  var resumers = [];
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { resumeAll(); setTimeout(resumeAll, 600); } });
+  window.addEventListener('focus', function () { resumeAll(); });
+  function ytShow(fr, auto) {
+    if (auto) fr.__auto = 1;
     fr.classList.remove('on'); fr.__p = 0;
     if (!fr.__w) {
       fr.__w = 1; ytFrames.push(fr);
@@ -45,6 +57,7 @@
       var d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (x) { return; }
       if (!d) return;
       var st = d.event === 'onStateChange' ? d.info : d.event === 'infoDelivery' && d.info ? d.info.playerState : null;
+      if (st === 2 && !document.hidden) { ytFrames.forEach(function (f) { if (f.__auto && f.__p && f.contentWindow === e.source) setTimeout(function () { if (!document.hidden && f.isConnected) ytPlay(f); }, 250); }); return; }
       if (st !== 1) return;
       ytFrames = ytFrames.filter(function (f) { return f.isConnected; });
       ytFrames.forEach(function (f) { if (f.contentWindow === e.source && !f.__p) { f.__p = 1; clearTimeout(f.__t); f.__t = setTimeout(function () { f.classList.add('on'); }, 2500); } });
@@ -314,6 +327,11 @@
   // Respect reduced-motion and data-saver: show posters only, load video when tapped.
   var calm = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || !!(navigator.connection && navigator.connection.saveData);
   function lazyVideos(root, ctx) {
+    root.addEventListener('pause', function (e) {
+      var v = e.target;
+      if (v && v.tagName === 'VIDEO' && v.__want && !calm) setTimeout(function () { if (v.__want && v.paused && !document.hidden) v.play().catch(function () {}); }, 200);
+    }, true);
+    resumers.push(function () { root.querySelectorAll('video').forEach(function (v) { if (v.__want && v.paused && !calm) v.play().catch(function () {}); }); });
     // A video that cannot be loaded (deleted file, expired link) would leave an empty box, so its tile is removed.
     root.addEventListener('error', function (e) {
       var t = e.target;
@@ -325,10 +343,11 @@
       entries.forEach(function (e) {
         var vid = e.target;
         if (e.isIntersecting) {
+          if (vid.tagName === 'VIDEO') vid.__want = true;
           if (vid.tagName === 'VIDEO' && !calm) { if (!vid.src) vid.src = vid.getAttribute('data-src') + '#t=0.1'; vid.play().catch(function () {}); }
-          if (vid.tagName === 'IMG' && !calm) { var fr = vid.nextElementSibling; if (fr && fr.tagName === 'IFRAME' && !fr.getAttribute('src')) { fr.src = ytEmbed(fr.getAttribute('data-yt'), false, true); ytShow(fr); } }
+          if (vid.tagName === 'IMG' && !calm) { var fr = vid.nextElementSibling; if (fr && fr.tagName === 'IFRAME' && !fr.getAttribute('src')) { fr.src = ytEmbed(fr.getAttribute('data-yt'), false, true); ytShow(fr, true); } }
           if (!vid.__seen) { vid.__seen = 1; track(ctx, { type: 'impression', videoId: vid.getAttribute('data-id') }); }
-        } else if (vid.tagName === 'VIDEO') vid.pause();
+        } else if (vid.tagName === 'VIDEO') { vid.__want = false; vid.pause(); }
         else if (vid.tagName === 'IMG') { var f2 = vid.nextElementSibling; if (f2 && f2.tagName === 'IFRAME') f2.removeAttribute('src'); }
       });
     }, { rootMargin: '200px' });
@@ -430,7 +449,7 @@
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' }), v = list[0];
     if (ytId(v.url)) {
       root.innerHTML = '<style>' + cssVars(ctx.settings) + BASE + '</style><div class="gal" style="background:#f3f3f3 url(\'' + esc(U(thumbOf(v))) + '\') center/cover"><iframe src="' + ytEmbed(ytId(v.url), false, true) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>';
-      var gf = root.querySelector('iframe'); if (gf) ytShow(gf);
+      var gf = root.querySelector('iframe'); if (gf) ytShow(gf, true);
       track(ctx, { type: 'play', videoId: v.id });
       return;
     }
