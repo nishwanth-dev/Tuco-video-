@@ -247,7 +247,7 @@ if len(sys.argv) >= 4:
 @@SCHEMA@@
 {% endschema %}
 """
-    open(sys.argv[2], 'w').write(BLOCK.replace('@@ATTRS@@', attrs_for('block')).replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps(block_schema, indent=2)))
+    # The all-in-one app block was retired: each feature has its own block below (the file path given is only used to find the blocks folder).
     # One app block per feature, so the theme editor shows only the options that matter for it.
     import os
     # Plain words for the per-feature blocks, so people who do not write code can follow them.
@@ -343,4 +343,4 @@ if len(sys.argv) >= 4:
 {% endschema %}
 """
     open(sys.argv[3], 'w').write(EMBED.replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps(embed_schema, indent=2)))
-    print(f'wrote app block ({sum(1 for x in block_settings if x.get("id"))} settings) and app embed')
+    print('wrote the feature blocks and app embed')
