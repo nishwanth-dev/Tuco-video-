@@ -10,7 +10,7 @@ const TYPES = {
   stories: ['Video Stories', 'Instagram-style stories with a fullscreen player'],
   banner: ['Banners', 'Full-width video banner with a call to action'],
   spotlight: ['Spotlight', 'Featured video that floats in a corner'],
-  feature: ['Video section', 'A heading beside one video, stacked on phones (like Tara Mom Speak)'],
+  feature: ['Video section', 'One portrait video for a section you designed in your theme (sets the video size and shape)'],
   floating: ['Floating Widget', 'Small floating video on every page'],
   gallery: ['Media Gallery Video', "A tagged product's video inside its image gallery"],
 };
@@ -73,7 +73,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const live = videos.filter((v) => v.status === 'live' && !v.archived);
   const toggleVid = (id) => set('videoIds', w.videoIds.includes(id) ? w.videoIds.filter((x) => x !== id) : [...w.videoIds, id]);
   const moveVid = (i, d) => setW((o) => { const n = [...o.videoIds]; const j = i + d; if (j < 0 || j >= n.length) return o; [n[i], n[j]] = [n[j], n[i]]; return { ...o, videoIds: n }; });
-  const showHeading = ['carousel', 'feature'].includes(w.type);
+  const showHeading = ['carousel'].includes(w.type);
   const isProduct = w.page === 'product';
   const isColl = w.page === 'collection';
   const loadProds = () => !prods.length && searchProducts('').then(setProds).catch(() => {});
@@ -163,7 +163,7 @@ function LivePreview({ w, videos, settings }) {
     el.replaceChildren();
     const host = document.createElement('div');
     el.appendChild(host);
-    try { window.TucoVideo.render(host, { settings: mergeOv(settings, w.overrides), widget: { id: 'preview', type: w.type, heading: w.heading, overrides: w.overrides || {} }, videos: shown }, { preview: true, device }); } catch { /* the preview is only a convenience */ }
+    try { window.TucoVideo.render(host, { settings: mergeOv(settings, w.overrides), widget: { id: 'preview', type: w.type, heading: w.heading || (w.type === 'feature' ? 'Your heading goes here' : ''), overrides: w.overrides || {} }, videos: shown }, { preview: true, device }); } catch { /* the preview is only a convenience */ }
   }, [key, settings]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="lab">Preview
@@ -229,16 +229,10 @@ OV_FIELDS.floating = OV_FIELDS.spotlight;
 // "Video section": the heading and layout settings first, then the video box uses the banner settings (portrait by default).
 const FEATURE_RATIOS = [['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
 OV_FIELDS.feature = [
-  ['feature', 'videoSide', 'Video position on desktop', 'sel', [['right', 'Right of the heading'], ['left', 'Left of the heading']]],
-  ['feature', 'videoWidthDesktop', 'Video width on desktop (% of the section, 25 to 75)', 'num'],
-  ['feature', 'headingSizeDesktop', 'Heading size, desktop (px)', 'num'], ['feature', 'headingSizeMobile', 'Heading size, mobile (px)', 'num'],
-  ['feature', 'headingColor', 'Heading colour', 'color'], ['feature', 'headingFont', 'Heading font', 'font'],
-  ['feature', 'background', 'Section background colour', 'color'],
   ['feature', 'shapeDesktop', 'Video shape, desktop', 'sel', FEATURE_RATIOS], ['feature', 'shapeMobile', 'Video shape, mobile', 'sel', FEATURE_RATIOS],
   ...NEW_LAYOUT.feature,
   ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
-  [null, 'brandColor', 'Highlight colour', 'color'],
 ];
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.

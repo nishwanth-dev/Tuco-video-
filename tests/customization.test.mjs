@@ -363,3 +363,16 @@ test('video section: the video can go on the left and the shape can change', { s
   const m = await featureRead('desktop', { feature: { videoSide: 'left', videoWidthDesktop: 50 }, banner: { aspectLandscape: '1/1' } });
   assert.ok(m.tr <= m.hx + 1, 'video is left of the heading'); near(m.tw / m.th, 1, 'square', 0.02);
 });
+
+test('video section: with no heading it is just the video, as wide as the space it is given', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const w = await api('POST', '/api/widgets', { name: 'QA video only ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: '', overrides: {} });
+  assert.ok(w.status < 300, JSON.stringify(w.json));
+  const page = await browser.newPage();
+  await page.setViewport({ width: 700, height: 900, deviceScaleFactor: 1, isMobile: false });
+  try {
+    await page.goto(`http://localhost:${PORT}/page?w=${w.json.id}&attrs=%7B%7D`, { waitUntil: 'load' });
+    await page.waitForFunction(() => { const h = document.querySelector('[data-tuco-video]'); const v = h && h.shadowRoot && h.shadowRoot.querySelector('.v > div'); return v && v.shadowRoot && v.shadowRoot.querySelector('.tile'); }, { timeout: 10000 });
+    const m = await page.evaluate(() => { const h = document.querySelector('[data-tuco-video]'); const sr = h.shadowRoot; const t = sr.querySelector('.v > div').shadowRoot.querySelector('.tile').getBoundingClientRect(); return { host: h.getBoundingClientRect().width, tw: t.width, th: t.height, heading: !!sr.querySelector('.h') }; });
+    assert.equal(m.heading, false); near(m.tw, m.host, 'fills its column', 2); near(m.tw / m.th, 4 / 5, 'phone-width screens use 4:5', 0.02);
+  } finally { await page.close(); }
+});

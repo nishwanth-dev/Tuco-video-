@@ -433,16 +433,18 @@
     var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
     var hex = function (c, d) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : d; };
     var num = function (v, d) { v = Number(v); return isFinite(v) && v >= 0 ? v : d; };
+    // Without a heading the widget is just the video, sized to the column the theme gives it. The admin preview adds an example heading beside it.
+    var heading = w.heading || (ctx.preview ? 'Your heading goes here' : '');
     var left = f.videoSide === 'left';
-    var share = Math.min(75, Math.max(25, num(f.videoWidthDesktop, 45)));
+    var share = heading ? Math.min(75, Math.max(25, num(f.videoWidthDesktop, 45))) : 100;
     var pad = mob ? num(f.paddingMobile, 20) : num(f.paddingDesktop, 40);
     var hs = mob ? num(f.headingSizeMobile, 28) : num(f.headingSizeDesktop, 48);
     var font = String(f.headingFont || '').replace(/[^\w .,'-]/g, '');
-    var css = ':host{display:block}.ft{box-sizing:border-box;padding:' + pad + 'px 0;background:' + hex(f.background, 'transparent') + '}' +
+    var css = ':host{display:block}.ft{box-sizing:border-box;padding:' + (heading ? pad : 0) + 'px 0;background:' + hex(f.background, 'transparent') + '}' +
       '.row{display:flex;align-items:center;gap:' + (mob ? 16 : num(f.gapDesktop, 40)) + 'px;flex-direction:' + (mob ? 'column' : left ? 'row-reverse' : 'row') + '}' +
       '.h{margin:0;flex:1;min-width:0;font-size:' + hs + 'px;line-height:1.15;color:' + hex(f.headingColor, '#4d4747') + ';text-align:' + (mob ? 'center' : 'left') + ';font-family:' + (font ? "'" + font + "'," : '') + 'inherit;padding:0 ' + (mob ? 16 : 24) + 'px}' +
-      '.v{min-width:0;width:' + (mob ? '100%' : share + '%') + ';flex:' + (mob ? '0 0 auto' : '0 0 ' + share + '%') + '}';
-    root.innerHTML = '<style>' + css + '</style><div class="ft"><div class="row">' + (w.heading ? '<h2 class="h">' + esc(w.heading) + '</h2>' : '') + '<div class="v"></div></div></div>';
+      '.v{min-width:0;width:' + (mob || !heading ? '100%' : share + '%') + ';flex:' + (mob || !heading ? '0 0 auto' : '0 0 ' + share + '%') + '}';
+    root.innerHTML = '<style>' + css + '</style><div class="ft"><div class="row">' + (heading ? '<h2 class="h">' + esc(heading) + '</h2>' : '') + '<div class="v"></div></div></div>';
     var host = document.createElement('div');
     root.querySelector('.v').appendChild(host);
     // The video box follows the banner settings; a portrait box is the default for this layout.

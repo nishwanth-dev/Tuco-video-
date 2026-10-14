@@ -126,16 +126,9 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           {layoutRows('banner')}
         </>}
         {sec === 'feature' && <>
-          <p className="muted small">A heading beside one video, stacked on phones (like the Tara Mom Speak section). Create one under Homepage, Collection Pages or Pages, then change any of this for just that widget in its Appearance panel.</p>
-          <Field label="Video position on desktop"><Sel v={s.feature.videoSide} on={(v) => setIn('feature', 'videoSide', v)} opts={[['right', 'Right of the heading'], ['left', 'Left of the heading']]} /></Field>
-          <Field label="Video width on desktop" hint="Percent of the section, 25 to 75"><input type="number" min="25" max="75" value={s.feature.videoWidthDesktop} onChange={(e) => setIn('feature', 'videoWidthDesktop', Number(e.target.value))} /></Field>
+          <p className="muted small">For a section you designed in your theme (heading, background and layout live there). Loopy only supplies the video and its size. The preview shows an example heading beside it. Create one under Homepage, Collection Pages or Pages, paste its widget ID into your section, and change any of this for just that widget in its Appearance panel.</p>
           <Field label="Video shape on desktop"><Sel v={s.feature.shapeDesktop} on={(v) => setIn('feature', 'shapeDesktop', v)} opts={[['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
           <Field label="Video shape on phones"><Sel v={s.feature.shapeMobile} on={(v) => setIn('feature', 'shapeMobile', v)} opts={[['4/5', 'Portrait 4:5'], ['5/6', 'Portrait 5:6'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
-          <Field label="Heading size on desktop" hint="Pixels"><input type="number" min="16" max="120" value={s.feature.headingSizeDesktop} onChange={(e) => setIn('feature', 'headingSizeDesktop', Number(e.target.value))} /></Field>
-          <Field label="Heading size on phones" hint="Pixels"><input type="number" min="14" max="80" value={s.feature.headingSizeMobile} onChange={(e) => setIn('feature', 'headingSizeMobile', Number(e.target.value))} /></Field>
-          <Field label="Heading colour"><Color v={s.feature.headingColor} on={(v) => setIn('feature', 'headingColor', v)} /></Field>
-          <Field label="Heading font" hint="A font your theme already loads. Empty uses the page font"><input value={s.feature.headingFont || ''} onChange={(e) => setIn('feature', 'headingFont', e.target.value)} /></Field>
-          <Field label="Section background colour" hint="Leave empty for no colour (the page shows through)"><Color v={s.feature.background || ''} on={(v) => setIn('feature', 'background', v)} /></Field>
           {layoutRows('feature')}
         </>}
         {sec === 'spotlight' && <>
