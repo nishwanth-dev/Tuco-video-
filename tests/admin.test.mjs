@@ -125,3 +125,22 @@ test('products page: a product with two tagged videos can still have its tagged 
   assert.deepEqual(order, [idOf(before[1]), idOf(before[0])], 'the swapped order is stored');
   await page.close();
 });
+
+test('customizations: Discard changes goes back to what is saved, and Reset puts a section on the defaults', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const saved = (await api('GET', '/api/settings')).json.settings.brandColor;
+  const page = await open('custom');
+  const colour = () => page.evaluate(() => document.querySelector('.cform .colr input').value);
+  assert.equal(await colour(), saved);
+  await page.evaluate(() => { const i = document.querySelector('.cform .colr input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '#123456'); i.dispatchEvent(new Event('input', { bubbles: true })); });
+  await sleep(300);
+  assert.equal(await colour(), '#123456'); assert.match(await page.evaluate(() => document.querySelector('.chead').innerText), /Unsaved changes/);
+  assert.ok(await clickText(page, '.chead button', 'Discard changes')); await sleep(300);
+  assert.equal(await colour(), saved, 'back to the saved colour');
+  assert.equal((await api('GET', '/api/settings')).json.settings.brandColor, saved, 'nothing was saved');
+  assert.doesNotMatch(await page.evaluate(() => document.querySelector('.chead').innerText), /Unsaved changes/);
+  page.once('dialog', (d) => d.accept());
+  assert.ok(await clickText(page, '.resetrow button', 'Reset this section')); await sleep(300);
+  assert.equal(await colour(), '#ffd94a', 'the default Loopy colour');
+  assert.match(await page.evaluate(() => document.querySelector('.chead').innerText), /Unsaved changes|Saved/);
+  await page.close();
+});

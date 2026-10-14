@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { saveSettings } from './api.js';
 import { Field, Toggle, Scaled } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
+import { DEFAULTS } from '../worker/src/defaults.js';
 import { NEW_LAYOUT } from './layoutSpec.js';
 
 const SECTIONS = [
@@ -19,6 +20,14 @@ export default function Customizations({ settings, videos, loadSettings, setErro
   const dirty = JSON.stringify(s) !== JSON.stringify(settings);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
   const setIn = (g, k, v) => setS((o) => ({ ...o, [g]: { ...o[g], [k]: v } }));
+  // Puts the section being viewed back to the built-in defaults (still unsaved until Save changes).
+  const ROOT_KEYS = { brand: ['brandColor', 'brandFont', 'border', 'showViews', 'shopNowText', 'showAtc', 'showPrice'], tile: ['tileType', 'cartAction'] };
+  const resetSection = () => setS((o) => {
+    const next = { ...o };
+    if (ROOT_KEYS[sec]) ROOT_KEYS[sec].forEach((k) => { next[k] = DEFAULTS[k]; });
+    else if (DEFAULTS[sec]) next[sec] = JSON.parse(JSON.stringify(DEFAULTS[sec]));
+    return next;
+  });
   // Warn before leaving the page with unsaved changes.
   useEffect(() => {
     if (!dirty) return undefined;
@@ -46,7 +55,8 @@ export default function Customizations({ settings, videos, loadSettings, setErro
         {SECTIONS.map(([id, label]) => <button key={id} className={'cnav' + (id === sec ? ' on' : '')} onClick={() => setSec(id)}>{label}</button>)}
       </div>
       <div className="cform">
-        <div className="chead"><h2>{SECTIONS.find((x) => x[0] === sec)[1]}</h2><div className="row">{dirty && <span className="unsaved">Unsaved changes</span>}<button className="btn" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving...' : dirty ? 'Save changes' : 'Saved'}</button></div></div>
+        <div className="chead"><h2>{SECTIONS.find((x) => x[0] === sec)[1]}</h2><div className="row">{dirty && <span className="unsaved">Unsaved changes</span>}{dirty && <button className="btn ghost" disabled={saving} onClick={() => setS(settings)}>Discard changes</button>}<button className="btn" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving...' : dirty ? 'Save changes' : 'Saved'}</button></div></div>
+        <p className="resetrow"><button type="button" className="link" disabled={saving} onClick={() => { if (confirm('Put this section back to the Loopy defaults? Nothing is saved until you press Save changes.')) resetSection(); }}>Reset this section to the Loopy defaults</button></p>
         {sec === 'brand' && <>
           <Field label="Brand Theme Color" hint="Sets the color of buttons and highlights"><Color v={s.brandColor} on={(v) => set('brandColor', v)} /></Field>
           <Field label="Brand Theme Font" hint="Use a font your theme already loads"><input value={s.brandFont} onChange={(e) => set('brandFont', e.target.value)} /></Field>
