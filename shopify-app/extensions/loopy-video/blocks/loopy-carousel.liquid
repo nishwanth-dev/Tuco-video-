@@ -31,7 +31,6 @@
       {%- if block.settings.tile_gap_mobile != 'default' %} data-tile-gap-mobile="{{ block.settings.tile_gap_mobile }}"{% endif -%}
       {%- if block.settings.tile_pad_mobile != 'default' %} data-tile-pad-mobile="{{ block.settings.tile_pad_mobile }}"{% endif -%}
       {%- if block.settings.tile_fit_mobile != 'default' %} data-tile-fit-mobile="{{ block.settings.tile_fit_mobile }}"{% endif -%}
-      {%- if block.settings.tile_fit != 'default' %} data-tile-fit="{{ block.settings.tile_fit }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
       {%- if block.settings.font != blank %} data-font="{{ block.settings.font | escape }}"{% endif -%}
       {%- if block.settings.button_text != blank %} data-button-text="{{ block.settings.button_text | escape }}"{% endif -%}
@@ -67,57 +66,57 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Row of video tiles for product pages, collections and pages. Copy the widget ID from Loopy (widget page, then Get embed code)."
+      "content": "Row of video tiles for product pages, collections and pages. Everything below is optional except the widget ID. Leave a setting on Default to use what you set in Loopy."
     },
     {
       "type": "text",
       "id": "widget_id",
       "label": "Loopy widget ID",
-      "info": "Looks like wgt_ab12cd34"
+      "info": "In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_"
     },
     {
       "type": "text",
       "id": "heading",
-      "label": "Heading (optional)",
-      "info": "Shown above the tiles."
+      "label": "Heading above the videos (optional)",
+      "info": "For example: Real moms, real results."
     },
     {
       "type": "text",
       "id": "product_handle",
-      "label": "Product handle (optional)",
-      "info": "Leave empty to use the product of the page it is on."
+      "label": "Show a specific product (optional)",
+      "info": "Leave empty on a product page. Otherwise type the last part of the product link, for example hair-oil-for-kids."
     },
     {
       "type": "text",
       "id": "collection_handle",
-      "label": "Collection handle (optional)",
-      "info": "Leave empty to use the collection of the page it is on."
+      "label": "Show a specific collection (optional)",
+      "info": "Leave empty on a collection page. Otherwise type the last part of the collection link."
     },
     {
       "type": "text",
       "id": "page_handle",
-      "label": "Page handle (optional)",
-      "info": "Leave empty to use the page it is on."
+      "label": "Show a specific page (optional)",
+      "info": "Leave empty on a normal page. Otherwise type the last part of the page link."
     },
     {
       "type": "range",
       "id": "tile_width_desktop",
-      "label": "Video tiles on desktop (carousel): Tile width",
+      "label": "Desktop: Width",
       "min": 0,
       "max": 500,
       "step": 10,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "select",
       "id": "tile_shape_desktop",
-      "label": "Video tiles on desktop (carousel): Tile shape",
+      "label": "Desktop: Shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "9/16",
@@ -149,11 +148,11 @@
     {
       "type": "select",
       "id": "tile_radius_desktop",
-      "label": "Video tiles on desktop (carousel): Corners",
+      "label": "Desktop: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -181,11 +180,11 @@
     {
       "type": "select",
       "id": "tile_gap_desktop",
-      "label": "Video tiles on desktop (carousel): Space between tiles",
+      "label": "Desktop: Space between",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -221,11 +220,11 @@
     {
       "type": "select",
       "id": "tile_pad_desktop",
-      "label": "Video tiles on desktop (carousel): Side margin",
+      "label": "Desktop: Space on the left and right",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -257,42 +256,43 @@
     {
       "type": "select",
       "id": "tile_fit_desktop",
-      "label": "Video tiles on desktop (carousel): Video fit",
+      "label": "Desktop: If the video is a different shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "cover",
-          "label": "Fill (crop to fit)"
+          "label": "Fill the space (edges may be trimmed)"
         },
         {
           "value": "contain",
-          "label": "Show whole video"
+          "label": "Show the whole video"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Fill the space looks best; the whole video may show empty bars."
     },
     {
       "type": "range",
       "id": "tile_width_mobile",
-      "label": "Video tiles on mobile (carousel): Tile width",
+      "label": "Mobile: Width",
       "min": 0,
       "max": 400,
       "step": 10,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "select",
       "id": "tile_shape_mobile",
-      "label": "Video tiles on mobile (carousel): Tile shape",
+      "label": "Mobile: Shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "9/16",
@@ -324,11 +324,11 @@
     {
       "type": "select",
       "id": "tile_radius_mobile",
-      "label": "Video tiles on mobile (carousel): Corners",
+      "label": "Mobile: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -356,11 +356,11 @@
     {
       "type": "select",
       "id": "tile_gap_mobile",
-      "label": "Video tiles on mobile (carousel): Space between tiles",
+      "label": "Mobile: Space between",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -396,11 +396,11 @@
     {
       "type": "select",
       "id": "tile_pad_mobile",
-      "label": "Video tiles on mobile (carousel): Side margin",
+      "label": "Mobile: Space on the left and right",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -432,59 +432,41 @@
     {
       "type": "select",
       "id": "tile_fit_mobile",
-      "label": "Video tiles on mobile (carousel): Video fit",
+      "label": "Mobile: If the video is a different shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "cover",
-          "label": "Fill (crop to fit)"
+          "label": "Fill the space (edges may be trimmed)"
         },
         {
           "value": "contain",
-          "label": "Show whole video"
+          "label": "Show the whole video"
         }
       ],
-      "default": "default"
-    },
-    {
-      "type": "select",
-      "id": "tile_fit",
-      "label": "Video tiles on both: Video fit",
-      "options": [
-        {
-          "value": "default",
-          "label": "Use the Loopy setting"
-        },
-        {
-          "value": "cover",
-          "label": "Fill (crop to fit)"
-        },
-        {
-          "value": "contain",
-          "label": "Show whole video"
-        }
-      ],
-      "default": "default"
+      "default": "default",
+      "info": "Fill the space looks best; the whole video may show empty bars."
     },
     {
       "type": "color",
       "id": "brand_color",
-      "label": "Button and highlight colour"
+      "label": "Button and highlight colour",
+      "info": "Leave empty to use the colour set in Loopy."
     },
     {
       "type": "text",
       "id": "font",
-      "label": "Font name",
-      "info": "A font your theme already loads, for example Poppins. Empty uses the Loopy setting."
+      "label": "Text font (optional)",
+      "info": "A font name your theme already uses, for example Poppins. Leave empty for the default."
     },
     {
       "type": "text",
       "id": "button_text",
-      "label": "Button text",
-      "info": "For example Shop now. Empty uses the Loopy setting."
+      "label": "Button text (optional)",
+      "info": "For example: Shop now. Leave empty for the default."
     },
     {
       "type": "color",
@@ -494,23 +476,24 @@
     {
       "type": "text",
       "id": "heading_font",
-      "label": "Heading font",
-      "info": "Empty uses the font above."
+      "label": "Heading font (optional)",
+      "info": "Leave empty to use the text font."
     },
     {
       "type": "color",
       "id": "text_color",
-      "label": "Product text colour (info below tiles)"
+      "label": "Product text colour",
+      "info": "The text under each video."
     },
     {
       "type": "color",
       "id": "feed_button_color",
-      "label": "Feed add-to-cart button colour"
+      "label": "Add-to-cart button colour"
     },
     {
       "type": "color",
       "id": "feed_button_text_color",
-      "label": "Feed add-to-cart text colour"
+      "label": "Add-to-cart button text colour"
     },
     {
       "type": "range",
@@ -519,7 +502,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Top padding",
+      "label": "Space above",
       "default": 20
     },
     {
@@ -529,7 +512,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Bottom padding",
+      "label": "Space below",
       "default": 20
     }
   ]

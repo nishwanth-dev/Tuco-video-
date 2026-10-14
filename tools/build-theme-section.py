@@ -250,6 +250,35 @@ if len(sys.argv) >= 4:
     open(sys.argv[2], 'w').write(BLOCK.replace('@@ATTRS@@', attrs_for('block')).replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps(block_schema, indent=2)))
     # One app block per feature, so the theme editor shows only the options that matter for it.
     import os
+    # Plain words for the per-feature blocks, so people who do not write code can follow them.
+    def plain_opts(opts):
+        names = {'Use the Loopy setting': 'Default (set in Loopy)', 'Fill (crop to fit)': 'Fill the space (edges may be trimmed)', 'Show whole video': 'Show the whole video'}
+        return [{'value': o['value'], 'label': names.get(o['label'], o['label'])} for o in opts]
+    PLAIN = {  # id suffix after the device -> (label, help)
+      'height': ('Fixed height', 'Leave at 0 to size automatically from the shape below.'),
+      'ratio': ('Shape', 'Used when the fixed height is 0.'),
+      'radius': ('Corner roundness', ''), 'margin': ('Space on the left and right', ''), 'pad': ('Space on the left and right', ''),
+      'fit': ('If the video is a different shape', 'Fill the space looks best; the whole video may show empty bars.'),
+      'focus': ('Part to keep when trimmed', 'Which part of the video stays visible when its edges are trimmed.'),
+      'max': ('Maximum width', 'Leave at 0 for the full width.'), 'width': ('Width', 'Leave at 0 to use the default.'),
+      'shape': ('Shape', ''), 'gap': ('Space between', ''), 'size': ('Size', 'Leave at 0 to use the default.'),
+    }
+    EXACT = {
+      'brand_color': ('Button and highlight colour', 'Leave empty to use the colour set in Loopy.'),
+      'font': ('Text font (optional)', 'A font name your theme already uses, for example Poppins. Leave empty for the default.'),
+      'button_text': ('Button text (optional)', 'For example: Shop now. Leave empty for the default.'),
+      'heading_color': ('Heading colour', ''), 'heading_font': ('Heading font (optional)', 'Leave empty to use the text font.'),
+      'text_color': ('Product text colour', 'The text under each video.'), 'feed_button_color': ('Add-to-cart button colour', ''),
+      'feed_button_text_color': ('Add-to-cart button text colour', ''), 'story_ring_color': ('Circle border colour', ''),
+      'story_label_color': ('Name colour under the circle', ''), 'banner_bg': ('Background behind the banner', 'Shows if the video does not fill the banner.'),
+    }
+    def plain(sid, label, info):
+        if sid in EXACT: return EXACT[sid]
+        dev = 'Desktop' if sid.endswith('_desktop') else 'Mobile' if sid.endswith('_mobile') else ''
+        key = sid.rsplit('_', 1)[0] if sid.endswith(('_desktop', '_mobile')) else sid
+        key = key.split('_')[-1]
+        if key in PLAIN: return (f'{dev}: ' if dev else '') + PLAIN[key][0], PLAIN[key][1] or info
+        return (f'{dev}: ' if dev else '') + label, info
     COMMON = ('brand_color', 'font', 'button_text')
     SPECS = [
       ('Loopy Banner', 'loopy-banner', lambda i: i.startswith('banner_') or i in ('button_text', 'brand_color'), False, False,
@@ -263,28 +292,31 @@ if len(sys.argv) >= 4:
     ]
     for bname, bhandle, keep, with_heading, with_handles, blurb in SPECS:
         bs, grp = [
-          {'type': 'paragraph', 'content': blurb + ' Copy the widget ID from Loopy (widget page, then Get embed code).'},
-          {'type': 'text', 'id': 'widget_id', 'label': 'Loopy widget ID', 'info': 'Looks like wgt_ab12cd34'},
+          {'type': 'paragraph', 'content': blurb + ' Everything below is optional except the widget ID. Leave a setting on Default to use what you set in Loopy.'},
+          {'type': 'text', 'id': 'widget_id', 'label': 'Loopy widget ID', 'info': 'In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_'},
         ], ''
-        if with_heading: bs.append({'type': 'text', 'id': 'heading', 'label': 'Heading (optional)', 'info': 'Shown above the tiles.'})
+        if with_heading: bs.append({'type': 'text', 'id': 'heading', 'label': 'Heading above the videos (optional)', 'info': 'For example: Real moms, real results.'})
         if with_handles: bs += [
-          {'type': 'text', 'id': 'product_handle', 'label': 'Product handle (optional)', 'info': 'Leave empty to use the product of the page it is on.'},
-          {'type': 'text', 'id': 'collection_handle', 'label': 'Collection handle (optional)', 'info': 'Leave empty to use the collection of the page it is on.'},
-          {'type': 'text', 'id': 'page_handle', 'label': 'Page handle (optional)', 'info': 'Leave empty to use the page it is on.'},
+          {'type': 'text', 'id': 'product_handle', 'label': 'Show a specific product (optional)', 'info': 'Leave empty on a product page. Otherwise type the last part of the product link, for example hair-oil-for-kids.'},
+          {'type': 'text', 'id': 'collection_handle', 'label': 'Show a specific collection (optional)', 'info': 'Leave empty on a collection page. Otherwise type the last part of the collection link.'},
+          {'type': 'text', 'id': 'page_handle', 'label': 'Show a specific page (optional)', 'info': 'Leave empty on a normal page. Otherwise type the last part of the page link.'},
         ]
         ids = set()
         for x in S:
             if x[0] == 'header': grp = x[1]; continue
-            if not keep(x[0]): continue
+            if not keep(x[0]) or x[0] in ('banner_fit', 'banner_focus', 'tile_fit'): continue
             sid, attr, typ, label, extra = x
-            item = {'type': typ, 'id': sid, 'label': f"{grp}: {label}" if grp and not grp.startswith('Colours') else label}
-            if typ == 'range': item.update({k: extra[k] for k in ('min', 'max', 'step', 'unit', 'default', 'info')})
-            elif typ == 'text': item.update({'info': extra['info']})
-            elif typ == 'select': item.update({'options': extra['options'], 'default': D})
+            lab, hint = plain(sid, label, extra.get('info', ''))
+            item = {'type': typ, 'id': sid, 'label': lab}
+            if typ == 'range': item.update({k: extra[k] for k in ('min', 'max', 'step', 'unit', 'default')}); item['info'] = hint or 'Leave at 0 to use the default.'
+            elif typ == 'text': item.update({'info': hint})
+            elif typ == 'color': item['info'] = hint
+            elif typ == 'select': item.update({'options': plain_opts(extra['options']), 'default': D}); item['info'] = hint
+            if not item.get('info'): item.pop('info', None)
             bs.append(item); ids.add(sid)
         bs += [
-          {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Top padding', 'default': 20},
-          {'type': 'range', 'id': 'padding_bottom', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Bottom padding', 'default': 20},
+          {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space above', 'default': 20},
+          {'type': 'range', 'id': 'padding_bottom', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space below', 'default': 20},
         ]
         attrs_b = '\n'.join(attr_line(x[0], x[1], x[2], 'block') for x in S if x[0] != 'header' and x[0] in ids)
         txt = BLOCK.replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")

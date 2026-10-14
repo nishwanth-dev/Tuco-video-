@@ -53,44 +53,44 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Small floating video in the corner of the page. Copy the widget ID from Loopy (widget page, then Get embed code)."
+      "content": "Small floating video in the corner of the page. Everything below is optional except the widget ID. Leave a setting on Default to use what you set in Loopy."
     },
     {
       "type": "text",
       "id": "widget_id",
       "label": "Loopy widget ID",
-      "info": "Looks like wgt_ab12cd34"
+      "info": "In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_"
     },
     {
       "type": "range",
       "id": "spot_width_desktop",
-      "label": "Spotlight and floating video: Width on desktop",
+      "label": "Desktop: Width",
       "min": 0,
       "max": 300,
       "step": 10,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "range",
       "id": "spot_width_mobile",
-      "label": "Spotlight and floating video: Width on mobile",
+      "label": "Mobile: Width",
       "min": 0,
       "max": 220,
       "step": 10,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "select",
       "id": "spot_radius_desktop",
-      "label": "Spotlight and floating video: Corners on desktop",
+      "label": "Desktop: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -118,11 +118,11 @@
     {
       "type": "select",
       "id": "spot_radius_mobile",
-      "label": "Spotlight and floating video: Corners on mobile",
+      "label": "Mobile: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -150,19 +150,20 @@
     {
       "type": "color",
       "id": "brand_color",
-      "label": "Button and highlight colour"
+      "label": "Button and highlight colour",
+      "info": "Leave empty to use the colour set in Loopy."
     },
     {
       "type": "text",
       "id": "font",
-      "label": "Font name",
-      "info": "A font your theme already loads, for example Poppins. Empty uses the Loopy setting."
+      "label": "Text font (optional)",
+      "info": "A font name your theme already uses, for example Poppins. Leave empty for the default."
     },
     {
       "type": "text",
       "id": "button_text",
-      "label": "Button text",
-      "info": "For example Shop now. Empty uses the Loopy setting."
+      "label": "Button text (optional)",
+      "info": "For example: Shop now. Leave empty for the default."
     },
     {
       "type": "range",
@@ -171,7 +172,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Top padding",
+      "label": "Space above",
       "default": 20
     },
     {
@@ -181,7 +182,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Bottom padding",
+      "label": "Space below",
       "default": 20
     }
   ]

@@ -55,44 +55,44 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Round story circles that open a full-screen player. Copy the widget ID from Loopy (widget page, then Get embed code)."
+      "content": "Round story circles that open a full-screen player. Everything below is optional except the widget ID. Leave a setting on Default to use what you set in Loopy."
     },
     {
       "type": "text",
       "id": "widget_id",
       "label": "Loopy widget ID",
-      "info": "Looks like wgt_ab12cd34"
+      "info": "In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_"
     },
     {
       "type": "range",
       "id": "story_size_desktop",
-      "label": "Stories: Size on desktop",
+      "label": "Desktop: Size",
       "min": 0,
       "max": 200,
       "step": 4,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "range",
       "id": "story_size_mobile",
-      "label": "Stories: Size on mobile",
+      "label": "Mobile: Size",
       "min": 0,
       "max": 160,
       "step": 4,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting."
+      "info": "Leave at 0 to use the default."
     },
     {
       "type": "select",
       "id": "story_shape",
-      "label": "Stories: Shape",
+      "label": "Shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "circle",
@@ -112,11 +112,11 @@
     {
       "type": "select",
       "id": "story_gap_desktop",
-      "label": "Stories: Space between, desktop",
+      "label": "Desktop: Space between",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -152,11 +152,11 @@
     {
       "type": "select",
       "id": "story_gap_mobile",
-      "label": "Stories: Space between, mobile",
+      "label": "Mobile: Space between",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -192,23 +192,24 @@
     {
       "type": "color",
       "id": "brand_color",
-      "label": "Button and highlight colour"
+      "label": "Button and highlight colour",
+      "info": "Leave empty to use the colour set in Loopy."
     },
     {
       "type": "text",
       "id": "font",
-      "label": "Font name",
-      "info": "A font your theme already loads, for example Poppins. Empty uses the Loopy setting."
+      "label": "Text font (optional)",
+      "info": "A font name your theme already uses, for example Poppins. Leave empty for the default."
     },
     {
       "type": "color",
       "id": "story_ring_color",
-      "label": "Story ring colour"
+      "label": "Circle border colour"
     },
     {
       "type": "color",
       "id": "story_label_color",
-      "label": "Story label colour"
+      "label": "Name colour under the circle"
     },
     {
       "type": "range",
@@ -217,7 +218,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Top padding",
+      "label": "Space above",
       "default": 20
     },
     {
@@ -227,7 +228,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Bottom padding",
+      "label": "Space below",
       "default": 20
     }
   ]

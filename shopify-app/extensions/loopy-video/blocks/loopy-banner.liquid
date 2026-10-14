@@ -32,8 +32,6 @@
       {%- if block.settings.banner_margin_mobile != 'default' %} data-banner-margin-mobile="{{ block.settings.banner_margin_mobile }}"{% endif -%}
       {%- if block.settings.banner_fit_mobile != 'default' %} data-banner-fit-mobile="{{ block.settings.banner_fit_mobile }}"{% endif -%}
       {%- if block.settings.banner_focus_mobile != 'default' %} data-banner-focus-mobile="{{ block.settings.banner_focus_mobile }}"{% endif -%}
-      {%- if block.settings.banner_fit != 'default' %} data-banner-fit="{{ block.settings.banner_fit }}"{% endif -%}
-      {%- if block.settings.banner_focus != 'default' %} data-banner-focus="{{ block.settings.banner_focus }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
       {%- if block.settings.button_text != blank %} data-button-text="{{ block.settings.button_text | escape }}"{% endif -%}
       {%- if block.settings.banner_bg != blank %} data-banner-bg="{{ block.settings.banner_bg | escape }}"{% endif -%}
@@ -64,33 +62,33 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Full-width video banner. Desktop and mobile are set separately. Copy the widget ID from Loopy (widget page, then Get embed code)."
+      "content": "Full-width video banner. Desktop and mobile are set separately. Everything below is optional except the widget ID. Leave a setting on Default to use what you set in Loopy."
     },
     {
       "type": "text",
       "id": "widget_id",
       "label": "Loopy widget ID",
-      "info": "Looks like wgt_ab12cd34"
+      "info": "In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_"
     },
     {
       "type": "range",
       "id": "banner_height_desktop",
-      "label": "Banner on desktop: Height",
+      "label": "Desktop: Fixed height",
       "min": 0,
       "max": 900,
       "step": 20,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting. A height wins over the shape below."
+      "info": "Leave at 0 to size automatically from the shape below."
     },
     {
       "type": "select",
       "id": "banner_ratio_desktop",
-      "label": "Banner on desktop: Shape (used when height is 0)",
+      "label": "Desktop: Shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "16/9",
@@ -117,16 +115,17 @@
           "label": "Square"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Used when the fixed height is 0."
     },
     {
       "type": "select",
       "id": "banner_radius_desktop",
-      "label": "Banner on desktop: Corners",
+      "label": "Desktop: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -154,11 +153,11 @@
     {
       "type": "select",
       "id": "banner_margin_desktop",
-      "label": "Banner on desktop: Side margin",
+      "label": "Desktop: Space on the left and right",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -190,31 +189,32 @@
     {
       "type": "select",
       "id": "banner_fit_desktop",
-      "label": "Banner on desktop: Video fit",
+      "label": "Desktop: If the video is a different shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "cover",
-          "label": "Fill (crop to fit)"
+          "label": "Fill the space (edges may be trimmed)"
         },
         {
           "value": "contain",
-          "label": "Show whole video"
+          "label": "Show the whole video"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Fill the space looks best; the whole video may show empty bars."
     },
     {
       "type": "select",
       "id": "banner_focus_desktop",
-      "label": "Banner on desktop: Part kept when cropping",
+      "label": "Desktop: Part to keep when trimmed",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "center",
@@ -229,38 +229,39 @@
           "label": "Bottom"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Which part of the video stays visible when its edges are trimmed."
     },
     {
       "type": "range",
       "id": "banner_max_desktop",
-      "label": "Banner on desktop: Maximum width",
+      "label": "Desktop: Maximum width",
       "min": 0,
       "max": 1600,
       "step": 20,
       "unit": "px",
       "default": 0,
-      "info": "0 = full width."
+      "info": "Leave at 0 for the full width."
     },
     {
       "type": "range",
       "id": "banner_height_mobile",
-      "label": "Banner on mobile: Height",
+      "label": "Mobile: Fixed height",
       "min": 0,
       "max": 900,
       "step": 20,
       "unit": "px",
       "default": 0,
-      "info": "0 uses the Loopy setting. A height wins over the shape below."
+      "info": "Leave at 0 to size automatically from the shape below."
     },
     {
       "type": "select",
       "id": "banner_ratio_mobile",
-      "label": "Banner on mobile: Shape (used when height is 0)",
+      "label": "Mobile: Shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "9/16",
@@ -287,16 +288,17 @@
           "label": "Wide 16:9"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Used when the fixed height is 0."
     },
     {
       "type": "select",
       "id": "banner_radius_mobile",
-      "label": "Banner on mobile: Corners",
+      "label": "Mobile: Corner roundness",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -324,11 +326,11 @@
     {
       "type": "select",
       "id": "banner_margin_mobile",
-      "label": "Banner on mobile: Side margin",
+      "label": "Mobile: Space on the left and right",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "0",
@@ -360,31 +362,32 @@
     {
       "type": "select",
       "id": "banner_fit_mobile",
-      "label": "Banner on mobile: Video fit",
+      "label": "Mobile: If the video is a different shape",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "cover",
-          "label": "Fill (crop to fit)"
+          "label": "Fill the space (edges may be trimmed)"
         },
         {
           "value": "contain",
-          "label": "Show whole video"
+          "label": "Show the whole video"
         }
       ],
-      "default": "default"
+      "default": "default",
+      "info": "Fill the space looks best; the whole video may show empty bars."
     },
     {
       "type": "select",
       "id": "banner_focus_mobile",
-      "label": "Banner on mobile: Part kept when cropping",
+      "label": "Mobile: Part to keep when trimmed",
       "options": [
         {
           "value": "default",
-          "label": "Use the Loopy setting"
+          "label": "Default (set in Loopy)"
         },
         {
           "value": "center",
@@ -399,67 +402,26 @@
           "label": "Bottom"
         }
       ],
-      "default": "default"
-    },
-    {
-      "type": "select",
-      "id": "banner_fit",
-      "label": "Banner on both: Video fit",
-      "options": [
-        {
-          "value": "default",
-          "label": "Use the Loopy setting"
-        },
-        {
-          "value": "cover",
-          "label": "Fill (crop to fit)"
-        },
-        {
-          "value": "contain",
-          "label": "Show whole video"
-        }
-      ],
-      "default": "default"
-    },
-    {
-      "type": "select",
-      "id": "banner_focus",
-      "label": "Banner on both: Part kept when cropping",
-      "options": [
-        {
-          "value": "default",
-          "label": "Use the Loopy setting"
-        },
-        {
-          "value": "center",
-          "label": "Middle"
-        },
-        {
-          "value": "top",
-          "label": "Top"
-        },
-        {
-          "value": "bottom",
-          "label": "Bottom"
-        }
-      ],
-      "default": "default"
+      "default": "default",
+      "info": "Which part of the video stays visible when its edges are trimmed."
     },
     {
       "type": "color",
       "id": "brand_color",
-      "label": "Button and highlight colour"
+      "label": "Button and highlight colour",
+      "info": "Leave empty to use the colour set in Loopy."
     },
     {
       "type": "text",
       "id": "button_text",
-      "label": "Button text",
-      "info": "For example Shop now. Empty uses the Loopy setting."
+      "label": "Button text (optional)",
+      "info": "For example: Shop now. Leave empty for the default."
     },
     {
       "type": "color",
       "id": "banner_bg",
-      "label": "Banner bar colour"
+      "label": "Background behind the banner",
+      "info": "Shows if the video does not fill the banner."
     },
     {
       "type": "range",
@@ -468,7 +430,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Top padding",
+      "label": "Space above",
       "default": 20
     },
     {
@@ -478,7 +440,7 @@
       "max": 100,
       "step": 4,
       "unit": "px",
-      "label": "Bottom padding",
+      "label": "Space below",
       "default": 20
     }
   ]
