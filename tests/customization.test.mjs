@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
-import { CHROME, haveChrome, startPageServer, seedVideos, render, measure, api } from './lib-browser.mjs';
+import { CHROME, haveChrome, startPageServer, seedVideos, render, measure, api, PORT } from './lib-browser.mjs';
 
 const near = (got, want, msg, tol = 1.6) => assert.ok(Math.abs(got - want) <= tol, `${msg}: got ${Math.round(got * 10) / 10}, expected ${want}`);
 const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
@@ -330,4 +330,36 @@ test('widget limited to an emoji product handle shows on that product page and n
   };
   assert.ok((await visit('/products/' + encodeURIComponent(handle))) >= 1, 'shows on the emoji product page');
   assert.equal(await visit('/products/another-product'), 0, 'hidden on other products');
+});
+
+
+// ---------------- Video section: a heading beside one portrait video ----------------
+const featureRead = async (device, overrides = {}) => {
+  const w = await api('POST', '/api/widgets', { name: 'QA section ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: 'for tangled and itchy hair', overrides });
+  assert.ok(w.status < 300, JSON.stringify(w.json));
+  const page = await browser.newPage();
+  await page.setViewport(device === 'mobile' ? { width: 390, height: 800, deviceScaleFactor: 1, isMobile: false } : { width: 1200, height: 900, deviceScaleFactor: 1, isMobile: false });
+  try {
+    await page.goto(`http://localhost:${PORT}/page?w=${w.json.id}&attrs=%7B%7D`, { waitUntil: 'load' });
+    await page.waitForFunction(() => { const h = document.querySelector('[data-tuco-video]'); const v = h && h.shadowRoot && h.shadowRoot.querySelector('.v > div'); return v && v.shadowRoot && v.shadowRoot.querySelector('.tile'); }, { timeout: 10000 });
+    await new Promise((r) => setTimeout(r, 250));
+    return await page.evaluate(() => {
+      const sr = document.querySelector('[data-tuco-video]').shadowRoot, h = sr.querySelector('.h').getBoundingClientRect();
+      const tile = sr.querySelector('.v > div').shadowRoot.querySelector('.tile').getBoundingClientRect();
+      return { text: sr.querySelector('.h').textContent, hx: h.x, hr: h.right, hy: h.y + h.height / 2, tx: tile.x, tr: tile.right, ty: tile.y + tile.height / 2, tw: tile.width, th: tile.height, tTop: tile.y, hBottom: h.bottom, one: sr.querySelectorAll('.v > div').length };
+    });
+  } finally { await page.close(); }
+};
+test('video section: desktop shows the heading left of a 5:6 video, centred vertically', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const m = await featureRead('desktop');
+  assert.equal(m.text, 'for tangled and itchy hair'); assert.equal(m.one, 1);
+  assert.ok(m.hr <= m.tx + 1, 'heading is left of the video'); near(m.tw / m.th, 5 / 6, 'portrait 5:6', 0.02); near(m.hy, m.ty, 'vertically centred', 3);
+});
+test('video section: phones stack a centred heading above a 4:5 video', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const m = await featureRead('mobile');
+  assert.ok(m.hBottom <= m.tTop + 1, 'heading is above the video'); near(m.tw / m.th, 4 / 5, 'portrait 4:5', 0.02);
+});
+test('video section: the video can go on the left and the shape can change', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const m = await featureRead('desktop', { feature: { videoSide: 'left', videoWidthDesktop: 50 }, banner: { aspectLandscape: '1/1' } });
+  assert.ok(m.tr <= m.hx + 1, 'video is left of the heading'); near(m.tw / m.th, 1, 'square', 0.02);
 });

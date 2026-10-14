@@ -8,7 +8,7 @@ const okLink = (u) => !u || (typeof u === 'string' && u.length <= 2000 && (/^htt
 // Product, collection and page names from the store (Shopify allows letters of any language and emoji in them; no spaces, slashes or markup characters).
 const HANDLE = /^[^\s/\\?#&%"'<>]{1,255}$/u;
 const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
-const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery'];
+const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery', 'feature'];
 const WPAGES = ['home', 'product', 'collection', 'pages'];
 
 // Per-widget appearance overrides: only these settings, with these limits, may be overridden.
@@ -31,6 +31,7 @@ const OVERRIDABLE = {
   },
   stories: { borderColor: hex, titleColor: hex, sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4), sizeDesktop: nm(30, 300), sizeMobile: nm(30, 300), shape: ev('circle', 'rounded', 'square'), gapDesktop: nm(0, 80), gapMobile: nm(0, 80) },
   banner: { heightModeDesktop: ev('ratio', 'fixed'), heightModeMobile: ev('ratio', 'fixed'), fitDesktop: ev('cover', 'contain'), fitMobile: ev('cover', 'contain'), focusDesktop: ev('center', 'top', 'bottom'), focusMobile: ev('center', 'top', 'bottom'), background: hex, heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => RATIO.test(x), aspectPortrait: (x) => RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999), marginDesktop: nm(0, 200), marginMobile: nm(0, 200), maxWidthDesktop: nm(100, 2400), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
+  feature: { videoSide: ev('left', 'right'), videoWidthDesktop: nm(25, 75), headingSizeDesktop: nm(16, 120), headingSizeMobile: nm(14, 80), headingColor: hex, headingFont: font, background: hex, gapDesktop: nm(0, 120), paddingDesktop: nm(0, 200), paddingMobile: nm(0, 120) },
   spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400), widthDesktop: nm(40, 500), widthMobile: nm(40, 500), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999) },
 };
 function cleanOverrides(o) {

@@ -287,6 +287,8 @@ if len(sys.argv) >= 4:
        'Row of video tiles for product pages, collections and pages.'),
       ('Loopy Stories', 'loopy-stories', lambda i: i.startswith('story_') or i in ('brand_color', 'font'), False, False,
        'Round story circles that open a full-screen player.'),
+      ('Loopy Section', 'loopy-section', lambda i: False, False, False,
+       'A heading beside one video (stacked on phones). The heading, colours and layout are all set in Loopy.'),
       ('Loopy Spotlight', 'loopy-spotlight', lambda i: i.startswith('spot_') or i in COMMON, False, False,
        'Small floating video in the corner of the page.'),
     ]

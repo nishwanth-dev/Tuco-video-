@@ -294,3 +294,13 @@ test('cleanup: remove everything this suite created', async () => {
   for (const id of made.widgets) await call('DELETE', '/api/widgets/' + id);
   for (const id of made.videos) await call('DELETE', '/api/videos/' + id);
 });
+
+test('widgets: the Video section type keeps its layout settings and rejects bad ones', async () => {
+  const id = await mkWidget({ name: 'Section', type: 'feature', heading: 'hello', overrides: { feature: { videoSide: 'left', videoWidthDesktop: 50, headingColor: '#123456' }, banner: { aspectLandscape: '5/6', aspectPortrait: '4/5' } } });
+  const w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === id);
+  assert.equal(w.type, 'feature'); assert.equal(w.overrides.feature.videoSide, 'left'); assert.equal(w.overrides.banner.aspectLandscape, '5/6');
+  const bad = await call('PUT', '/api/widgets/' + id, { body: { ...w, overrides: { feature: { videoSide: 'up' } } } });
+  assert.equal(bad.status, 400);
+  const bad2 = await call('PUT', '/api/widgets/' + id, { body: { ...w, overrides: { feature: { background: 'red;display:none' } } } });
+  assert.equal(bad2.status, 400);
+});

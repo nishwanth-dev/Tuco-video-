@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
 import { Modal, Toggle, Empty } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
@@ -10,14 +10,15 @@ const TYPES = {
   stories: ['Video Stories', 'Instagram-style stories with a fullscreen player'],
   banner: ['Banners', 'Full-width video banner with a call to action'],
   spotlight: ['Spotlight', 'Featured video that floats in a corner'],
+  feature: ['Video section', 'A heading beside one video, stacked on phones (like Tara Mom Speak)'],
   floating: ['Floating Widget', 'Small floating video on every page'],
   gallery: ['Media Gallery Video', "A tagged product's video inside its image gallery"],
 };
 const PAGE_TYPES = {
-  home: ['carousel', 'banner', 'stories', 'spotlight'],
+  home: ['carousel', 'banner', 'feature', 'stories', 'spotlight'],
   product: ['carousel', 'stories', 'floating', 'gallery'],
-  collection: ['carousel', 'stories', 'banner'],
-  pages: ['carousel', 'stories', 'banner'],
+  collection: ['carousel', 'stories', 'banner', 'feature'],
+  pages: ['carousel', 'stories', 'banner', 'feature'],
 };
 const TITLES = { home: 'Homepage', product: 'Product Pages', collection: 'Collection Pages', pages: 'Pages' };
 
@@ -72,7 +73,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const live = videos.filter((v) => v.status === 'live' && !v.archived);
   const toggleVid = (id) => set('videoIds', w.videoIds.includes(id) ? w.videoIds.filter((x) => x !== id) : [...w.videoIds, id]);
   const moveVid = (i, d) => setW((o) => { const n = [...o.videoIds]; const j = i + d; if (j < 0 || j >= n.length) return o; [n[i], n[j]] = [n[j], n[i]]; return { ...o, videoIds: n }; });
-  const showHeading = ['carousel'].includes(w.type);
+  const showHeading = ['carousel', 'feature'].includes(w.type);
   const isProduct = w.page === 'product';
   const isColl = w.page === 'collection';
   const loadProds = () => !prods.length && searchProducts('').then(setProds).catch(() => {});
@@ -82,7 +83,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
     <Modal title={widget.id ? 'Manage widget' : 'Create widget'} onClose={onClose} wide>
       <div className="two">
         <label className="lab">Widget name<input value={w.name} onChange={(e) => set('name', e.target.value)} /></label>
-        {showHeading && <label className="lab">Heading shown above videos<input value={w.heading} onChange={(e) => set('heading', e.target.value)} placeholder="Watch & shop" /></label>}
+        {showHeading && <label className="lab">{w.type === 'feature' ? 'Heading shown beside the video' : 'Heading shown above videos'}<input value={w.heading} onChange={(e) => set('heading', e.target.value)} placeholder={w.type === 'feature' ? 'for tangled & itchy hair!' : 'Watch & shop'} /></label>}
       </div>
       {w.type !== 'gallery' && (
         <div className="lab">Which videos
@@ -132,9 +133,43 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         </label>
       )}
       <Appearance w={w} setW={setW} settings={settings} />
+      {w.type !== 'gallery' && <LivePreview w={w} videos={videos} settings={settings} />}
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => setSaveErr((await onSave({ ...w, productHandles: w.productHandles.filter(Boolean), collectionHandles: w.collectionHandles.filter(Boolean) })) || '')}>Save widget</button></div>
       {saveErr && <p className="red small">{saveErr}</p>}
     </Modal>
+  );
+}
+
+// Merges one widget's overrides into the global settings the same way the API does, so the preview matches the store.
+function mergeOv(settings, ov) {
+  const out = JSON.parse(JSON.stringify(settings || {}));
+  for (const [k, v] of Object.entries(ov || {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object') Object.assign(out[k], v); else out[k] = v;
+  }
+  return out;
+}
+
+// Shows the real store widget, with the settings being edited, on a desktop-width and a phone-width canvas.
+function LivePreview({ w, videos, settings }) {
+  const [device, setDevice] = useState('desktop');
+  const ref = useRef();
+  const live = videos.filter((v) => v.status === 'live' && !v.archived);
+  const picked = w.scope === 'custom' ? w.videoIds.map((id) => live.find((v) => v.id === id)).filter(Boolean) : live.filter((v) => v.products && v.products.length).slice(0, 8);
+  const shown = picked.filter((v) => !(w.overrides && w.overrides.deviceOnly && w.overrides.deviceOnly[v.id] && w.overrides.deviceOnly[v.id] !== device));
+  const key = JSON.stringify([w.type, w.heading, w.overrides, w.videoIds, w.scope, device, shown.length]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !window.TucoVideo || !settings) return;
+    el.replaceChildren();
+    const host = document.createElement('div');
+    el.appendChild(host);
+    try { window.TucoVideo.render(host, { settings: mergeOv(settings, w.overrides), widget: { id: 'preview', type: w.type, heading: w.heading, overrides: w.overrides || {} }, videos: shown }, { preview: true, device }); } catch { /* the preview is only a convenience */ }
+  }, [key, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="lab">Preview
+      <div className="row"><button type="button" className={'btn sm ' + (device === 'desktop' ? '' : 'ghost')} onClick={() => setDevice('desktop')}>Desktop</button><button type="button" className={'btn sm ' + (device === 'mobile' ? '' : 'ghost')} onClick={() => setDevice('mobile')}>Phone</button><span className="muted small">Updates as you change the settings above.</span></div>
+      <div className="lpv" style={{ width: device === 'mobile' ? 390 : '100%' }}><div ref={ref} />{!shown.length && <p className="muted small pad">Pick at least one live video to see the preview.</p>}</div>
+    </div>
   );
 }
 
@@ -191,6 +226,23 @@ const LOOK = {
 };
 for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [...OV_FIELDS[t], ...LOOK.all, ...(LOOK[t] || [])];
 OV_FIELDS.floating = OV_FIELDS.spotlight;
+// "Video section": the heading and layout settings first, then the video box uses the banner settings (portrait by default).
+const FEATURE_RATIOS = [['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
+OV_FIELDS.feature = [
+  ['feature', 'videoSide', 'Video position on desktop', 'sel', [['right', 'Right of the heading'], ['left', 'Left of the heading']]],
+  ['feature', 'videoWidthDesktop', 'Video width on desktop (% of the section, 25 to 75)', 'num'],
+  ['feature', 'headingSizeDesktop', 'Heading size, desktop (px)', 'num'], ['feature', 'headingSizeMobile', 'Heading size, mobile (px)', 'num'],
+  ['feature', 'headingColor', 'Heading colour', 'color'], ['feature', 'headingFont', 'Heading font', 'font'],
+  ['feature', 'background', 'Section background colour', 'color'],
+  ['feature', 'gapDesktop', 'Space between heading and video, desktop (px)', 'num'],
+  ['feature', 'paddingDesktop', 'Space above and below, desktop (px)', 'num'], ['feature', 'paddingMobile', 'Space above and below, mobile (px)', 'num'],
+  ['banner', 'aspectLandscape', 'Video shape, desktop', 'sel', FEATURE_RATIOS], ['banner', 'aspectPortrait', 'Video shape, mobile', 'sel', FEATURE_RATIOS],
+  ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
+  ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+  ['banner', 'radiusDesktop', 'Video corners, desktop', 'corner'], ['banner', 'radiusMobile', 'Video corners, mobile', 'corner'],
+  ['banner', 'marginMobile', 'Video side margin, mobile (px)', 'num'],
+  [null, 'brandColor', 'Highlight colour', 'color'],
+];
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.
 function Appearance({ w, setW, settings }) {

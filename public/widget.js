@@ -427,6 +427,35 @@
     }
   }
 
+  // "Video section": a heading beside one video (stacked and centred on phones), like the Tara Mom Speak section. The video is drawn by the banner renderer.
+  function renderFeature(el, ctx, list) {
+    var s = ctx.settings, f = s.feature || {}, w = ctx.widget || {}, mob = !!ctx.mobile;
+    var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
+    var hex = function (c, d) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : d; };
+    var num = function (v, d) { v = Number(v); return isFinite(v) && v >= 0 ? v : d; };
+    var left = f.videoSide === 'left';
+    var share = Math.min(75, Math.max(25, num(f.videoWidthDesktop, 45)));
+    var pad = mob ? num(f.paddingMobile, 20) : num(f.paddingDesktop, 40);
+    var hs = mob ? num(f.headingSizeMobile, 28) : num(f.headingSizeDesktop, 48);
+    var font = String(f.headingFont || '').replace(/[^\w .,'-]/g, '');
+    var css = ':host{display:block}.ft{box-sizing:border-box;padding:' + pad + 'px 0;background:' + hex(f.background, 'transparent') + '}' +
+      '.row{display:flex;align-items:center;gap:' + (mob ? 16 : num(f.gapDesktop, 40)) + 'px;flex-direction:' + (mob ? 'column' : left ? 'row-reverse' : 'row') + '}' +
+      '.h{margin:0;flex:1;min-width:0;font-size:' + hs + 'px;line-height:1.15;color:' + hex(f.headingColor, '#4d4747') + ';text-align:' + (mob ? 'center' : 'left') + ';font-family:' + (font ? "'" + font + "'," : '') + 'inherit;padding:0 ' + (mob ? 16 : 24) + 'px}' +
+      '.v{min-width:0;width:' + (mob ? '100%' : share + '%') + ';flex:' + (mob ? '0 0 auto' : '0 0 ' + share + '%') + '}';
+    root.innerHTML = '<style>' + css + '</style><div class="ft"><div class="row">' + (w.heading ? '<h2 class="h">' + esc(w.heading) + '</h2>' : '') + '<div class="v"></div></div></div>';
+    var host = document.createElement('div');
+    root.querySelector('.v').appendChild(host);
+    // The video box follows the banner settings; a portrait box is the default for this layout.
+    var s2 = JSON.parse(JSON.stringify(s)), b = s2.banner = s2.banner || {}, own = ((w.overrides || {}).banner) || {};
+    if (!own.aspectLandscape) b.aspectLandscape = '5/6';
+    if (!own.aspectPortrait) b.aspectPortrait = '4/5';
+    if (!own.desktopHeight && !own.mobileHeight) { b.heightModeDesktop = 'ratio'; b.heightModeMobile = 'ratio'; b.heightMode = 'ratio'; }
+    if (own.showCta === undefined) b.showCta = false;
+    b.showDots = false;
+    var c2 = {}; for (var k in ctx) c2[k] = ctx[k]; c2.settings = s2;
+    renderRow(host, c2, list.slice(0, 1), 'banner');
+  }
+
   // Corner video used for both Spotlight and the product-page Floating widget.
   function renderCorner(el, ctx, list, type) {
     var s = ctx.settings;
@@ -547,6 +576,7 @@
       }
       el.style.setProperty('display', 'block', 'important');
       if (type === 'floating' || type === 'spotlight') return renderCorner(el, ctx, list, type);
+      if (type === 'feature') return renderFeature(el, ctx, list);
       if (type === 'gallery') return renderGallery(el, ctx, list.slice(0, 1));
       renderRow(el, ctx, type === 'banner' ? list.slice(0, 8) : list.slice(0, 40), type === 'stories' || type === 'banner' ? type : 'carousel');
     });
