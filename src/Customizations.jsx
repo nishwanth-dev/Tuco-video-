@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { saveSettings } from './api.js';
-import { Field, Toggle } from './ui.jsx';
+import { Field, Toggle, Scaled } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
 import { NEW_LAYOUT } from './layoutSpec.js';
 
@@ -155,7 +155,7 @@ export default function Customizations({ settings, videos, loadSettings, setErro
       </div>
       <div className="cprev">
         <div className="phead"><b>Widget Preview</b><div className="seg"><button className={device === 'mobile' ? 'on' : ''} onClick={() => setDevice('mobile')}>Mobile</button><button className={device === 'desktop' ? 'on' : ''} onClick={() => setDevice('desktop')}>Desktop</button></div></div>
-        <div className={'frame ' + device}><Preview type={previewType} settings={s} videos={previewVideos} device={device} /></div>
+        <div className={'frame ' + device}>{device === 'desktop' ? <Scaled><Preview type={previewType} settings={s} videos={previewVideos} device={device} /></Scaled> : <Preview type={previewType} settings={s} videos={previewVideos} device={device} />}</div>
       </div>
     </div>
   );

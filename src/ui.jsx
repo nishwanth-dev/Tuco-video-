@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function Modal({ title, onClose, children, wide }) {
   const closeRef = useRef(onClose);
@@ -36,3 +36,18 @@ export const Field = ({ label, hint, children }) => (
 );
 
 export const Empty = ({ children }) => <div className="empty">{children}</div>;
+
+// Draws its children at a full desktop width (1200 px) and shrinks the whole picture to fit the space, so a desktop preview is never cut off.
+export function Scaled({ children, base = 1200 }) {
+  const outer = useRef(); const inner = useRef();
+  const [k, setK] = useState(0.4); const [h, setH] = useState(0);
+  useEffect(() => {
+    const fit = () => { if (!outer.current || !inner.current) return; const nk = Math.min(1, outer.current.clientWidth / base); setK(nk); setH(inner.current.scrollHeight * nk); };
+    fit();
+    if (typeof ResizeObserver !== 'function') return undefined;
+    const ro = new ResizeObserver(fit);
+    ro.observe(outer.current); ro.observe(inner.current);
+    return () => ro.disconnect();
+  }, [base]);
+  return <div ref={outer} style={{ width: '100%', height: h || undefined, overflow: 'hidden' }}><div ref={inner} style={{ width: base, transform: `scale(${k})`, transformOrigin: 'top left' }}>{children}</div></div>;
+}

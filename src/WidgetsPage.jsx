@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
-import { Modal, Toggle, Empty } from './ui.jsx';
+import { Modal, Toggle, Empty, Scaled } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
 import { NEW_LAYOUT } from './layoutSpec.js';
 import { Thumb } from './media.jsx';
@@ -168,7 +168,7 @@ function LivePreview({ w, videos, settings }) {
   return (
     <div className="lab">Preview
       <div className="row"><button type="button" className={'btn sm ' + (device === 'desktop' ? '' : 'ghost')} onClick={() => setDevice('desktop')}>Desktop</button><button type="button" className={'btn sm ' + (device === 'mobile' ? '' : 'ghost')} onClick={() => setDevice('mobile')}>Phone</button><span className="muted small">Updates as you change the settings above.</span></div>
-      <div className="lpv" style={{ width: device === 'mobile' ? 390 : '100%' }}><div ref={ref} />{!shown.length && <p className="muted small pad">Pick at least one live video to see the preview.</p>}</div>
+      <div className="lpv" style={{ width: device === 'mobile' ? 390 : '100%' }}>{device === 'desktop' ? <Scaled><div ref={ref} /></Scaled> : <div ref={ref} />}{!shown.length && <p className="muted small pad">Pick at least one live video to see the preview.</p>}</div>
     </div>
   );
 }
