@@ -6,7 +6,7 @@ import { NEW_LAYOUT } from './layoutSpec.js';
 
 const SECTIONS = [
   ['brand', 'Brand Theme Settings', 'carousel'], ['tile', 'Product Tile Config', 'carousel'], ['carousel', 'Carousel Configuration', 'carousel'], ['stories', 'Stories Configuration', 'stories'],
-  ['product', 'Product Page Configuration', 'gallery'], ['banner', 'Banner Configuration', 'banner'], ['spotlight', 'Spotlight Configuration', 'spotlight'], ['oos', 'Out of Stock Configuration', 'carousel'],
+  ['product', 'Product Page Configuration', 'gallery'], ['banner', 'Banner Configuration', 'banner'], ['feature', 'Video Section Configuration', 'feature'], ['spotlight', 'Spotlight Configuration', 'spotlight'], ['oos', 'Out of Stock Configuration', 'carousel'],
 ];
 const TILES = [['overlay', 'Overlay', 'Title and price over the video'], ['below', 'Info below', 'Name, price and an Add to cart button under the tile'], ['feed', 'Feed', 'Overlay with a button inside the tile'], ['minimal', 'Minimal', 'Just the video with a small price chip']];
 const SAMPLE = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
@@ -124,6 +124,19 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           })()}
           <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
           {layoutRows('banner')}
+        </>}
+        {sec === 'feature' && <>
+          <p className="muted small">A heading beside one video, stacked on phones (like the Tara Mom Speak section). Create one under Homepage, Collection Pages or Pages, then change any of this for just that widget in its Appearance panel.</p>
+          <Field label="Video position on desktop"><Sel v={s.feature.videoSide} on={(v) => setIn('feature', 'videoSide', v)} opts={[['right', 'Right of the heading'], ['left', 'Left of the heading']]} /></Field>
+          <Field label="Video width on desktop" hint="Percent of the section, 25 to 75"><input type="number" min="25" max="75" value={s.feature.videoWidthDesktop} onChange={(e) => setIn('feature', 'videoWidthDesktop', Number(e.target.value))} /></Field>
+          <Field label="Video shape on desktop"><Sel v={s.feature.shapeDesktop} on={(v) => setIn('feature', 'shapeDesktop', v)} opts={[['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
+          <Field label="Video shape on phones"><Sel v={s.feature.shapeMobile} on={(v) => setIn('feature', 'shapeMobile', v)} opts={[['4/5', 'Portrait 4:5'], ['5/6', 'Portrait 5:6'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
+          <Field label="Heading size on desktop" hint="Pixels"><input type="number" min="16" max="120" value={s.feature.headingSizeDesktop} onChange={(e) => setIn('feature', 'headingSizeDesktop', Number(e.target.value))} /></Field>
+          <Field label="Heading size on phones" hint="Pixels"><input type="number" min="14" max="80" value={s.feature.headingSizeMobile} onChange={(e) => setIn('feature', 'headingSizeMobile', Number(e.target.value))} /></Field>
+          <Field label="Heading colour"><Color v={s.feature.headingColor} on={(v) => setIn('feature', 'headingColor', v)} /></Field>
+          <Field label="Heading font" hint="A font your theme already loads. Empty uses the page font"><input value={s.feature.headingFont || ''} onChange={(e) => setIn('feature', 'headingFont', e.target.value)} /></Field>
+          <Field label="Section background colour" hint="Leave empty for no colour (the page shows through)"><Color v={s.feature.background || ''} on={(v) => setIn('feature', 'background', v)} /></Field>
+          {layoutRows('feature')}
         </>}
         {sec === 'spotlight' && <>
           <Field label="Enable Spotlight videos" hint="Founder intros, sale announcements, moment marketing"><Toggle on={s.spotlight.enabled} onChange={(v) => setIn('spotlight', 'enabled', v)} /></Field>

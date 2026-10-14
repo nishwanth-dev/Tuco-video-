@@ -21,6 +21,11 @@ export const NEW_LAYOUT = {
     ['banner', 'marginDesktop', 'Side margin, desktop (px)', 'num'], ['banner', 'marginMobile', 'Side margin, mobile (px)', 'num'],
     ['banner', 'maxWidthDesktop', 'Maximum width on desktop (px, 0 = full width)', 'num'],
   ],
+  feature: [
+    ['feature', 'cornersDesktop', 'Video corners, desktop', 'corner'], ['feature', 'cornersMobile', 'Video corners, mobile', 'corner'],
+    ['feature', 'gapDesktop', 'Space between heading and video, desktop (px)', 'num'],
+    ['feature', 'paddingDesktop', 'Space above and below, desktop (px)', 'num'], ['feature', 'paddingMobile', 'Space above and below, mobile (px)', 'num'],
+  ],
   spotlight: [
     ['spotlight', 'widthDesktop', 'Video width, desktop (px, 0 = use size factor)', 'num'], ['spotlight', 'widthMobile', 'Video width, mobile (px, 0 = use size factor)', 'num'],
     ['spotlight', 'radiusDesktop', 'Corners, desktop', 'corner'], ['spotlight', 'radiusMobile', 'Corners, mobile', 'corner'],

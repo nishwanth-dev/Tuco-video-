@@ -6,6 +6,7 @@ export const DEFAULTS = {
   stories: { borderColor: '#ffd94a', titleColor: '#4d4747', sizeFactor: 1, spacing: 1, sizeDesktop: 0, sizeMobile: 0, shape: 'circle', gapDesktop: null, gapMobile: null },
   banner: { heightModeDesktop: '', heightModeMobile: '', fitDesktop: '', fitMobile: '', focusDesktop: '', focusMobile: '', clickable: true, fullScreen: false, showCta: true, showDots: true, aspectLandscape: '16/9', aspectPortrait: '9/16', fit: 'cover', focus: 'center', heightMode: 'fixed', desktopHeight: 480, mobileHeight: 420, background: '#f3f3f3', radiusDesktop: null, radiusMobile: null, marginDesktop: null, marginMobile: null, maxWidthDesktop: 0 },
   spotlight: { enabled: true, position: 'left', sizeFactor: 1, ultraMinimize: false, bottomOffsetMobile: 84, bottomOffsetDesktop: 20, widthDesktop: 0, widthMobile: 0, radiusDesktop: null, radiusMobile: null },
+  feature: { videoSide: 'right', videoWidthDesktop: 45, headingSizeDesktop: 48, headingSizeMobile: 28, headingColor: '#4d4747', headingFont: '', background: '', shapeDesktop: '5/6', shapeMobile: '4/5', cornersDesktop: 0, cornersMobile: 4, gapDesktop: 40, paddingDesktop: 40, paddingMobile: 20 },
   product: { ultraMinimize: false, showPopup: false, showHomepageVideos: false, recommend: 'none', collectionMode: 'always' },
   oos: { showWhenAllOut: false, showTile: true, soldOutLabel: true },
 };

@@ -234,13 +234,10 @@ OV_FIELDS.feature = [
   ['feature', 'headingSizeDesktop', 'Heading size, desktop (px)', 'num'], ['feature', 'headingSizeMobile', 'Heading size, mobile (px)', 'num'],
   ['feature', 'headingColor', 'Heading colour', 'color'], ['feature', 'headingFont', 'Heading font', 'font'],
   ['feature', 'background', 'Section background colour', 'color'],
-  ['feature', 'gapDesktop', 'Space between heading and video, desktop (px)', 'num'],
-  ['feature', 'paddingDesktop', 'Space above and below, desktop (px)', 'num'], ['feature', 'paddingMobile', 'Space above and below, mobile (px)', 'num'],
-  ['banner', 'aspectLandscape', 'Video shape, desktop', 'sel', FEATURE_RATIOS], ['banner', 'aspectPortrait', 'Video shape, mobile', 'sel', FEATURE_RATIOS],
+  ['feature', 'shapeDesktop', 'Video shape, desktop', 'sel', FEATURE_RATIOS], ['feature', 'shapeMobile', 'Video shape, mobile', 'sel', FEATURE_RATIOS],
+  ...NEW_LAYOUT.feature,
   ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
-  ['banner', 'radiusDesktop', 'Video corners, desktop', 'corner'], ['banner', 'radiusMobile', 'Video corners, mobile', 'corner'],
-  ['banner', 'marginMobile', 'Video side margin, mobile (px)', 'num'],
   [null, 'brandColor', 'Highlight colour', 'color'],
 ];
 

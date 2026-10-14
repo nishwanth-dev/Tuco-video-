@@ -447,8 +447,12 @@
     root.querySelector('.v').appendChild(host);
     // The video box follows the banner settings; a portrait box is the default for this layout.
     var s2 = JSON.parse(JSON.stringify(s)), b = s2.banner = s2.banner || {}, own = ((w.overrides || {}).banner) || {};
-    if (!own.aspectLandscape) b.aspectLandscape = '5/6';
-    if (!own.aspectPortrait) b.aspectPortrait = '4/5';
+    if (!own.aspectLandscape) b.aspectLandscape = f.shapeDesktop || '5/6';
+    if (!own.aspectPortrait) b.aspectPortrait = f.shapeMobile || '4/5';
+    if (own.radiusDesktop === undefined && f.cornersDesktop != null) b.radiusDesktop = f.cornersDesktop;
+    if (own.radiusMobile === undefined && f.cornersMobile != null) b.radiusMobile = f.cornersMobile;
+    if (own.marginDesktop === undefined) b.marginDesktop = 0;
+    if (own.marginMobile === undefined) b.marginMobile = 0;
     if (!own.desktopHeight && !own.mobileHeight) { b.heightModeDesktop = 'ratio'; b.heightModeMobile = 'ratio'; b.heightMode = 'ratio'; }
     if (own.showCta === undefined) b.showCta = false;
     b.showDots = false;
