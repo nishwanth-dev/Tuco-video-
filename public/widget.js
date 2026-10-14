@@ -532,6 +532,8 @@
   function render(el, cfg, opts) {
     opts = opts || {};
     keepAlive(el);
+    // Remembered so the widget can draw itself again when the screen changes between desktop and mobile (rotating a phone, the theme editor's device switch).
+    if (!opts.device && !opts.preview) { el.__tuco_cfg = cfg; renderers.add(el); }
     var type = (cfg.widget && cfg.widget.type) || el.getAttribute('data-layout') || 'carousel';
     var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview, mobile: opts.device ? opts.device === 'mobile' : isMobile() };
     // A video can be limited to one device (as Whatmore does for a desktop and a mobile banner): overrides.deviceOnly maps a video id to 'mobile' or 'desktop'.
@@ -604,6 +606,16 @@
       t.parentNode.replaceChild(d, t);
     });
   }
+  var renderers = typeof Set === 'function' ? new Set() : { add: function () {}, forEach: function () {} };
+  (function () {
+    var mq = window.matchMedia('(max-width: 749px)'), last = mq.matches;
+    var again = function () {
+      if (mq.matches === last) return;
+      last = mq.matches;
+      renderers.forEach(function (el) { if (el.isConnected && el.__tuco_cfg) { try { render(el, el.__tuco_cfg, {}); } catch (e) { /* ignore */ } } });
+    };
+    if (mq.addEventListener) mq.addEventListener('change', again); else if (mq.addListener) mq.addListener(again);
+  })();
   function boot() { scanBare(); document.querySelectorAll('[data-tuco-video]').forEach(init); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   document.addEventListener('shopify:section:load', boot);
