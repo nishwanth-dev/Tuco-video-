@@ -94,12 +94,12 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         </div>
       )}
       {w.scope === 'custom' && (
-        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
+        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
       {w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
         <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order.</span>
           <div className="arr">{w.videoIds.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
-            <div className="arow" key={id}><Thumb url={v.url} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
+            <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
               <button type="button" className="link" disabled={i === 0} onClick={() => moveVid(i, -1)} aria-label="Move up">↑</button>
               <button type="button" className="link" disabled={i === w.videoIds.length - 1} onClick={() => moveVid(i, 1)} aria-label="Move down">↓</button>
               <button type="button" className="link red" onClick={() => toggleVid(id)}>Remove</button></div>); })}</div>

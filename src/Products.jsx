@@ -58,7 +58,7 @@ function Arrange({ product, videos, sets, reload, onClose, setError }) {
   useEffect(() => { getOrder(product.handle).then((o) => setOrder([...o.filter((id) => own.some((v) => v.id === id)), ...own.map((v) => v.id).filter((id) => !o.includes(id))])).catch(() => {}); /* eslint-disable-next-line */ }, []);
   const mv = (arr, i, d) => { const n = [...arr]; const j = i + d; if (j < 0 || j >= n.length) return n; [n[i], n[j]] = [n[j], n[i]]; return n; };
   const row = (list, id, i, onMove) => { const v = videos.find((x) => x.id === id); return v && (
-    <div className="arow" key={id}><Thumb url={v.url} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft)</em>}</span>
+    <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft)</em>}</span>
       <button className="link" disabled={i === 0} onClick={() => onMove(-1)} aria-label="Move up">↑</button><button className="link" disabled={i === list.length - 1} onClick={() => onMove(1)} aria-label="Move down">↓</button></div>); };
   return (
     <Modal title={`Arrange media: ${product.title}`} onClose={onClose} wide>

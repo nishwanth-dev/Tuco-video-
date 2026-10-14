@@ -1,8 +1,10 @@
 // YouTube links show a thumbnail or embed; everything else uses a normal video element.
 export const ytId = (u) => ((String(u || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([\w-]{11})/) || [])[1] || '');
 
-export function Thumb({ url, hover = false, ...rest }) {
+export function Thumb({ url, poster, hover = false, ...rest }) {
   const id = ytId(url);
+  // A saved poster image is tiny; loading hundreds of video files just for little previews is slow and uses up requests.
+  if (poster && !id && !hover) return <img src={poster} alt="" loading="lazy" decoding="async" {...rest} />;
   if (id) return <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" {...rest} />;
   return <video src={url + '#t=0.1'} muted playsInline preload="metadata" {...(hover ? { onMouseEnter: (e) => e.target.play().catch(() => {}), onMouseLeave: (e) => e.target.pause() } : {})} {...rest} />;
 }

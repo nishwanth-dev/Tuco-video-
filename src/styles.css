@@ -202,3 +202,6 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
 .setname { display: inline-block; flex: none; font-size: 12px; font-weight: 500; line-height: 1.4; padding: 4px 10px; border-radius: 6px; white-space: nowrap; position: static; }
 .setname.on { background: #ecfdf3; color: #067647; } .setname.off { background: #fffaeb; color: #b54708; }
 .lpv { border: 1px dashed #d1d5db; border-radius: 10px; background: #fff; margin-top: 8px; max-width: 100%; overflow: hidden; }
+.vp img, .vp video { display: block; width: 100%; aspect-ratio: 9/12; object-fit: cover; background: #eee; }
+.chk input[type=radio], .chk input[type=checkbox] { width: auto !important; flex: none; }
+.checks .chk { display: flex; flex-direction: row !important; align-items: center; gap: 8px; }
