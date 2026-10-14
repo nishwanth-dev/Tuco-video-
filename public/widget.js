@@ -534,7 +534,10 @@
     keepAlive(el);
     var type = (cfg.widget && cfg.widget.type) || el.getAttribute('data-layout') || 'carousel';
     var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview, mobile: opts.device ? opts.device === 'mobile' : isMobile() };
-    return prepare(ctx, cfg.videos || []).then(function (list) {
+    // A video can be limited to one device (as Whatmore does for a desktop and a mobile banner): overrides.deviceOnly maps a video id to 'mobile' or 'desktop'.
+    var only = (cfg.widget && cfg.widget.overrides && cfg.widget.overrides.deviceOnly) || {}, dev = ctx.mobile ? 'mobile' : 'desktop';
+    var videos = (cfg.videos || []).filter(function (v) { return !only[v.id] || only[v.id] === dev; });
+    return prepare(ctx, videos).then(function (list) {
       if (!list.length) {
         if (opts.preview) { var r = el.shadowRoot || el.attachShadow({ mode: 'open' }); r.innerHTML = '<style>' + BASE + '</style><p style="text-align:center;color:#999;font:13px sans-serif;padding:24px">No videos to show yet.</p>'; } else note(el, 'no live videos to show for this widget. Check the video is live and (for tagged widgets) has a product.');
         return;
