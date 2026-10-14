@@ -189,7 +189,8 @@ async function catalog(env) {
   const list = products.map((p) => {
     const av = (p.variants || []).find((v) => v.available);
     const v = av || (p.variants || [])[0];
-    return { handle: p.handle, title: p.title, price: v ? `₹${Math.round(Number(v.price))}` : '', image: p.images?.[0]?.src || '', available: !!av, variantId: av ? av.id : null };
+    const was = v && Number(v.compare_at_price) > Number(v.price) ? Number(v.compare_at_price) : 0;
+    return { handle: p.handle, title: p.title, price: v ? `₹${Math.round(Number(v.price))}` : '', compare: was ? `₹${Math.round(was)}` : '', off: was ? Math.round((1 - Number(v.price) / was) * 100) : 0, image: p.images?.[0]?.src || '', available: !!av, variantId: av ? av.id : null };
   });
   CATALOG = { t: Date.now(), map: Object.fromEntries(list.map((p) => [p.handle, p])), list };
   return CATALOG;
@@ -210,7 +211,7 @@ async function enrich(env, videos) {
   videos.forEach((v) => v.products.forEach((p) => {
     const c = cat.map[p.handle];
     if (!c) return;
-    p.title = c.title; p.price = c.price; p.image = c.image || p.image; p.soldOut = !c.available; p.variantId = c.variantId; p.live = true;
+    p.title = c.title; p.price = c.price; p.compare = c.compare || ''; p.off = c.off || 0; p.image = c.image || p.image; p.soldOut = !c.available; p.variantId = c.variantId; p.live = true;
   }));
   return videos;
 }
