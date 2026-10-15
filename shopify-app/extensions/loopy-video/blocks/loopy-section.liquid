@@ -21,6 +21,7 @@
       {%- if block.settings.product_handle != blank %} data-product="{{ block.settings.product_handle | strip | escape }}"{% endif -%}
       {%- if block.settings.collection_handle != blank %} data-collection="{{ block.settings.collection_handle | strip | escape }}"{% endif -%}
       {%- if block.settings.page_handle != blank %} data-page="{{ block.settings.page_handle | strip | escape }}"{% endif -%}
+      {%- if block.settings.click_action != 'default' %} data-click-action="{{ block.settings.click_action }}"{% endif -%}
       {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
       {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
     ></div>
@@ -59,6 +60,27 @@
       "id": "widget_id",
       "label": "Loopy widget ID",
       "info": "In Loopy open Widgets, pick your widget and copy its ID. It starts with wgt_"
+    },
+    {
+      "type": "select",
+      "id": "click_action",
+      "label": "When the video is clicked",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "player",
+          "label": "Open the video player"
+        },
+        {
+          "value": "none",
+          "label": "Do nothing"
+        }
+      ],
+      "default": "default",
+      "info": "Default: carousels, stories and spotlights open the player, banners do nothing."
     },
     {
       "type": "text",

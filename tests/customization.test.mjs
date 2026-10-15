@@ -397,7 +397,7 @@ test('click link: a widget link works too, and can open in a new tab', { skip: !
   } finally { await r.close(); }
 });
 test('click link: without a link the video player still opens, and unsafe links are ignored', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
-  const r = await render(browser, ids, { type: 'banner', attrs: { 'data-link': 'javascript:alert(1)' } });
+  const r = await render(browser, ids, { type: 'carousel', attrs: { 'data-link': 'javascript:alert(1)' } });
   try {
     await clickTile(r.page); await new Promise((x) => setTimeout(x, 600));
     assert.equal(new URL(r.page.url()).pathname, '/page', 'no navigation');
@@ -450,4 +450,19 @@ test('speed: on a repeat visit the widget draws from its saved answer even befor
     const note = await r.page.evaluate(() => document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile') ? 'drawn' : 'empty');
     assert.equal(note, 'drawn');
   } finally { await r.close(); }
+});
+
+// ---------------- Click behaviour ----------------
+const playerOpens = (page) => page.evaluate(() => [...document.querySelectorAll('div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.slide')));
+test('click behaviour: a banner does nothing when clicked, a carousel opens the player', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const a = await render(browser, ids, { type: 'banner' });
+  try { await clickTile(a.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(a.page), false, 'banner: no player'); } finally { await a.close(); }
+  const b = await render(browser, ids, { type: 'carousel' });
+  try { await clickTile(b.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(b.page), true, 'carousel: player opens'); } finally { await b.close(); }
+});
+test('click behaviour: it can be switched either way per widget or per block', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const a = await render(browser, ids, { type: 'banner', overrides: { clickAction: 'player' } });
+  try { await clickTile(a.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(a.page), true, 'banner set to open the player'); } finally { await a.close(); }
+  const b = await render(browser, ids, { type: 'carousel', attrs: { 'data-click-action': 'none' } });
+  try { await clickTile(b.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(b.page), false, 'carousel set to do nothing'); } finally { await b.close(); }
 });

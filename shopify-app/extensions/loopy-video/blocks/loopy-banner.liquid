@@ -34,6 +34,7 @@
       {%- if block.settings.banner_margin_mobile != 'default' %} data-banner-margin-mobile="{{ block.settings.banner_margin_mobile }}"{% endif -%}
       {%- if block.settings.banner_fit_mobile != 'default' %} data-banner-fit-mobile="{{ block.settings.banner_fit_mobile }}"{% endif -%}
       {%- if block.settings.banner_focus_mobile != 'default' %} data-banner-focus-mobile="{{ block.settings.banner_focus_mobile }}"{% endif -%}
+      {%- if block.settings.click_action != 'default' %} data-click-action="{{ block.settings.click_action }}"{% endif -%}
       {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
       {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
@@ -418,6 +419,27 @@
       ],
       "default": "default",
       "info": "Which part of the video stays visible when its edges are trimmed."
+    },
+    {
+      "type": "select",
+      "id": "click_action",
+      "label": "When the video is clicked",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "player",
+          "label": "Open the video player"
+        },
+        {
+          "value": "none",
+          "label": "Do nothing"
+        }
+      ],
+      "default": "default",
+      "info": "Default: carousels, stories and spotlights open the player, banners do nothing."
     },
     {
       "type": "text",

@@ -26,6 +26,7 @@
       {%- if block.settings.story_shape != 'default' %} data-story-shape="{{ block.settings.story_shape }}"{% endif -%}
       {%- if block.settings.story_gap_desktop != 'default' %} data-story-gap-desktop="{{ block.settings.story_gap_desktop }}"{% endif -%}
       {%- if block.settings.story_gap_mobile != 'default' %} data-story-gap-mobile="{{ block.settings.story_gap_mobile }}"{% endif -%}
+      {%- if block.settings.click_action != 'default' %} data-click-action="{{ block.settings.click_action }}"{% endif -%}
       {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
       {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
@@ -194,6 +195,27 @@
         }
       ],
       "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "click_action",
+      "label": "When the video is clicked",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "player",
+          "label": "Open the video player"
+        },
+        {
+          "value": "none",
+          "label": "Do nothing"
+        }
+      ],
+      "default": "default",
+      "info": "Default: carousels, stories and spotlights open the player, banners do nothing."
     },
     {
       "type": "text",

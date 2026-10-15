@@ -229,7 +229,7 @@ for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [
 // Colours, fonts and text: empty means "use the global setting". Every widget type can change its main colour, font and button text.
 const WEIGHTS = [['400', 'Regular'], ['500', 'Medium'], ['600', 'Semi-bold'], ['700', 'Bold'], ['800', 'Extra bold']];
 const LOOK = {
-  all: [[null, 'brandColor', 'Button and highlight colour', 'color'], [null, 'brandFont', 'Font', 'font'], [null, 'shopNowText', 'Button text', 'text'], [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]]],
+  all: [[null, 'brandColor', 'Button and highlight colour', 'color'], [null, 'brandFont', 'Font', 'font'], [null, 'shopNowText', 'Button text', 'text'], [null, 'clickAction', 'When the video is clicked', 'sel', [['player', 'Open the video player'], ['none', 'Do nothing']]], [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]]],
   carousel: [['carousel', 'headingColor', 'Heading colour', 'color'], ['carousel', 'headingFont', 'Heading font', 'font'], ['carousel', 'headingWeight', 'Heading weight', 'sel', WEIGHTS], ['carousel', 'detailsColor', 'Product text colour', 'color'], ['carousel', 'feedAtcColor', 'Feed button colour', 'color'], ['carousel', 'feedAtcTextColor', 'Feed button text colour', 'color'], [null, 'showViews', 'Show view counts', 'bool']],
   stories: [['stories', 'borderColor', 'Story ring colour', 'color'], ['stories', 'titleColor', 'Story label colour', 'color']],
   banner: [['banner', 'background', 'Banner bar colour', 'color']],
@@ -243,6 +243,7 @@ OV_FIELDS.feature = [
   ...NEW_LAYOUT.feature,
   ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+  [null, 'clickAction', 'When the video is clicked', 'sel', [['player', 'Open the video player'], ['none', 'Do nothing']]],
   [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]],
 ];
 

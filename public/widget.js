@@ -84,6 +84,7 @@
     '.info{z-index:3;position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
     '.info b{display:block;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:12px;line-height:1.3;color:var(--details-color);display:flex;flex-direction:column;gap:6px;padding:12px 0}.meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;line-height:1.3;font-weight:700}.pr{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}.pr b{font-size:20px;font-weight:700;white-space:normal;overflow:visible}.pr s{font-size:15px;font-weight:600;opacity:.5}.pr em{font-style:normal;font-size:12.5px;font-weight:600;background:var(--brand);color:#222;padding:4px 10px;border-radius:8px}',
     '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 14px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:14px 10px;width:100%;margin-top:auto}.abtn[disabled]{opacity:.6;cursor:default}',
+    '.nocl .tile{cursor:default}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
     // Phones: smaller text and a slimmer button, like Whatmore's carousel on a phone. The button sits at the bottom of every tile so a row lines up.
     '.mob .meta{gap:4px;padding:10px 0}.mob .meta b{font-size:13px}.mob .pr b{font-size:14px}.mob .pr s{font-size:11px}.mob .pr em{font-size:10.5px;padding:3px 8px;border-radius:6px}.mob .abtn{font-size:12.5px;padding:0;height:33px;line-height:33px}',
@@ -246,8 +247,16 @@
     if (ctx.settings.clickTarget === 'new') window.open(link, '_blank', 'noopener'); else window.location.href = link;
     return true;
   }
+  // Whether a click on a video opens the full-screen player: carousels, stories and spotlights do by default; banners and sections do not.
+  function clicksOpenPlayer(ctx) {
+    var ca = ctx.settings && ctx.settings.clickAction, type = ctx.widget && ctx.widget.type;
+    if (ca === 'none') return false;
+    if (ca === 'player') return true;
+    return !(type === 'banner' || type === 'feature');
+  }
   function openPlayer(ctx, videos, start) {
     if (clickThrough(ctx)) return;
+    if (!clicksOpenPlayer(ctx)) return;
     var s = ctx.settings;
     var host = document.createElement('div');
     keepAlive(host);
@@ -427,7 +436,7 @@
     if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) ar = ctx.mobile ? '9/16' : '16/9';
     var fit = banner ? ((mob ? bb.fitMobile : bb.fitDesktop) || bb.fit) : ((mob ? cc.tileFitMobile : cc.tileFitDesktop) || cc.tileFit);
     var focusV = (mob ? bb.focusMobile : bb.focusDesktop) || bb.focus || 'center';
-    var cls = type + (ctx.mobile ? ' mob' : '') + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
+    var cls = type + (ctx.mobile ? ' mob' : '') + (!clicksOpenPlayer(ctx) && !(ctx.settings && ctx.settings.clickLink) ? ' nocl' : '') + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
     var head = w.heading && !banner ? '<div class="head"><h2 class="title">' + esc(w.heading) + '</h2></div>' : '';
     root.innerHTML = '<style>' + cssVars(s, { '--ar': ar.replace(':', '/') }, ctx.mobile) + BASE + '</style><div class="' + cls + '">' + head + '<div class="rail"><div class="track">' + list.map(function (v, i) { return tileHTML(v, i, s, type); }).join('') + '</div><button class="arr prev" aria-label="Previous">&#8249;</button><button class="arr next" aria-label="Next">&#8250;</button></div>' +
       (banner && s.banner.showDots && list.length > 1 ? '<div class="dots">' + list.map(function (_, i) { return '<i class="' + (i ? '' : 'on') + '"></i>'; }).join('') + '</div>' : '') + '</div>';
@@ -587,6 +596,7 @@
     var lk = g('data-link');
     if (/^https?:\/\//i.test(lk) || /^\/(?!\/)/.test(lk)) out.clickLink = lk.slice(0, 2000);
     var lt = pick('data-link-target', ['same', 'new']); if (lt) out.clickTarget = lt;
+    var ca = pick('data-click-action', ['player', 'none']); if (ca) out.clickAction = ca;
     return out;
   }
 
