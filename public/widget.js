@@ -649,12 +649,28 @@
       return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (r) { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .catch(function (e) { clearTimeout(t); if (attempt < 1) return new Promise(function (res) { setTimeout(res, 1500); }).then(function () { return load(attempt + 1); }); throw e; });
     }
-    load(0).then(function (cfg) {
-      if (!cfg.widget && wid) { settle(false); note(el, 'widget ' + wid + ' was not found or is switched off in Loopy.'); return; }
+    // The last answer is kept in this browser, so on repeat visits the widget draws instantly and is refreshed quietly in the background.
+    var ck = 'tuco_cfg_' + url;
+    var cached = null;
+    try { var raw = localStorage.getItem(ck); if (raw) { var o = JSON.parse(raw); if (o && o.c && Date.now() - o.t < 86400000) cached = o.c; } } catch (err) { /* ignore */ }
+    var shownKey = '';
+    function show(cfg) {
+      cfg = JSON.parse(JSON.stringify(cfg));
       if (el.getAttribute('data-heading') && cfg.widget) cfg.widget.heading = el.getAttribute('data-heading');
       cfg.settings = applyAttrOverrides(cfg.settings, el);
       return render(el, cfg).then(function () { settle(true); });
-    }).catch(function (e) { settle(false); note(el, 'could not load from ' + API + ' (' + (e && e.message ? e.message : 'network or blocked store address') + ').'); });
+    }
+    if (cached && cached.widget) { shownKey = JSON.stringify(cached); show(cached).catch(function () { /* the fresh answer below will try again */ }); }
+    load(0).then(function (cfg) {
+      if (!cfg.widget && wid) {
+        try { localStorage.removeItem(ck); } catch (err) { /* ignore */ }
+        if (shownKey && el.shadowRoot) el.shadowRoot.innerHTML = '';
+        settle(false); note(el, 'widget ' + wid + ' was not found or is switched off in Loopy.'); return;
+      }
+      try { var txt = JSON.stringify({ t: Date.now(), c: cfg }); if (txt.length < 200000) localStorage.setItem(ck, txt); } catch (err) { /* ignore */ }
+      if (shownKey && JSON.stringify(cfg) === shownKey) return;
+      return show(cfg);
+    }).catch(function (e) { if (shownKey) return; settle(false); note(el, 'could not load from ' + API + ' (' + (e && e.message ? e.message : 'network or blocked store address') + ').'); });
   }
   // A bare widget id typed on its own (for example in a Custom Liquid box) becomes a widget.
   function scanBare(root) {

@@ -438,3 +438,16 @@ test('banner: "Match the video" takes the shape of the video itself', { skip: !h
     near(m.box, Math.min(2.4, Math.max(0.5, m.video)), 'box follows the video shape', 0.03);
   } finally { await r.close(); }
 });
+
+// ---------------- Instant repeat visits ----------------
+test('speed: on a repeat visit the widget draws from its saved answer even before the API replies', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'banner', overrides: { banner: { aspectLandscape: '2/1', heightModeDesktop: 'ratio' } } });
+  try {
+    await r.page.setRequestInterception(true);
+    r.page.on('request', (q) => { if (/\/api\/public\/config/.test(q.url())) q.abort(); else q.continue(); });
+    await r.page.reload({ waitUntil: 'domcontentloaded' });
+    await r.page.waitForFunction(() => { const h = document.querySelector('[data-tuco-video]'); return h && h.shadowRoot && h.shadowRoot.querySelector('.tile'); }, { timeout: 8000 });
+    const note = await r.page.evaluate(() => document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile') ? 'drawn' : 'empty');
+    assert.equal(note, 'drawn');
+  } finally { await r.close(); }
+});

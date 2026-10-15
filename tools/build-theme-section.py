@@ -188,7 +188,9 @@ print(f'wrote {sys.argv[1]}: {sum(1 for x in schema_settings if x.get("id"))} se
 
 # ---------------- Shopify app extension (app block + app embed) ----------------
 if len(sys.argv) >= 4:
-    SCRIPT = """<script>
+    SCRIPT = """<link rel="preconnect" href="https://tuco-video-api.tucokids.workers.dev" crossorigin>
+<link rel="preconnect" href="https://loopy.tucokids.workers.dev" crossorigin>
+<script>
   (function () {
     if (window.__tucoLoaded || document.querySelector('script[data-loopy]')) return;
     var s = document.createElement('script');
