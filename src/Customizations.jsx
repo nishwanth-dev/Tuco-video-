@@ -137,8 +137,8 @@ export default function Customizations({ settings, videos, loadSettings, setErro
         </>}
         {sec === 'feature' && <>
           <p className="muted small">For a section you designed in your theme (heading, background and layout live there). Loopy only supplies the video and its size. The preview shows an example heading beside it. Create one under Homepage, Collection Pages or Pages, paste its widget ID into your section, and change any of this for just that widget in its Appearance panel.</p>
-          <Field label="Video shape on desktop"><Sel v={s.feature.shapeDesktop} on={(v) => setIn('feature', 'shapeDesktop', v)} opts={[['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
-          <Field label="Video shape on phones"><Sel v={s.feature.shapeMobile} on={(v) => setIn('feature', 'shapeMobile', v)} opts={[['4/5', 'Portrait 4:5'], ['5/6', 'Portrait 5:6'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
+          <Field label="Video shape on desktop"><Sel v={s.feature.shapeDesktop} on={(v) => setIn('feature', 'shapeDesktop', v)} opts={[['auto', 'Match the video (recommended)'], ['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
+          <Field label="Video shape on phones"><Sel v={s.feature.shapeMobile} on={(v) => setIn('feature', 'shapeMobile', v)} opts={[['auto', 'Match the video (recommended)'], ['4/5', 'Portrait 4:5'], ['5/6', 'Portrait 5:6'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']]} /></Field>
           {layoutRows('feature')}
         </>}
         {sec === 'spotlight' && <>

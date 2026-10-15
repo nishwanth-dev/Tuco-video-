@@ -334,6 +334,7 @@ test('widget limited to an emoji product handle shows on that product page and n
 
 
 // ---------------- Video section: a heading beside one portrait video ----------------
+const SHAPES = { feature: { shapeDesktop: '5/6', shapeMobile: '4/5' } };
 const featureRead = async (device, overrides = {}) => {
   const w = await api('POST', '/api/widgets', { name: 'QA section ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: 'for tangled and itchy hair', overrides });
   assert.ok(w.status < 300, JSON.stringify(w.json));
@@ -351,12 +352,12 @@ const featureRead = async (device, overrides = {}) => {
   } finally { await page.close(); }
 };
 test('video section: desktop shows the heading left of a 5:6 video, centred vertically', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
-  const m = await featureRead('desktop');
+  const m = await featureRead('desktop', SHAPES);
   assert.equal(m.text, 'for tangled and itchy hair'); assert.equal(m.one, 1);
   assert.ok(m.hr <= m.tx + 1, 'heading is left of the video'); near(m.tw / m.th, 5 / 6, 'portrait 5:6', 0.02); near(m.hy, m.ty, 'vertically centred', 3);
 });
 test('video section: phones stack a centred heading above a 4:5 video', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
-  const m = await featureRead('mobile');
+  const m = await featureRead('mobile', SHAPES);
   assert.ok(m.hBottom <= m.tTop + 1, 'heading is above the video'); near(m.tw / m.th, 4 / 5, 'portrait 4:5', 0.02);
 });
 test('video section: the video can go on the left and the shape can change', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
@@ -365,7 +366,7 @@ test('video section: the video can go on the left and the shape can change', { s
 });
 
 test('video section: with no heading it is just the video, as wide as the space it is given', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
-  const w = await api('POST', '/api/widgets', { name: 'QA video only ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: '', overrides: {} });
+  const w = await api('POST', '/api/widgets', { name: 'QA video only ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: '', overrides: SHAPES });
   assert.ok(w.status < 300, JSON.stringify(w.json));
   const page = await browser.newPage();
   await page.setViewport({ width: 700, height: 900, deviceScaleFactor: 1, isMobile: false });
@@ -465,4 +466,17 @@ test('click behaviour: it can be switched either way per widget or per block', {
   try { await clickTile(a.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(a.page), true, 'banner set to open the player'); } finally { await a.close(); }
   const b = await render(browser, ids, { type: 'carousel', attrs: { 'data-click-action': 'none' } });
   try { await clickTile(b.page); await new Promise((x) => setTimeout(x, 500)); assert.equal(await playerOpens(b.page), false, 'carousel set to do nothing'); } finally { await b.close(); }
+});
+
+test('video section: by default it matches the shape of its own video', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const w = await api('POST', '/api/widgets', { name: 'QA section auto ' + Math.random().toString(36).slice(2, 7), type: 'feature', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], heading: '', overrides: {} });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1, isMobile: false });
+  try {
+    await page.goto(`http://localhost:${PORT}/page?w=${w.json.id}&attrs=%7B%7D`, { waitUntil: 'load' });
+    await page.waitForFunction(() => { const h = document.querySelector('[data-tuco-video]'); const v = h && h.shadowRoot && h.shadowRoot.querySelector('.v > div'); const vid = v && v.shadowRoot && v.shadowRoot.querySelector('.tile video'); return vid && vid.readyState >= 1; }, { timeout: 10000 });
+    await new Promise((r) => setTimeout(r, 400));
+    const m = await page.evaluate(() => { const t = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.v > div').shadowRoot.querySelector('.tile'); const v = t.querySelector('video'); const b = t.getBoundingClientRect(); return { box: b.width / b.height, video: v.videoWidth / v.videoHeight }; });
+    near(m.box, Math.min(2.4, Math.max(0.5, m.video)), 'box follows the video', 0.03);
+  } finally { await page.close(); }
 });

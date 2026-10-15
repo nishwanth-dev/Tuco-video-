@@ -249,7 +249,7 @@ const LOOK = {
 for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [...OV_FIELDS[t], ...LOOK.all, ...(LOOK[t] || [])];
 OV_FIELDS.floating = OV_FIELDS.spotlight;
 // "Video section": the heading and layout settings first, then the video box uses the banner settings (portrait by default).
-const FEATURE_RATIOS = [['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
+const FEATURE_RATIOS = [AUTO_SHAPE, ['5/6', 'Portrait 5:6'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
 OV_FIELDS.feature = [
   ['feature', 'shapeDesktop', 'Video shape, desktop', 'sel', FEATURE_RATIOS], ['feature', 'shapeMobile', 'Video shape, mobile', 'sel', FEATURE_RATIOS],
   ...NEW_LAYOUT.feature,
