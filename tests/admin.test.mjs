@@ -144,3 +144,22 @@ test('customizations: Discard changes goes back to what is saved, and Reset puts
   assert.match(await page.evaluate(() => document.querySelector('.chead').innerText), /Unsaved changes|Saved/);
   await page.close();
 });
+
+test('widget editor: a picked video can be limited to desktop or phones, and the choice is saved', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const id = (await api('POST', '/api/widgets', { name: 'Device pairing test', type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds: [vids[0], vids[1]] })).json.id;
+  const page = await open('w:home');
+  const row = await page.evaluateHandle(() => [...document.querySelectorAll('tbody tr')].find((r) => /Device pairing test/.test(r.innerText)));
+  await row.evaluate((r) => [...r.querySelectorAll('button')].find((b) => /Manage/.test(b.innerText)).click()); await sleep(800);
+  const pick = (i, v) => page.evaluate((i, v) => { const sel = [...document.querySelectorAll('.modal .arr .arow select')][i]; const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, v); sel.dispatchEvent(new Event('change', { bubbles: true })); }, i, v);
+  await pick(0, 'desktop'); await pick(1, 'mobile'); await sleep(300);
+  await clickText(page, '.modal button', 'Save widget'); await sleep(1300);
+  const w = await widgetOf(id);
+  assert.deepEqual(w.overrides.deviceOnly, { [vids[0]]: 'desktop', [vids[1]]: 'mobile' });
+  assert.deepEqual(w.videoIds, [vids[0], vids[1]]);
+  // set one back to both: the entry disappears
+  const row2 = await page.evaluateHandle(() => [...document.querySelectorAll('tbody tr')].find((r) => /Device pairing test/.test(r.innerText)));
+  await row2.evaluate((r) => [...r.querySelectorAll('button')].find((b) => /Manage/.test(b.innerText)).click()); await sleep(800);
+  await pick(0, ''); await clickText(page, '.modal button', 'Save widget'); await sleep(1300);
+  assert.deepEqual((await widgetOf(id)).overrides.deviceOnly, { [vids[1]]: 'mobile' });
+  await page.close();
+});

@@ -404,3 +404,26 @@ test('click link: without a link the video player still opens, and unsafe links 
     assert.ok(await r.page.evaluate(() => [...document.querySelectorAll('div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.slide'))), 'the player opened');
   } finally { await r.close(); }
 });
+
+// ---------------- One banner widget, two videos: desktop and phone switch by themselves ----------------
+test('paired banner: one widget id shows the desktop video on desktop and the phone video on phones, and switches live', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const w = await api('POST', '/api/widgets', { name: 'QA paired ' + Math.random().toString(36).slice(2, 7), type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0], ids[1]], overrides: { deviceOnly: { [ids[0]]: 'desktop', [ids[1]]: 'mobile' }, banner: { aspectLandscape: '2/1', aspectPortrait: '5/4', heightModeDesktop: 'ratio', heightModeMobile: 'ratio' } } });
+  assert.ok(w.status < 300, JSON.stringify(w.json));
+  const page = await browser.newPage();
+  const read = () => page.evaluate(() => { const sr = document.querySelector('[data-tuco-video]').shadowRoot; const tiles = [...sr.querySelectorAll('.tile')]; const t = tiles[0].getBoundingClientRect(); return { tiles: tiles.length, id: tiles[0].querySelector('video').getAttribute('data-id'), ratio: +(t.width / t.height).toFixed(2), dots: sr.querySelectorAll('.dots i').length }; });
+  try {
+    await page.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1, isMobile: false });
+    await page.goto(`http://localhost:${PORT}/page?w=${w.json.id}&attrs=%7B%7D`, { waitUntil: 'load' });
+    await page.waitForFunction(() => { const h = document.querySelector('[data-tuco-video]'); return h && h.shadowRoot && h.shadowRoot.querySelector('.tile'); }, { timeout: 10000 });
+    await new Promise((r) => setTimeout(r, 300));
+    let m = await read();
+    assert.equal(m.tiles, 1, 'one video at a time'); assert.equal(m.id, ids[0], 'desktop video on desktop'); near(m.ratio, 2, 'desktop shape 2:1', 0.03); assert.equal(m.dots, 0);
+    await page.setViewport({ width: 390, height: 800, deviceScaleFactor: 1, isMobile: false });
+    await page.waitForFunction((id) => { const h = document.querySelector('[data-tuco-video]'); const t = h.shadowRoot.querySelector('.tile video'); return t && t.getAttribute('data-id') === id; }, { timeout: 6000 }, ids[1]);
+    m = await read();
+    assert.equal(m.tiles, 1); assert.equal(m.id, ids[1], 'phone video on phones, switched without a reload'); near(m.ratio, 1.25, 'phone shape 5:4', 0.03);
+    await page.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1, isMobile: false });
+    await page.waitForFunction((id) => { const t = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile video'); return t && t.getAttribute('data-id') === id; }, { timeout: 6000 }, ids[0]);
+    near((await read()).ratio, 2, 'back to the desktop shape', 0.03);
+  } finally { await page.close(); }
+});

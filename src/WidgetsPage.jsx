@@ -72,6 +72,14 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const set = (k, v) => setW((o) => ({ ...o, [k]: v }));
   const live = videos.filter((v) => v.status === 'live' && !v.archived);
   const toggleVid = (id) => set('videoIds', w.videoIds.includes(id) ? w.videoIds.filter((x) => x !== id) : [...w.videoIds, id]);
+  // Limits a picked video to desktop or phones (empty = both). Stored in the widget's overrides.
+  const setDevice = (id, dev) => setW((o) => {
+    const next = JSON.parse(JSON.stringify(o.overrides || {}));
+    const m = next.deviceOnly || {};
+    if (dev === 'desktop' || dev === 'mobile') m[id] = dev; else delete m[id];
+    if (Object.keys(m).length) next.deviceOnly = m; else delete next.deviceOnly;
+    return { ...o, overrides: next };
+  });
   const moveVid = (i, d) => setW((o) => { const n = [...o.videoIds]; const j = i + d; if (j < 0 || j >= n.length) return o; [n[i], n[j]] = [n[j], n[i]]; return { ...o, videoIds: n }; });
   const showHeading = ['carousel'].includes(w.type);
   const isProduct = w.page === 'product';
@@ -97,12 +105,13 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
       {w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
-        <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order.</span>
+        <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order. To use a different video on phones than on desktop, set one to "Desktop only" and the other to "Phones only".</span>
           <div className="arr">{w.videoIds.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
             <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
               <button type="button" className="link" disabled={i === 0} onClick={() => moveVid(i, -1)} aria-label="Move up">↑</button>
               <button type="button" className="link" disabled={i === w.videoIds.length - 1} onClick={() => moveVid(i, 1)} aria-label="Move down">↓</button>
-              <button type="button" className="link red" onClick={() => toggleVid(id)}>Remove</button></div>); })}</div>
+              <select className="devsel" aria-label="Show on" value={(w.overrides && w.overrides.deviceOnly && w.overrides.deviceOnly[id]) || ''} onChange={(e) => setDevice(id, e.target.value)}><option value="">Show on desktop and phones</option><option value="desktop">Desktop only</option><option value="mobile">Phones only</option></select>
+              <button type="button" className="link red" onClick={() => { toggleVid(id); setDevice(id, ''); }}>Remove</button></div>); })}</div>
         </div>
       )}
       {isProduct && (
