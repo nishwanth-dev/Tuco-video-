@@ -386,7 +386,7 @@
   function tileHTML(v, i, s, type) {
     var c = s.carousel, p = v.products[0], tt = s.tileType;
     var yt = ytId(v.url), tsrc = thumbOf(v);
-    var thumb = yt ? ytTile(v) : ((tsrc ? '<img class="th" src="' + U(tsrc) + '" alt="" loading="lazy">' : '') + '<video data-id="' + esc(v.id) + '" data-src="' + U(v.url) + '" muted loop playsinline preload="none"></video>');
+    var thumb = yt ? ytTile(v) : ((tsrc ? '<img class="th" src="' + U(tsrc) + '" alt="" ' + ((type === 'banner' || type === 'feature') && i === 0 ? 'loading="eager" fetchpriority="high" decoding="async"' : 'loading="lazy"') + '>' : '') + '<video data-id="' + esc(v.id) + '" data-src="' + U(v.url) + '" muted loop playsinline preload="none"></video>');
     var ov = c.overlayImage ? '<img class="ov ' + esc(c.overlayPlacement) + '" src="' + U(c.overlayImage) + '" alt="">' : '';
     var views = s.showViews ? '<span class="views">▶ ' + fmtViews(v.views || 0) + '</span>' : '';
     var sold = v.allSoldOut && s.oos.soldOutLabel ? '<span class="sold">Sold out</span>' : '';
@@ -705,8 +705,23 @@
     };
     if (mq.addEventListener) mq.addEventListener('change', again); else if (mq.addListener) mq.addListener(again);
   })();
-  function boot() { scanBare(); document.querySelectorAll('[data-tuco-video]').forEach(init); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  // Widgets near the top of the page start at once. Widgets far below the fold wait until the shopper scrolls close, so the first screen is not slowed
+  // by requests nobody has asked for yet (and the daily request budget is not spent on videos that are never seen).
+  var lazyIO = typeof IntersectionObserver === 'function' ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { lazyIO.unobserve(e.target); init(e.target); } });
+  }, { rootMargin: '900px 0px' }) : null;
+  function start(el) {
+    if (el.__tuco || el.__tucoQ) return;
+    if (!lazyIO || !API) { init(el); return; }
+    keepAlive(el);
+    var top = el.getBoundingClientRect().top;
+    if (top < window.innerHeight * 2 || !isFinite(top)) { init(el); return; }
+    el.__tucoQ = true; lazyIO.observe(el);
+  }
+  function boot() { scanBare(); document.querySelectorAll('[data-tuco-video]').forEach(start); }
+  // Start right away with what is already on the page (this script is loaded after its widget), and again when the page finishes loading.
+  boot();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   document.addEventListener('shopify:section:load', boot);
   // Widgets that a theme adds later (quick view, infinite scroll, AJAX sections) start up too. Only newly added parts of the page are looked at.
   if (typeof MutationObserver === 'function') {
@@ -719,8 +734,8 @@
         nodes.forEach(function (n) {
           if (!n.isConnected) return;
           try { scanBare(n); } catch (e) { /* ignore */ }
-          if (n.matches && n.matches('[data-tuco-video]')) init(n);
-          if (n.querySelectorAll) n.querySelectorAll('[data-tuco-video]').forEach(init);
+          if (n.matches && n.matches('[data-tuco-video]')) start(n);
+          if (n.querySelectorAll) n.querySelectorAll('[data-tuco-video]').forEach(start);
         });
       }, 120);
     }).observe(document.documentElement, { childList: true, subtree: true });

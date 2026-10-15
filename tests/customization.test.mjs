@@ -480,3 +480,19 @@ test('video section: by default it matches the shape of its own video', { skip: 
     near(m.box, Math.min(2.4, Math.max(0.5, m.video)), 'box follows the video', 0.03);
   } finally { await page.close(); }
 });
+
+// ---------------- Widgets far below the fold wait ----------------
+test('speed: a widget far below the first screen only loads when the shopper scrolls near it', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const w = await api('POST', '/api/widgets', { name: 'QA far below ' + Math.random().toString(36).slice(2, 7), type: 'carousel', page: 'home', scope: 'custom', enabled: true, videoIds: ids, heading: 'Far below' });
+  const first = await render(browser, ids, { type: 'banner' });
+  try {
+    const asked = [];
+    first.page.on('request', (q) => { const m = q.url().match(/\/api\/public\/config\?widget=([\w-]+)/); if (m) asked.push(m[1]); });
+    await first.page.evaluate((id) => { const sp = document.createElement('div'); sp.style.height = '6000px'; sp.textContent = ' '; document.body.appendChild(sp); const h = document.createElement('div'); h.setAttribute('data-tuco-video', ''); h.setAttribute('data-widget', id); h.id = 'far'; document.body.appendChild(h); }, w.json.id);
+    await new Promise((r) => setTimeout(r, 900));
+    assert.ok(!asked.includes(w.json.id), 'no request while it is far below');
+    await first.page.evaluate(() => document.getElementById('far').scrollIntoView());
+    await first.page.waitForFunction(() => { const h = document.getElementById('far'); return h && h.shadowRoot && h.shadowRoot.querySelector('.tile'); }, { timeout: 10000 });
+    assert.ok(asked.includes(w.json.id), 'it asks once the shopper is near');
+  } finally { await first.close(); }
+});

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && esbuild public/widget.js --minify --target=es2017 --outfile=dist/widget.js",
     "preview": "vite preview"
   },
   "dependencies": {

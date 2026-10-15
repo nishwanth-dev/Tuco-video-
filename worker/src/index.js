@@ -185,8 +185,18 @@ async function allProducts(env, path) {
   return out;
 }
 let CATALOG = { t: 0, map: null, list: [] };
+let CATALOG_BUSY = null;
 async function catalog(env) {
-  if (CATALOG.map && Date.now() - CATALOG.t < 300000) return CATALOG;
+  const age = CATALOG.map ? Date.now() - CATALOG.t : Infinity;
+  if (age < 300000) return CATALOG;
+  // A list that is a little old is used straight away while a fresh one is fetched in the background, so a shopper never waits for the store.
+  if (CATALOG.map && age < 3600000) {
+    if (!CATALOG_BUSY) CATALOG_BUSY = loadCatalog(env).catch(() => {}).finally(() => { CATALOG_BUSY = null; });
+    return CATALOG;
+  }
+  return loadCatalog(env);
+}
+async function loadCatalog(env) {
   const products = await allProducts(env, '/products.json');
   const list = products.map((p) => {
     const av = (p.variants || []).find((v) => v.available);
@@ -208,6 +218,8 @@ async function collectionHandles(env, handle) {
 }
 // Fills live price, image, stock and variant from the cached catalogue; keeps saved values if the store is unreachable.
 async function enrich(env, videos) {
+  // Banners and other videos with no product tagged need nothing from the store, so they never wait for the product list.
+  if (!videos.some((v) => v.products && v.products.length)) return videos;
   let cat;
   try { cat = await catalog(env); } catch { return videos; }
   videos.forEach((v) => v.products.forEach((p) => {
