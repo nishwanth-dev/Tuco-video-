@@ -163,3 +163,18 @@ test('widget editor: a picked video can be limited to desktop or phones, and the
   assert.deepEqual((await widgetOf(id)).overrides.deviceOnly, { [vids[1]]: 'mobile' });
   await page.close();
 });
+
+test('create widget: the video picker and the Show-on list stay visible even with a tall preview', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await browser.newPage(); await page.setViewport({ width: 1400, height: 640 });
+  await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+  await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/w:home`);
+  await page.waitForFunction(() => document.querySelector('h1'), { timeout: 15000 }); await sleep(1500);
+  const card = await page.evaluateHandle(() => [...document.querySelectorAll('.wcard')].find((c) => /Banners/.test(c.innerText)));
+  await card.evaluate((c) => [...c.querySelectorAll('button')].find((b) => /Create/.test(b.innerText)).click()); await sleep(600);
+  await page.evaluate(() => [...document.querySelectorAll('.modal input[type=radio]')][1].click()); await sleep(400);
+  await page.evaluate(() => { const labs = [...document.querySelectorAll('.modal .vp input')]; labs[0].click(); labs[1].click(); }); await sleep(900);
+  const sizes = await page.evaluate(() => ({ picker: document.querySelector('.modal .vpick').getBoundingClientRect().height, rows: document.querySelectorAll('.modal .arr .arow').length, selects: document.querySelectorAll('.modal .arr .arow select').length }));
+  assert.ok(sizes.picker >= 100, 'the picker keeps its height: ' + sizes.picker);
+  assert.equal(sizes.rows, 2); assert.equal(sizes.selects, 2, 'each picked video has a Show on choice');
+  await page.close();
+});

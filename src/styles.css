@@ -207,3 +207,4 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
 .checks .chk { display: flex; flex-direction: row !important; align-items: center; gap: 8px; }
 .resetrow { margin: 0 0 10px; font-size: 12.5px; }
 .arow .devsel { margin-left: auto; font-size: 12px; padding: 4px 6px; max-width: 190px; }
+.modal > * { flex-shrink: 0; }
