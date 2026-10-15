@@ -26,6 +26,11 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
   const [editing, setEditing] = useState(null);
   const [embed, setEmbed] = useState(null);
   const mine = widgets.filter((w) => w.page === page);
+  const [q, setQ] = useState('');
+  const term = q.trim().toLowerCase();
+  const hit = (w) => !term || w.name.toLowerCase().includes(term) || w.id.toLowerCase().includes(term) || TYPES[w.type][0].toLowerCase().includes(term);
+  const shown = mine.filter(hit);
+  const elsewhere = term ? widgets.filter((w) => w.page !== page && hit(w)) : [];
   const act = (fn) => async (...a) => { setError(''); try { await fn(...a); await loadWidgets(); return ''; } catch (e) { setError(e.message); return e.message || 'Something went wrong'; } };
   const typeName = (t) => TYPES[t][0];
 
@@ -43,11 +48,18 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
         ))}
       </div>
       <h3 className="sect">Manage widgets</h3>
+      {(mine.length > 0 || widgets.length > 0) && (
+        <div className="toolbar"><input className="search wsearch" placeholder="Search by widget ID or name, for example wgt_18e72081..." value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search widgets" />{term && <><span className="muted small">{shown.length} of {mine.length} here</span><button type="button" className="link" onClick={() => setQ('')}>Clear</button></>}</div>
+      )}
+      {term && !shown.length && mine.length > 0 && <p className="muted pad">No widget on this page matches "{q.trim()}".</p>}
+      {term && elsewhere.length > 0 && (
+        <div className="elsewhere"><span className="muted small">Found on other pages:</span>{elsewhere.map((w) => <button key={w.id} type="button" className="link" onClick={() => go('w:' + w.page)}>{w.name} <code>{w.id}</code> · {TITLES[w.page]}</button>)}</div>
+      )}
       {!mine.length && <Empty>No widgets here yet. Create one above, then copy its embed code into your theme.</Empty>}
-      {mine.length > 0 && (
+      {shown.length > 0 && (
         <table>
           <thead><tr><th>Widget</th><th>Type</th><th>Videos</th><th>On website</th><th /></tr></thead>
-          <tbody>{mine.map((w) => (
+          <tbody>{shown.map((w) => (
             <tr key={w.id}>
               <td><b>{w.name}</b> <code>{w.id}</code></td>
               <td>{typeName(w.type)}</td>

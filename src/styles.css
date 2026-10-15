@@ -208,3 +208,4 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
 .resetrow { margin: 0 0 10px; font-size: 12.5px; }
 .arow .devsel { margin-left: auto; font-size: 12px; padding: 4px 6px; max-width: 190px; }
 .modal > * { flex-shrink: 0; }
+.wsearch { max-width: 460px; width: 100%; } .elsewhere { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 0 0 10px; }

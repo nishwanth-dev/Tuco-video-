@@ -178,3 +178,22 @@ test('create widget: the video picker and the Show-on list stay visible even wit
   assert.equal(sizes.rows, 2); assert.equal(sizes.selects, 2, 'each picked video has a Show on choice');
   await page.close();
 });
+
+test('widget pages: a search box finds a widget by its ID or name, and points to other pages', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const homeId = (await api('POST', '/api/widgets', { name: 'Findme home banner', type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds: [vids[0]] })).json.id;
+  await api('POST', '/api/widgets', { name: 'Other home widget', type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds: [vids[0]] });
+  const page = await open('w:home');
+  const rows = () => page.evaluate(() => [...document.querySelectorAll('tbody tr')].map((r) => r.innerText.replace(/\s+/g, ' ')));
+  const type = async (t) => { await page.evaluate((t) => { const i = document.querySelector('.wsearch'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, t); i.dispatchEvent(new Event('input', { bubbles: true })); }, t); await sleep(300); };
+  const all = (await rows()).length; assert.ok(all >= 2);
+  await type(homeId.toUpperCase());
+  let r = await rows(); assert.equal(r.length, 1, 'only the widget with that ID'); assert.match(r[0], /Findme home banner/);
+  await type('other home');
+  r = await rows(); assert.equal(r.length, 1); assert.match(r[0], /Other home widget/);
+  await type('zzz-nothing');
+  assert.equal((await rows()).length, 0); assert.match(await page.evaluate(() => document.body.innerText), /No widget on this page matches/);
+  const prodId = (await api('GET', '/api/widgets')).json.widgets.find((w) => w.page === 'product').id;
+  await type(prodId);
+  assert.match(await page.evaluate(() => document.querySelector('.elsewhere').innerText), /Product Pages/, 'points to the page where it lives');
+  await page.close();
+});
