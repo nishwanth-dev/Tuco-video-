@@ -82,9 +82,11 @@
     '.views{position:absolute;top:8px;left:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:999px;padding:3px 8px}',
     '.sold{position:absolute;top:8px;right:8px;z-index:2;background:#fff;color:#222;font-size:11px;font-weight:600;border-radius:999px;padding:3px 8px}',
     '.info{z-index:3;position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;color:#fff;text-align:left;font-size:12px;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.65))}',
-    '.info b{display:block;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:12px;line-height:1.3;color:var(--details-color);display:flex;flex-direction:column;gap:6px;padding-top:12px}.meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;line-height:1.3;font-weight:700}.pr{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}.pr b{font-size:20px;font-weight:700;white-space:normal;overflow:visible}.pr s{font-size:15px;font-weight:600;opacity:.5}.pr em{font-style:normal;font-size:12.5px;font-weight:600;background:var(--brand);color:#222;padding:4px 10px;border-radius:8px}',
-    '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 14px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:14px 10px;width:100%;margin-top:12px}.abtn[disabled]{opacity:.6;cursor:default}',
+    '.info b{display:block;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:12px;line-height:1.3;color:var(--details-color);display:flex;flex-direction:column;gap:6px;padding:12px 0}.meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;line-height:1.3;font-weight:700}.pr{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}.pr b{font-size:20px;font-weight:700;white-space:normal;overflow:visible}.pr s{font-size:15px;font-weight:600;opacity:.5}.pr em{font-style:normal;font-size:12.5px;font-weight:600;background:var(--brand);color:#222;padding:4px 10px;border-radius:8px}',
+    '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 14px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:14px 10px;width:100%;margin-top:auto}.abtn[disabled]{opacity:.6;cursor:default}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
+    // Phones: smaller text and a slimmer button, like Whatmore's carousel on a phone. The button sits at the bottom of every tile so a row lines up.
+    '.mob .meta{gap:4px;padding:10px 0}.mob .meta b{font-size:13px}.mob .pr b{font-size:14px}.mob .pr s{font-size:11px}.mob .pr em{font-size:10.5px;padding:3px 8px;border-radius:6px}.mob .abtn{font-size:12.5px;padding:0;height:33px;line-height:33px}',
     '.chip{position:absolute;left:8px;bottom:8px;z-index:2;background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600}',
     '.stories .track{gap:var(--sgap,calc(14px * var(--spacing)))}.stories .card{flex:0 0 var(--ssize,calc(84px * var(--size)));text-align:center;gap:6px}',
     '.stories .tile{aspect-ratio:1;border-radius:var(--sr,50%);border:3px solid var(--story-border)}.stories .tile img.th,.stories .tile video{border-radius:var(--sr,50%)}',
@@ -335,6 +337,15 @@
   /* ---------- tiles ---------- */
   // Respect reduced-motion and data-saver: show posters only, load video when tapped.
   var calm = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || !!(navigator.connection && navigator.connection.saveData);
+  // Sizes each banner tile to its video's own shape (taken from the poster image or the video's metadata), within sensible limits.
+  function fitToVideos(root) {
+    [].slice.call(root.querySelectorAll('.tile')).forEach(function (tile) {
+      var set = function (w, h) { if (w > 0 && h > 0) tile.style.aspectRatio = String(Math.min(2.4, Math.max(0.5, w / h)).toFixed(4)); };
+      var img = tile.querySelector('img.th'), vid = tile.querySelector('video');
+      if (img) { if (img.complete && img.naturalWidth) set(img.naturalWidth, img.naturalHeight); else img.addEventListener('load', function () { set(img.naturalWidth, img.naturalHeight); }); }
+      if (vid) { vid.addEventListener('loadedmetadata', function () { set(vid.videoWidth, vid.videoHeight); }); if (vid.readyState >= 1) set(vid.videoWidth, vid.videoHeight); }
+    });
+  }
   function lazyVideos(root, ctx) {
     root.addEventListener('pause', function (e) {
       var v = e.target;
@@ -411,14 +422,17 @@
     var bb = s.banner, cc = s.carousel, mob = !!ctx.mobile;
     var bmode = (mob ? bb.heightModeMobile : bb.heightModeDesktop) || bb.heightMode;
     var ar = String((mob ? bb.aspectPortrait : bb.aspectLandscape) || '').replace(':', '/');
+    // "auto" (Match the video): the banner takes the shape of its own video once that is known, so nothing is zoomed or cropped.
+    var autoShape = banner && ar === 'auto';
     if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) ar = ctx.mobile ? '9/16' : '16/9';
     var fit = banner ? ((mob ? bb.fitMobile : bb.fitDesktop) || bb.fit) : ((mob ? cc.tileFitMobile : cc.tileFitDesktop) || cc.tileFit);
     var focusV = (mob ? bb.focusMobile : bb.focusDesktop) || bb.focus || 'center';
-    var cls = type + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
+    var cls = type + (ctx.mobile ? ' mob' : '') + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
     var head = w.heading && !banner ? '<div class="head"><h2 class="title">' + esc(w.heading) + '</h2></div>' : '';
     root.innerHTML = '<style>' + cssVars(s, { '--ar': ar.replace(':', '/') }, ctx.mobile) + BASE + '</style><div class="' + cls + '">' + head + '<div class="rail"><div class="track">' + list.map(function (v, i) { return tileHTML(v, i, s, type); }).join('') + '</div><button class="arr prev" aria-label="Previous">&#8249;</button><button class="arr next" aria-label="Next">&#8250;</button></div>' +
       (banner && s.banner.showDots && list.length > 1 ? '<div class="dots">' + list.map(function (_, i) { return '<i class="' + (i ? '' : 'on') + '"></i>'; }).join('') + '</div>' : '') + '</div>';
     lazyVideos(root, ctx);
+    if (autoShape) fitToVideos(root);
     wire(root, ctx, list);
     // Desktop mouse users get prev/next arrows; touch devices just swipe.
     (function () {
@@ -525,7 +539,7 @@
     var num = function (n, lo, hi) { var v = parseFloat(g(n)); return isFinite(v) && v >= lo && v <= hi ? v : null; };
     var put = function (obj, key, v) { if (v !== null) obj[key] = v; };
     var pick = function (n, allowed) { var v = g(n); return allowed.indexOf(v) > -1 ? v : null; };
-    var ratio = function (n) { var v = g(n); return /^\d{1,2}\/\d{1,2}$/.test(v) && v.split('/')[0] !== '0' && v.split('/')[1] !== '0' ? v : null; };
+    var ratio = function (n) { var v = g(n); if (v === 'auto') return v; return /^\d{1,2}\/\d{1,2}$/.test(v) && v.split('/')[0] !== '0' && v.split('/')[1] !== '0' ? v : null; };
     var c = out.carousel, st = out.stories, b = out.banner, sp = out.spotlight;
 
     // banner: an exact height wins over a ratio; with only a ratio the banner follows that shape

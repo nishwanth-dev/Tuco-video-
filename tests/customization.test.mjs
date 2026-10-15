@@ -427,3 +427,14 @@ test('paired banner: one widget id shows the desktop video on desktop and the ph
     near((await read()).ratio, 2, 'back to the desktop shape', 0.03);
   } finally { await page.close(); }
 });
+
+// ---------------- Banner shape "Match the video" ----------------
+test('banner: "Match the video" takes the shape of the video itself', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'banner', overrides: { banner: { aspectLandscape: 'auto', aspectPortrait: 'auto', heightModeDesktop: 'ratio', heightModeMobile: 'ratio' } } });
+  try {
+    await r.page.waitForFunction(() => { const v = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile video'); return v && v.readyState >= 1; }, { timeout: 10000 });
+    await new Promise((x) => setTimeout(x, 400));
+    const m = await r.page.evaluate(() => { const t = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile'); const v = t.querySelector('video'); const b = t.getBoundingClientRect(); return { box: b.width / b.height, video: v.videoWidth / v.videoHeight }; });
+    near(m.box, Math.min(2.4, Math.max(0.5, m.video)), 'box follows the video shape', 0.03);
+  } finally { await r.close(); }
+});

@@ -11,8 +11,8 @@ CORNER = [USE, {'value': '0', 'label': 'Square'}, {'value': '8', 'label': 'Sligh
 GAP = [USE] + [{'value': str(v), 'label': f'{v} px'} for v in (0, 4, 8, 12, 16, 24, 32)]
 MARGIN = [USE] + [{'value': str(v), 'label': f'{v} px'} for v in (0, 8, 16, 24, 40, 64)]
 def ratios(vals): return [USE] + [{'value': v, 'label': l} for v, l in vals]
-WIDE = ratios([('16/9', 'Wide 16:9'), ('21/9', 'Ultra-wide 21:9'), ('2/1', '2:1'), ('3/1', 'Panorama 3:1'), ('4/3', 'Landscape 4:3'), ('1/1', 'Square')])
-TALL = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
+WIDE = ratios([('auto', 'Match the video'), ('16/9', 'Wide 16:9'), ('21/9', 'Ultra-wide 21:9'), ('2/1', '2:1'), ('3/1', 'Panorama 3:1'), ('4/3', 'Landscape 4:3'), ('1/1', 'Square')])
+TALL = ratios([('auto', 'Match the video'), ('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
 TILE_SHAPE = ratios([('9/16', 'Tall 9:16'), ('4/5', 'Portrait 4:5'), ('3/4', 'Portrait 3:4'), ('1/1', 'Square'), ('4/3', 'Landscape 4:3'), ('16/9', 'Wide 16:9')])
 FOCUS = [USE, {'value': 'center', 'label': 'Middle'}, {'value': 'top', 'label': 'Top'}, {'value': 'bottom', 'label': 'Bottom'}]
 FIT = [USE, {'value': 'cover', 'label': 'Fill (crop to fit)'}, {'value': 'contain', 'label': 'Show whole video'}]

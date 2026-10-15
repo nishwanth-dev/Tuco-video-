@@ -198,6 +198,7 @@ function Embed({ widget, onClose }) {
   );
 }
 
+const AUTO_SHAPE = ['auto', 'Match the video (recommended)'];
 const RATIOS_WIDE = ['16/9', '21/9', '2/1', '3/1', '4/3', '1/1'];
 const RATIOS_TALL = ['9/16', '4/5', '3/4', '1/1', '4/3', '16/9'];
 const FIT = [['cover', 'Fill (crop to fit)'], ['contain', 'Show whole video']];
@@ -206,7 +207,7 @@ const OV_FIELDS = {
   banner: [
     ['banner', 'heightModeDesktop', 'Banner on desktop', 'sel', [['ratio', 'By shape'], ['fixed', 'Exact height']]], ['banner', 'heightModeMobile', 'Banner on phones', 'sel', [['ratio', 'By shape'], ['fixed', 'Exact height']]],
     ['banner', 'desktopHeight', 'Desktop height (px)', 'num'], ['banner', 'mobileHeight', 'Mobile height (px)', 'num'],
-    ['banner', 'aspectLandscape', 'Desktop aspect ratio', 'sel', RATIOS_WIDE.map((r) => [r, r])], ['banner', 'aspectPortrait', 'Mobile aspect ratio', 'sel', RATIOS_TALL.map((r) => [r, r === '1/1' ? '1/1 (square, e.g. 430 × 430)' : r])],
+    ['banner', 'aspectLandscape', 'Desktop shape', 'sel', [AUTO_SHAPE, ...RATIOS_WIDE.map((r) => [r, r])]], ['banner', 'aspectPortrait', 'Mobile shape', 'sel', [AUTO_SHAPE, ...RATIOS_TALL.map((r) => [r, r === '1/1' ? '1/1 (square, e.g. 430 × 430)' : r])]],
     ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
     ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
     ['banner', 'showDots', 'Navigation dots', 'bool'], ['banner', 'showCta', 'Call to action', 'bool'],

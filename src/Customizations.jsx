@@ -110,8 +110,8 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           <Field label="Show Navigation Dots"><Toggle on={s.banner.showDots} onChange={(v) => setIn('banner', 'showDots', v)} /></Field>
           {(() => {
             const ratioOpts = (list) => list;
-            const WIDE = [['16/9', 'Wide 16:9'], ['21/9', 'Ultra-wide 21:9'], ['2/1', '2:1'], ['3/1', 'Panorama 3:1'], ['4/3', 'Landscape 4:3'], ['1/1', 'Square 1:1']];
-            const TALL = [['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1 (430 × 430)'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
+            const WIDE = [['auto', 'Match the video (recommended)'], ['16/9', 'Wide 16:9'], ['21/9', 'Ultra-wide 21:9'], ['2/1', '2:1'], ['3/1', 'Panorama 3:1'], ['4/3', 'Landscape 4:3'], ['1/1', 'Square 1:1']];
+            const TALL = [['auto', 'Match the video (recommended)'], ['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1 (430 × 430)'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
             const MODES = [['ratio', 'By shape'], ['fixed', 'Exact height']];
             const FITS = [['cover', 'Fill (crops edges)'], ['contain', 'Show whole video']];
             const FOCI = [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']];
