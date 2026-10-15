@@ -321,12 +321,15 @@ if len(sys.argv) >= 4:
             elif typ == 'select': item.update({'options': plain_opts(extra['options']), 'default': D}); item['info'] = hint
             if not item.get('info'): item.pop('info', None)
             bs.append(item); ids.add(sid)
+        if bname in ('Loopy Banner', 'Loopy Section'):
+            bs.append({'type': 'checkbox', 'id': 'full_bleed', 'label': 'Stretch across the whole screen', 'default': False, 'info': 'Turn on if this page has side margins that the home page does not. The video then goes edge to edge.'})
         bs += [
           {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space above', 'default': 20},
           {'type': 'range', 'id': 'padding_bottom', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space below', 'default': 20},
         ]
         attrs_b = '\n'.join(attr_line(x[0], x[1], x[2], 'block') for x in S if x[0] != 'header' and x[0] in ids)
-        txt = BLOCK.replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
+        bleed = '{% if block.settings.full_bleed %}\n  #loopy-block-{{ block.id }} { width: 100vw; max-width: 100vw; position: relative; left: 50%; margin-left: -50vw; }\n  {% endif %}'
+        txt = BLOCK.replace('</style>', bleed + '</style>', 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
         txt = txt.replace('@@ATTRS@@', attrs_b).replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps({'name': bname, 'target': 'section', 'settings': bs}, indent=2))
         open(os.path.join(os.path.dirname(sys.argv[2]), bhandle + '.liquid'), 'w').write(txt)
         print(f'wrote {bhandle}: {sum(1 for y in bs if y.get("id"))} settings')

@@ -8,7 +8,9 @@
 <style>
   #loopy-block-{{ block.id }} { padding-top: calc({{ block.settings.padding_top }}px * 0.75); padding-bottom: calc({{ block.settings.padding_bottom }}px * 0.75); }
   @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} { padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px; } }
-</style>
+{% if block.settings.full_bleed %}
+  #loopy-block-{{ block.id }} { width: 100vw; max-width: 100vw; position: relative; left: 50%; margin-left: -50vw; }
+  {% endif %}</style>
 
 <div id="loopy-block-{{ block.id }}" {{ block.shopify_attributes }}>
   {%- if wid != blank -%}

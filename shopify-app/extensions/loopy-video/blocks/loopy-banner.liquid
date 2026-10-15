@@ -8,7 +8,9 @@
 <style>
   #loopy-block-{{ block.id }} { padding-top: calc({{ block.settings.padding_top }}px * 0.75); padding-bottom: calc({{ block.settings.padding_bottom }}px * 0.75); }
   @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} { padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px; } }
-</style>
+{% if block.settings.full_bleed %}
+  #loopy-block-{{ block.id }} { width: 100vw; max-width: 100vw; position: relative; left: 50%; margin-left: -50vw; }
+  {% endif %}</style>
 
 <div id="loopy-block-{{ block.id }}" {{ block.shopify_attributes }}>
   {%- if wid != blank -%}
@@ -450,6 +452,13 @@
       "id": "banner_bg",
       "label": "Background behind the banner",
       "info": "Shows if the video does not fill the banner."
+    },
+    {
+      "type": "checkbox",
+      "id": "full_bleed",
+      "label": "Stretch across the whole screen",
+      "default": false,
+      "info": "Turn on if this page has side margins that the home page does not. The video then goes edge to edge."
     },
     {
       "type": "range",
