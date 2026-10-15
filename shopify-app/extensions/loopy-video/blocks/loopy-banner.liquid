@@ -32,6 +32,8 @@
       {%- if block.settings.banner_margin_mobile != 'default' %} data-banner-margin-mobile="{{ block.settings.banner_margin_mobile }}"{% endif -%}
       {%- if block.settings.banner_fit_mobile != 'default' %} data-banner-fit-mobile="{{ block.settings.banner_fit_mobile }}"{% endif -%}
       {%- if block.settings.banner_focus_mobile != 'default' %} data-banner-focus-mobile="{{ block.settings.banner_focus_mobile }}"{% endif -%}
+      {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
+      {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
       {%- if block.settings.button_text != blank %} data-button-text="{{ block.settings.button_text | escape }}"{% endif -%}
       {%- if block.settings.banner_bg != blank %} data-banner-bg="{{ block.settings.banner_bg | escape }}"{% endif -%}
@@ -404,6 +406,32 @@
       ],
       "default": "default",
       "info": "Which part of the video stays visible when its edges are trimmed."
+    },
+    {
+      "type": "text",
+      "id": "click_link",
+      "label": "Link when the video is clicked (optional)",
+      "info": "Leave empty for the normal behaviour. Example: /collections/all or https://tucokids.com/pages/4-999"
+    },
+    {
+      "type": "select",
+      "id": "click_target",
+      "label": "Open the link in",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "same",
+          "label": "The same tab"
+        },
+        {
+          "value": "new",
+          "label": "A new tab"
+        }
+      ],
+      "default": "default"
     },
     {
       "type": "color",

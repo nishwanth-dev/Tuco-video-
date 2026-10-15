@@ -64,6 +64,9 @@ S = [
  ('spot_width_mobile', 'data-spot-w-mobile', 'range', 'Width on mobile', dict(min=0, max=220, step=10, unit='px', default=0, info='0 uses the Loopy setting.')),
  ('spot_radius_desktop', 'data-spot-radius-desktop', 'select', 'Corners on desktop', dict(options=CORNER)),
  ('spot_radius_mobile', 'data-spot-radius-mobile', 'select', 'Corners on mobile', dict(options=CORNER)),
+ ('header', 'Link when the video is clicked'),
+ ('click_link', 'data-link', 'text', 'Link', dict(info='Leave empty to keep the normal behaviour. Otherwise people who click the video go to this link, for example /collections/all or https://tucokids.com/pages/4-999')),
+ ('click_target', 'data-link-target', 'select', 'Open the link in', dict(options=[USE, {'value': 'same', 'label': 'The same tab'}, {'value': 'new', 'label': 'A new tab'}])),
  ('header', 'Colours, fonts and text'),
  ('brand_color', 'data-brand-color', 'color', 'Button and highlight colour', {}),
  ('font', 'data-font', 'text', 'Font name', dict(info='A font your theme already loads, for example Poppins. Empty uses the Loopy setting.')),
@@ -264,6 +267,8 @@ if len(sys.argv) >= 4:
       'shape': ('Shape', ''), 'gap': ('Space between', ''), 'size': ('Size', 'Leave at 0 to use the default.'),
     }
     EXACT = {
+      'click_link': ('Link when the video is clicked (optional)', 'Leave empty for the normal behaviour. Example: /collections/all or https://tucokids.com/pages/4-999'),
+      'click_target': ('Open the link in', ''),
       'brand_color': ('Button and highlight colour', 'Leave empty to use the colour set in Loopy.'),
       'font': ('Text font (optional)', 'A font name your theme already uses, for example Poppins. Leave empty for the default.'),
       'button_text': ('Button text (optional)', 'For example: Shop now. Leave empty for the default.'),
@@ -281,15 +286,15 @@ if len(sys.argv) >= 4:
         return (f'{dev}: ' if dev else '') + label, info
     COMMON = ('brand_color', 'font', 'button_text')
     SPECS = [
-      ('Loopy Banner', 'loopy-banner', lambda i: i.startswith('banner_') or i in ('button_text', 'brand_color'), False, False,
+      ('Loopy Banner', 'loopy-banner', lambda i: i.startswith('banner_') or i in ('button_text', 'brand_color', 'click_link', 'click_target'), False, False,
        'Full-width video banner. Desktop and mobile are set separately.'),
-      ('Loopy Carousel', 'loopy-carousel', lambda i: i.startswith(('tile_', 'feed_', 'heading_', 'text_')) or i in COMMON, True, True,
+      ('Loopy Carousel', 'loopy-carousel', lambda i: i.startswith(('tile_', 'feed_', 'heading_', 'text_')) or i in COMMON or i in ('click_link', 'click_target'), True, True,
        'Row of video tiles for product pages, collections and pages.'),
-      ('Loopy Stories', 'loopy-stories', lambda i: i.startswith('story_') or i in ('brand_color', 'font'), False, False,
+      ('Loopy Stories', 'loopy-stories', lambda i: i.startswith('story_') or i in ('brand_color', 'font', 'click_link', 'click_target'), False, False,
        'Round story circles that open a full-screen player.'),
-      ('Loopy Section', 'loopy-section', lambda i: False, False, False,
+      ('Loopy Section', 'loopy-section', lambda i: i in ('click_link', 'click_target'), False, False,
        'A heading beside one video (stacked on phones). The heading, colours and layout are all set in Loopy.'),
-      ('Loopy Spotlight', 'loopy-spotlight', lambda i: i.startswith('spot_') or i in COMMON, False, False,
+      ('Loopy Spotlight', 'loopy-spotlight', lambda i: i.startswith('spot_') or i in COMMON or i in ('click_link', 'click_target'), False, False,
        'Small floating video in the corner of the page.'),
     ]
     for bname, bhandle, keep, with_heading, with_handles, blurb in SPECS:

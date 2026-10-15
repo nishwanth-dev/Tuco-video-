@@ -376,3 +376,31 @@ test('video section: with no heading it is just the video, as wide as the space 
     assert.equal(m.heading, false); near(m.tw, m.host, 'fills its column', 2); near(m.tw / m.th, 4 / 5, 'phone-width screens use 4:5', 0.02);
   } finally { await page.close(); }
 });
+
+// ---------------- Click-through link ----------------
+const clickTile = (page) => page.evaluate(() => document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile').click());
+test('click link: a block link sends people there instead of opening the player', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'banner', attrs: { 'data-link': '/collections/all' } });
+  try {
+    await Promise.all([r.page.waitForNavigation({ timeout: 8000 }), clickTile(r.page)]);
+    assert.equal(new URL(r.page.url()).pathname, '/collections/all');
+  } finally { await r.close(); }
+});
+test('click link: a widget link works too, and can open in a new tab', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'carousel', overrides: { clickLink: 'https://example.com/sale', clickTarget: 'new' } });
+  try {
+    const popup = new Promise((res) => browser.once('targetcreated', (t) => res(t.url())));
+    await clickTile(r.page);
+    const url = await Promise.race([popup, new Promise((res) => setTimeout(() => res('none'), 8000))]);
+    assert.match(url, /example\.com\/sale/);
+    assert.equal(new URL(r.page.url()).pathname, '/page', 'this page stayed where it was');
+  } finally { await r.close(); }
+});
+test('click link: without a link the video player still opens, and unsafe links are ignored', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'banner', attrs: { 'data-link': 'javascript:alert(1)' } });
+  try {
+    await clickTile(r.page); await new Promise((x) => setTimeout(x, 600));
+    assert.equal(new URL(r.page.url()).pathname, '/page', 'no navigation');
+    assert.ok(await r.page.evaluate(() => [...document.querySelectorAll('div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.slide'))), 'the player opened');
+  } finally { await r.close(); }
+});

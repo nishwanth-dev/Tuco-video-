@@ -304,3 +304,13 @@ test('widgets: the Video section type keeps its layout settings and rejects bad 
   const bad2 = await call('PUT', '/api/widgets/' + id, { body: { ...w, overrides: { feature: { background: 'red;display:none' } } } });
   assert.equal(bad2.status, 400);
 });
+
+test('widgets: a click link is accepted only as a web address or a path', async () => {
+  const id = await mkWidget({ name: 'Link', type: 'banner', overrides: { clickLink: '/pages/sale', clickTarget: 'new' } });
+  const w = (await call('GET', '/api/widgets')).json.widgets.find((x) => x.id === id);
+  assert.equal(w.overrides.clickLink, '/pages/sale'); assert.equal(w.overrides.clickTarget, 'new');
+  for (const bad of ['javascript:alert(1)', '//evil.example', 'ftp://x.example', '']) {
+    const r = await call('PUT', '/api/widgets/' + id, { body: { ...w, overrides: { clickLink: bad } } });
+    assert.equal(r.status, 400, `rejects ${JSON.stringify(bad)}`);
+  }
+});

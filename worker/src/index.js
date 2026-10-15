@@ -22,6 +22,7 @@ const txt = (max) => (x) => typeof x === 'string' && x.trim().length > 0 && x.le
 const OVERRIDABLE = {
   brandColor: hex, brandFont: font, shopNowText: txt(40), showViews: (x) => typeof x === 'boolean',
   deviceOnly: (x) => x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length <= 60 && Object.entries(x).every(([k, v]) => /^[\w-]{1,64}$/.test(k) && (v === 'mobile' || v === 'desktop')),
+  clickLink: (x) => typeof x === 'string' && x.trim().length > 0 && okLink(x.trim()), clickTarget: ev('same', 'new'),
   tileType: ev('overlay', 'below', 'feed', 'minimal'), showPrice: (x) => typeof x === 'boolean', showAtc: (x) => typeof x === 'boolean',
   carousel: {
     headingColor: hex, headingFont: font, headingWeight: ev('400', '500', '600', '700', '800'), detailsColor: hex, feedAtcColor: hex, feedAtcTextColor: hex,

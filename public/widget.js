@@ -236,7 +236,16 @@
   }
 
   /* ---------- fullscreen player ---------- */
+  // When the widget has a link, a click on a video goes there instead of opening the player (set per widget in Loopy or per block in the theme).
+  function clickThrough(ctx) {
+    var link = String((ctx.settings && ctx.settings.clickLink) || '').trim();
+    if (!link || !(/^https?:\/\//i.test(link) || /^\/(?!\/)/.test(link))) return false;
+    if (ctx.preview) return true;
+    if (ctx.settings.clickTarget === 'new') window.open(link, '_blank', 'noopener'); else window.location.href = link;
+    return true;
+  }
   function openPlayer(ctx, videos, start) {
+    if (clickThrough(ctx)) return;
     var s = ctx.settings;
     var host = document.createElement('div');
     keepAlive(host);
@@ -561,6 +570,9 @@
     put(c, 'feedAtcColor', col('data-feed-button-color')); put(c, 'feedAtcTextColor', col('data-feed-button-text-color'));
     put(st, 'borderColor', col('data-story-ring-color')); put(st, 'titleColor', col('data-story-label-color'));
     put(b, 'background', col('data-banner-bg'));
+    var lk = g('data-link');
+    if (/^https?:\/\//i.test(lk) || /^\/(?!\/)/.test(lk)) out.clickLink = lk.slice(0, 2000);
+    var lt = pick('data-link-target', ['same', 'new']); if (lt) out.clickTarget = lt;
     return out;
   }
 

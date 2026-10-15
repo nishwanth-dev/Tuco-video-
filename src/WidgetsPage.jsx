@@ -219,7 +219,7 @@ for (const t of ['banner', 'carousel', 'stories', 'spotlight']) OV_FIELDS[t] = [
 // Colours, fonts and text: empty means "use the global setting". Every widget type can change its main colour, font and button text.
 const WEIGHTS = [['400', 'Regular'], ['500', 'Medium'], ['600', 'Semi-bold'], ['700', 'Bold'], ['800', 'Extra bold']];
 const LOOK = {
-  all: [[null, 'brandColor', 'Button and highlight colour', 'color'], [null, 'brandFont', 'Font', 'font'], [null, 'shopNowText', 'Button text', 'text']],
+  all: [[null, 'brandColor', 'Button and highlight colour', 'color'], [null, 'brandFont', 'Font', 'font'], [null, 'shopNowText', 'Button text', 'text'], [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]]],
   carousel: [['carousel', 'headingColor', 'Heading colour', 'color'], ['carousel', 'headingFont', 'Heading font', 'font'], ['carousel', 'headingWeight', 'Heading weight', 'sel', WEIGHTS], ['carousel', 'detailsColor', 'Product text colour', 'color'], ['carousel', 'feedAtcColor', 'Feed button colour', 'color'], ['carousel', 'feedAtcTextColor', 'Feed button text colour', 'color'], [null, 'showViews', 'Show view counts', 'bool']],
   stories: [['stories', 'borderColor', 'Story ring colour', 'color'], ['stories', 'titleColor', 'Story label colour', 'color']],
   banner: [['banner', 'background', 'Banner bar colour', 'color']],
@@ -233,6 +233,7 @@ OV_FIELDS.feature = [
   ...NEW_LAYOUT.feature,
   ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+  [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]],
 ];
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.
@@ -262,6 +263,7 @@ function Appearance({ w, setW, settings }) {
             <label className="lab" key={(g || 'root') + k}>{label}
               {['num', 'sel', 'corner'].includes(kind) && <LayoutField spec={[g, k, label, kind, opts]} value={cur} placeholder={gv !== undefined && gv !== null && gv !== '' ? `Global: ${gv}` : 'Global: default'} emptyLabel="Use global setting" onChange={(v) => set(g, k, v)} />}
               {kind === 'color' && <OvColor value={cur} placeholder={gv ? `Global: ${gv}` : 'Global: default'} fallback={gv} onChange={(v) => set(g, k, v)} />}
+              {kind === 'url' && <input value={cur || ''} maxLength={2000} placeholder="Empty: the video opens the player. Example: /collections/all" onChange={(e) => set(g, k, e.target.value.trim())} />}
               {(kind === 'font' || kind === 'text') && <input value={cur || ''} maxLength={kind === 'font' ? 60 : 40} placeholder={gv ? `Global: ${gv}` : 'Use global setting'} onChange={(e) => set(g, k, e.target.value)} />}
               {kind === 'bool' && <select value={cur === undefined ? '' : String(cur)} onChange={(e) => set(g, k, e.target.value === '' ? '' : e.target.value === 'true')}><option value="">Use global setting</option><option value="true">On</option><option value="false">Off</option></select>}
             </label>

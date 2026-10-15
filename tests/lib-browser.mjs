@@ -31,6 +31,7 @@ export function startPageServer() {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(`<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:sans-serif}div:empty{display:none}</style><body><div data-tuco-video data-widget="${wid}"${extra}></div><script src="/widget.js" data-api="${B}" defer></script>`);
     }
+    if (u.pathname.startsWith('/collections/') || u.pathname.startsWith('/pages/')) { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<!doctype html><title>landed</title>'); }
     res.writeHead(404); res.end();
   });
   return new Promise((r) => srv.listen(PORT, () => r(srv)));

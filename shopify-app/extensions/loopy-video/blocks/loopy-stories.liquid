@@ -24,6 +24,8 @@
       {%- if block.settings.story_shape != 'default' %} data-story-shape="{{ block.settings.story_shape }}"{% endif -%}
       {%- if block.settings.story_gap_desktop != 'default' %} data-story-gap-desktop="{{ block.settings.story_gap_desktop }}"{% endif -%}
       {%- if block.settings.story_gap_mobile != 'default' %} data-story-gap-mobile="{{ block.settings.story_gap_mobile }}"{% endif -%}
+      {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
+      {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
       {%- if block.settings.font != blank %} data-font="{{ block.settings.font | escape }}"{% endif -%}
       {%- if block.settings.story_ring_color != blank %} data-story-ring-color="{{ block.settings.story_ring_color | escape }}"{% endif -%}
@@ -185,6 +187,32 @@
         {
           "value": "32",
           "label": "32 px"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "text",
+      "id": "click_link",
+      "label": "Link when the video is clicked (optional)",
+      "info": "Leave empty for the normal behaviour. Example: /collections/all or https://tucokids.com/pages/4-999"
+    },
+    {
+      "type": "select",
+      "id": "click_target",
+      "label": "Open the link in",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "same",
+          "label": "The same tab"
+        },
+        {
+          "value": "new",
+          "label": "A new tab"
         }
       ],
       "default": "default"

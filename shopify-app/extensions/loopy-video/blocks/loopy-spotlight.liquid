@@ -23,6 +23,8 @@
       {%- if block.settings.spot_width_mobile > 0 %} data-spot-w-mobile="{{ block.settings.spot_width_mobile }}"{% endif -%}
       {%- if block.settings.spot_radius_desktop != 'default' %} data-spot-radius-desktop="{{ block.settings.spot_radius_desktop }}"{% endif -%}
       {%- if block.settings.spot_radius_mobile != 'default' %} data-spot-radius-mobile="{{ block.settings.spot_radius_mobile }}"{% endif -%}
+      {%- if block.settings.click_link != blank %} data-link="{{ block.settings.click_link | escape }}"{% endif -%}
+      {%- if block.settings.click_target != 'default' %} data-link-target="{{ block.settings.click_target }}"{% endif -%}
       {%- if block.settings.brand_color != blank %} data-brand-color="{{ block.settings.brand_color | escape }}"{% endif -%}
       {%- if block.settings.font != blank %} data-font="{{ block.settings.font | escape }}"{% endif -%}
       {%- if block.settings.button_text != blank %} data-button-text="{{ block.settings.button_text | escape }}"{% endif -%}
@@ -143,6 +145,32 @@
         {
           "value": "999",
           "label": "Pill / circle"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "text",
+      "id": "click_link",
+      "label": "Link when the video is clicked (optional)",
+      "info": "Leave empty for the normal behaviour. Example: /collections/all or https://tucokids.com/pages/4-999"
+    },
+    {
+      "type": "select",
+      "id": "click_target",
+      "label": "Open the link in",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (set in Loopy)"
+        },
+        {
+          "value": "same",
+          "label": "The same tab"
+        },
+        {
+          "value": "new",
+          "label": "A new tab"
         }
       ],
       "default": "default"
