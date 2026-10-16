@@ -26,7 +26,7 @@ const TITLES = { home: 'Homepage', product: 'Product Pages', collection: 'Collec
 export default function WidgetsPage({ page, widgets, videos, settings, loadWidgets, setError, go }) {
   const [editing, setEditing] = useState(null);
   const [embed, setEmbed] = useState(null);
-  const mine = widgets.filter((w) => w.page === page);
+  const mine = widgets.filter((w) => w.page === page).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // newest created first
   const [q, setQ] = useState('');
   const term = q.trim().toLowerCase();
   const hit = (w) => !term || w.name.toLowerCase().includes(term) || w.id.toLowerCase().includes(term) || TYPES[w.type][0].toLowerCase().includes(term);
@@ -59,11 +59,12 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
       {!mine.length && <Empty>No widgets here yet. Create one above, then copy its embed code into your theme.</Empty>}
       {shown.length > 0 && (
         <table>
-          <thead><tr><th>Widget</th><th>Type</th><th>Videos</th><th>On website</th><th /></tr></thead>
+          <thead><tr><th>Widget</th><th>Type</th><th>Created</th><th>Videos</th><th>On website</th><th /></tr></thead>
           <tbody>{shown.map((w) => (
             <tr key={w.id}>
               <td><b>{w.name}</b> <code>{w.id}</code></td>
               <td>{typeName(w.type)}</td>
+              <td className="wdate" title={w.createdAt ? new Date(w.createdAt).toLocaleString() : ''}>{fmtDate(w.createdAt)}</td>
               <td>{w.scope === 'custom' ? `${w.videoIds.length} picked` : 'All tagged videos'}{w.productHandles.length > 0 && ` · ${w.productHandles.length} product(s)`}{(w.collectionHandles || []).length > 0 && ` · ${w.collectionHandles.length} collection(s)`}{(w.pageHandles || []).length > 0 && ` · ${w.pageHandles.length} page(s)`}</td>
               <td><div className="row"><Toggle on={w.enabled} onChange={(on) => act(saveWidget)({ ...w, enabled: on })} /><button className="link" onClick={() => setEmbed(w)}>Get embed code</button></div></td>
               <td><div className="row"><button className="btn ghost sm" onClick={() => setEditing(w)}>Manage Widget</button><button className="link red" onClick={() => confirm('Delete this widget?') && act(deleteWidget)(w.id)}>Delete</button></div></td>

@@ -232,3 +232,16 @@ test('videos page: every video shows when it was uploaded, newest first', { skip
   assert.ok(newestTitles.has(rows[0].title), 'the newest video comes first');
   await page.close();
 });
+
+test('widget pages: every widget shows when it was created, newest first', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const older = (await api('POST', '/api/widgets', { name: 'Date order older', type: 'banner', page: 'collection', scope: 'custom', enabled: true, videoIds: [vids[0]] })).json.id;
+  await sleep(1100);
+  const newer = (await api('POST', '/api/widgets', { name: 'Date order newer', type: 'banner', page: 'collection', scope: 'custom', enabled: true, videoIds: [vids[0]] })).json.id;
+  const page = await open('w:collection');
+  const rows = await page.evaluate(() => [...document.querySelectorAll('tbody tr')].map((r) => r.innerText.replace(/\s+/g, ' ')));
+  const iNew = rows.findIndex((r) => r.includes('Date order newer')), iOld = rows.findIndex((r) => r.includes('Date order older'));
+  assert.ok(iNew >= 0 && iOld >= 0 && iNew < iOld, 'the newest widget is listed first');
+  assert.match(rows[iNew], /\d{1,2} [A-Z][a-z]{2} \d{4}/, 'it shows its created date: ' + rows[iNew]);
+  assert.match(await page.evaluate(() => document.querySelector('thead').innerText), /Created/);
+  await page.close();
+});

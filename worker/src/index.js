@@ -106,7 +106,7 @@ const toVideo = (r, origin = '', pub = '') => {
 };
 const toWidget = (r) => ({
   id: r.id, name: r.name, type: r.type, page: r.page, scope: r.scope, videoIds: parse(r.video_ids, []), productHandles: parse(r.product_handles, []),
-  collectionHandles: parse(r.collection_handles, []), pageHandles: parse(r.page_handles, []), heading: r.heading, enabled: !!r.enabled, overrides: parse(r.overrides, {}),
+  collectionHandles: parse(r.collection_handles, []), pageHandles: parse(r.page_handles, []), heading: r.heading, enabled: !!r.enabled, overrides: parse(r.overrides, {}), createdAt: r.created_at || 0,
 });
 
 // Public endpoints only answer to the store origins; admin endpoints need the bearer token.
