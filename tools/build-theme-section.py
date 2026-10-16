@@ -344,7 +344,7 @@ if len(sys.argv) >= 4:
         holdclass = '      {%- if hold %} class="loopy-hold"{% endif -%}\n' if bname == 'Loopy Banner' else ''
         txt = BLOCK.replace('</style>', (bleed if bname in ('Loopy Banner', 'Loopy Section') else '') + (hold if holdclass else '') + '</style>', 1)
         if holdclass: txt = txt.replace("{%- assign wid = block.settings.widget_id | strip -%}", "{%- assign wid = block.settings.widget_id | strip -%}\n" + prelude, 1)
-        txt = txt.replace('      data-tuco-video\n', '      data-tuco-video\n' + holdclass, 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
+        txt = txt.replace('      data-widget="{{ wid | escape }}"\n', '      data-widget="{{ wid | escape }}"\n' + holdclass, 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
         txt = txt.replace('@@ATTRS@@', attrs_b).replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps({'name': bname, 'target': 'section', 'settings': bs}, indent=2))
         open(os.path.join(os.path.dirname(sys.argv[2]), bhandle + '.liquid'), 'w').write(txt)
         print(f'wrote {bhandle}: {sum(1 for y in bs if y.get("id"))} settings')

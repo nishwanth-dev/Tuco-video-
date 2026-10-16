@@ -314,3 +314,13 @@ test('widgets: a click link is accepted only as a web address or a path', async 
     assert.equal(r.status, 400, `rejects ${JSON.stringify(bad)}`);
   }
 });
+
+test('theme blocks: every block keeps data-tuco-video and data-widget as separate attributes', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const dir = new URL('../shopify-app/extensions/loopy-video/blocks/', import.meta.url);
+  for (const f of readdirSync(dir).filter((n) => /^loopy-(banner|carousel|stories|spotlight|section)\.liquid$/.test(n))) {
+    const t = readFileSync(new URL(f, dir), 'utf8');
+    assert.match(t, /data-tuco-video\s+data-widget="/, f + ': the two attributes must be separated by whitespace');
+    assert.doesNotMatch(t, /data-tuco-video\s*\{%-/, f + ': a Liquid tag with whitespace control must not follow data-tuco-video');
+  }
+});

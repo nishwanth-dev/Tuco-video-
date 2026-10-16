@@ -29,8 +29,8 @@
   {%- if wid != blank -%}
     <div
       data-tuco-video
-      {%- if hold %} class="loopy-hold"{% endif -%}
       data-widget="{{ wid | escape }}"
+      {%- if hold %} class="loopy-hold"{% endif -%}
       {%- if block.settings.heading != blank %} data-heading="{{ block.settings.heading | strip | escape }}"{% endif -%}
       {%- if block.settings.product_handle != blank %} data-product="{{ block.settings.product_handle | strip | escape }}"{% endif -%}
       {%- if block.settings.collection_handle != blank %} data-collection="{{ block.settings.collection_handle | strip | escape }}"{% endif -%}
