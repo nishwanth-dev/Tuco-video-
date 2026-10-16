@@ -20,7 +20,19 @@ async function load() {
 }
 
 // onStatus(text) and onProgress(0..1) are optional. Returns a new File (mp4).
-export async function compressVideo(file, { onStatus = () => {}, onProgress = () => {} } = {}) {
+// How long a video is (seconds), read by the browser itself.
+const durationOf = (file) => new Promise((res) => {
+  const v = document.createElement('video'); const u = URL.createObjectURL(file);
+  v.preload = 'metadata'; v.muted = true;
+  v.onloadedmetadata = () => { res(Number.isFinite(v.duration) ? v.duration : 0); URL.revokeObjectURL(u); };
+  v.onerror = () => { res(0); URL.revokeObjectURL(u); };
+  v.src = u;
+});
+
+// mode: 'web' (default, the single-file "Make smaller": longest side 1280, CRF 23)
+//       'quality' (same size and frame rate, visually near-lossless, the original sound kept; the caller keeps the original if the result is not clearly smaller)
+//       'under5' (aims for about 5 MB: a bitrate budget worked out from the length, sizes capped at 1280)
+export async function compressVideo(file, { onStatus = () => {}, onProgress = () => {}, mode = 'web', targetMB = 5 } = {}) {
   if (file.size > MAX_INPUT) throw new Error('This file is too big to shrink in the browser. Use tools/compress-video.sh on a computer with ffmpeg.');
   onStatus('Loading the video shrinker (first time only, about 30 MB)...');
   let ff;
@@ -32,12 +44,21 @@ export async function compressVideo(file, { onStatus = () => {}, onProgress = ()
   try {
     onStatus('Shrinking... keep this tab open.');
     await ff.writeFile(inName, new Uint8Array(await file.arrayBuffer()));
-    const code = await ff.exec([
-      '-i', inName,
-      '-vf', "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'",
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
-      '-c:a', 'aac', '-b:a', '96k', '-ac', '2', 'out.mp4',
-    ]);
+    const cap = "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'";
+    let args;
+    if (mode === 'quality') {
+      // Same picture size, high quality (CRF 18 is visually hard to tell from the original); the sound is copied untouched.
+      args = ['-i', inName, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'faster', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-c:a', 'copy', 'out.mp4'];
+    } else if (mode === 'under5') {
+      const secs = (await durationOf(file)) || 30;
+      const total = Math.floor((targetMB * 1048576 * 8 * 0.9) / secs);        // bits per second for the whole file, 10% spare
+      const video = Math.max(250000, total - 96000);                           // minus the sound
+      const k = Math.round(video / 1000);
+      args = ['-i', inName, '-vf', cap, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-maxrate', k + 'k', '-bufsize', (k * 2) + 'k', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', 'out.mp4'];
+    } else {
+      args = ['-i', inName, '-vf', cap, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', 'out.mp4'];
+    }
+    const code = await ff.exec(args);
     if (code !== 0) throw new Error('This video format could not be shrunk. Try an MP4 or MOV file.');
     const data = await ff.readFile('out.mp4');
     const out = new File([data], file.name.replace(/\.[^.]+$/, '') + '-web.mp4', { type: 'video/mp4' });

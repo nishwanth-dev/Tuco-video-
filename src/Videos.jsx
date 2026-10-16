@@ -237,7 +237,7 @@ function EditVideo({ video, onClose, onSave }) {
 
 function AddMedia({ onClose, onSave, onSaveMany }) {
   const [batch, setBatch] = useState(null); // several files chosen at once
-  const [shrinkBig, setShrinkBig] = useState(false);
+  const [squeeze, setSqueeze] = useState('none'); // none | quality | under5
   const [url, setUrl] = useState('');
   const [size, setSize] = useState(0);
   const [title, setTitle] = useState('');
@@ -276,15 +276,18 @@ function AddMedia({ onClose, onSave, onSaveMany }) {
     for (const it of batch.filter((x) => x.status !== 'done')) {
       setItem(it.id, { status: 'working', msg: 'Uploading...' });
       try {
-        let f = it.file;
-        if (shrinkBig && f.size > 5 * 1048576 && f.size <= MAX_INPUT) {
-          const small = await compressVideo(f, { onStatus: (m) => setItem(it.id, { msg: m }), onProgress: () => {} });
-          if (small.size < f.size) f = small;
-        } else if (f.size > 100 * 1048576) throw new Error('Over 100 MB: turn on "Make big files smaller" or shrink it first.');
+        let f = it.file, note = 'Added as a draft';
+        if (squeeze === 'quality' && f.size <= MAX_INPUT) {
+          const small = await compressVideo(f, { mode: 'quality', onStatus: (m) => setItem(it.id, { msg: m }), onProgress: () => {} });
+          if (small.size < f.size * 0.9) { note = `Added, ${(f.size / 1048576).toFixed(1)} -> ${(small.size / 1048576).toFixed(1)} MB`; f = small; } else note = 'Added as it is (it could not shrink without losing quality)';
+        } else if (squeeze === 'under5' && f.size > 5 * 1048576 && f.size <= MAX_INPUT) {
+          const small = await compressVideo(f, { mode: 'under5', onStatus: (m) => setItem(it.id, { msg: m }), onProgress: () => {} });
+          if (small.size < f.size) { note = `Added, ${(f.size / 1048576).toFixed(1)} -> ${(small.size / 1048576).toFixed(1)} MB`; f = small; }
+        } else if (f.size > 100 * 1048576) throw new Error('Over 100 MB: choose one of the compression options above, or shrink it first.');
         const up = await uploadFile(f);
         const m = await onSaveMany({ title: it.title.trim() || f.name.replace(/\.[^.]+$/, ''), url: up.url, poster: '', audience: 'kids', status: 'draft', placements: [], products: [], size: up.size || f.size });
         if (m) throw new Error(m);
-        setItem(it.id, { status: 'done', msg: 'Added as a draft' });
+        setItem(it.id, { status: 'done', msg: note });
       } catch (x) { setItem(it.id, { status: 'error', msg: x.message || 'Failed' }); }
     }
     setBusy(false);
@@ -298,12 +301,16 @@ function AddMedia({ onClose, onSave, onSaveMany }) {
             <div className={'brow ' + it.status} key={it.id}>
               <input value={it.title} disabled={busy || it.status === 'done'} onChange={(e) => setItem(it.id, { title: e.target.value })} aria-label="Title" />
               <span className="muted small"><SizeBadge bytes={it.file.size} inline /></span>
-              <span className={'bst ' + it.status}>{it.status === 'waiting' ? 'Waiting' : it.status === 'working' ? (it.msg || 'Working...') : it.status === 'done' ? 'Added ✓' : 'Failed: ' + it.msg}</span>
+              <span className={'bst ' + it.status}>{it.status === 'waiting' ? 'Waiting' : it.status === 'working' ? (it.msg || 'Working...') : it.status === 'done' ? '✓ ' + it.msg : 'Failed: ' + it.msg}</span>
             </div>
           ))}
         </div>
-        <label className="chk"><input type="checkbox" checked={shrinkBig} disabled={busy} onChange={(e) => setShrinkBig(e.target.checked)} />Make files over 5 MB smaller before uploading (faster pages, a little lower quality)</label>
-        <p className="muted small">Left off, every video is uploaded exactly as it is. They are saved as drafts; tag products and set them live afterwards.</p>
+        <div className="lab">Compression
+          <label className="chk"><input type="radio" name="sq" checked={squeeze === 'none'} disabled={busy} onChange={() => setSqueeze('none')} />Upload exactly as they are (no compression)</label>
+          <label className="chk"><input type="radio" name="sq" checked={squeeze === 'quality'} disabled={busy} onChange={() => setSqueeze('quality')} />Best quality: shrink as much as possible without visible loss (same size, same picture; a video that can't shrink is left as it is)</label>
+          <label className="chk"><input type="radio" name="sq" checked={squeeze === 'under5'} disabled={busy} onChange={() => setSqueeze('under5')} />Under 5 MB each: smaller and faster to load, lower quality (videos already under 5 MB are left alone)</label>
+        </div>
+        <p className="muted small">Compression happens in your browser, one video at a time, so keep this tab open. Videos are saved as drafts; tag products and set them live afterwards.</p>
         <div className="row end"><button className="link" disabled={busy} onClick={onClose}>{done === batch.length ? 'Close' : 'Cancel'}</button>{todo > 0 && <button className="btn" disabled={busy} onClick={runBatch}>{busy ? 'Uploading...' : done ? `Try the other ${todo} again` : `Upload ${batch.length} videos`}</button>}</div>
       </Modal>
     );
