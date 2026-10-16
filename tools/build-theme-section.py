@@ -158,7 +158,7 @@ TEMPLATE = '''{%- comment -%}
       {%- if section.settings.collection_handle != blank %} data-collection="{{ section.settings.collection_handle | strip | escape }}"{% endif -%}
       {%- if section.settings.page_handle != blank %} data-page="{{ section.settings.page_handle | strip | escape }}"{% endif -%}
 @@ATTRS@@
-    ></div>
+    ><span hidden></span></div>
   {%- elsif request.design_mode -%}
     <p style="margin:0;padding:12px 16px;border:1px dashed #b0b0b0;border-radius:8px;font:13px/1.4 sans-serif;color:#555;text-align:center">
       Loopy Video: enter a widget ID in this section's settings (copy it from the Loopy admin, under Get embed code).
@@ -239,7 +239,7 @@ if len(sys.argv) >= 4:
       {%- if block.settings.collection_handle != blank %} data-collection="{{ block.settings.collection_handle | strip | escape }}"{% endif -%}
       {%- if block.settings.page_handle != blank %} data-page="{{ block.settings.page_handle | strip | escape }}"{% endif -%}
 @@ATTRS@@
-    ></div>
+    ><span hidden></span></div>
   {%- elsif request.design_mode -%}
     <p style="margin:0;padding:12px 16px;border:1px dashed #b0b0b0;border-radius:8px;font:13px/1.4 sans-serif;color:#555;text-align:center">
       Loopy Video: enter a widget ID in this block's settings (copy it from the Loopy admin, under Get embed code).

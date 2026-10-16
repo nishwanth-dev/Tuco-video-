@@ -321,6 +321,7 @@ test('theme blocks: every block keeps data-tuco-video and data-widget as separat
   for (const f of readdirSync(dir).filter((n) => /^loopy-(banner|carousel|stories|spotlight|section)\.liquid$/.test(n))) {
     const t = readFileSync(new URL(f, dir), 'utf8');
     assert.match(t, /data-tuco-video\s+data-widget="/, f + ': the two attributes must be separated by whitespace');
+    assert.match(t, /><span hidden><\/span><\/div>/, f + ': the widget box must hold a hidden child so it is never collapsed or hidden before the script runs');
     assert.doesNotMatch(t, /data-tuco-video\s*\{%-/, f + ': a Liquid tag with whitespace control must not follow data-tuco-video');
   }
 });
