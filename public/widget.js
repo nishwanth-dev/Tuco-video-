@@ -349,7 +349,11 @@
   // Sizes each banner tile to its video's own shape (taken from the poster image or the video's metadata), within sensible limits.
   function fitToVideos(root) {
     [].slice.call(root.querySelectorAll('.tile')).forEach(function (tile) {
-      var set = function (w, h) { if (w > 0 && h > 0) tile.style.aspectRatio = String(Math.min(2.4, Math.max(0.5, w / h)).toFixed(4)); };
+      var set = function (w, h) {
+        if (!(w > 0 && h > 0)) return;
+        tile.style.aspectRatio = String(Math.min(2.4, Math.max(0.5, w / h)).toFixed(4));
+        if (root.host) { root.host.__tucoFitted = true; root.host.classList.remove('loopy-hold'); }
+      };
       var img = tile.querySelector('img.th'), vid = tile.querySelector('video');
       if (img) { if (img.complete && img.naturalWidth) set(img.naturalWidth, img.naturalHeight); else img.addEventListener('load', function () { set(img.naturalWidth, img.naturalHeight); }); }
       if (vid) { vid.addEventListener('loadedmetadata', function () { set(vid.videoWidth, vid.videoHeight); }); if (vid.readyState >= 1) set(vid.videoWidth, vid.videoHeight); }
@@ -433,7 +437,12 @@
     var ar = String((mob ? bb.aspectPortrait : bb.aspectLandscape) || '').replace(':', '/');
     // "auto" (Match the video): the banner takes the shape of its own video once that is known, so nothing is zoomed or cropped.
     var autoShape = banner && ar === 'auto';
-    if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) ar = ctx.mobile ? '9/16' : '16/9';
+    if (!/^[1-9]\d?\/[1-9]\d?$/.test(ar)) {
+      ar = ctx.mobile ? '9/16' : '16/9';
+      // While the video's own shape is not known yet, follow the space the theme kept for this banner, so nothing jumps when it appears.
+      if (autoShape) { try { var held = String(getComputedStyle(el).aspectRatio || '').replace(/\s/g, ''); if (/^[1-9]\d*(\.\d+)?\/[1-9]\d*(\.\d+)?$/.test(held)) ar = held; } catch (e) { /* keep the default */ } }
+    }
+    el.__tucoAuto = autoShape;
     var fit = banner ? ((mob ? bb.fitMobile : bb.fitDesktop) || bb.fit) : ((mob ? cc.tileFitMobile : cc.tileFitDesktop) || cc.tileFit);
     var focusV = (mob ? bb.focusMobile : bb.focusDesktop) || bb.focus || 'center';
     var cls = type + (ctx.mobile ? ' mob' : '') + (!clicksOpenPlayer(ctx) && !(ctx.settings && ctx.settings.clickLink) ? ' nocl' : '') + (banner && s.banner.fullScreen ? ' full' : '') + (banner && bmode === 'fixed' && !s.banner.fullScreen ? ' fixed' : '') + (fit === 'contain' ? ' fitc' : '') + (banner ? ' focus-' + focusV : '');
@@ -649,7 +658,8 @@
     try { var hh = Number(localStorage.getItem(hk)); if (hh > 40) el.style.minHeight = hh + 'px'; } catch (err) { /* ignore */ }
     function settle(ok) {
       el.style.minHeight = '';
-      el.classList.remove('loopy-hold');
+      // The kept space is released once the banner has its final shape (or after 4 seconds at the latest), so it never jumps.
+      if (!el.__tucoAuto || el.__tucoFitted) el.classList.remove('loopy-hold'); else setTimeout(function () { el.classList.remove('loopy-hold'); }, 4000);
       if (ok) { try { var h = el.offsetHeight; if (h > 40) localStorage.setItem(hk, String(h)); } catch (err) { /* ignore */ } }
     }
     var url = API + '/api/public/config?' + q.join('&');

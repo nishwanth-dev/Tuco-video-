@@ -505,3 +505,19 @@ test('reserved space: the placeholder class is cleared once the banner has drawn
     assert.equal(await r.page.evaluate(() => document.querySelector('[data-tuco-video]').classList.contains('loopy-hold')), false);
   } finally { await r.close(); }
 });
+
+test('reserved space: a "match the video" banner starts at the kept shape, then settles once on the video\'s own shape', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const w = await api('POST', '/api/widgets', { name: 'QA hold ' + Math.random().toString(36).slice(2, 7), type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds: [ids[0]], overrides: { banner: { aspectLandscape: 'auto', aspectPortrait: 'auto', heightModeDesktop: 'ratio', heightModeMobile: 'ratio' } } });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 400, height: 800, deviceScaleFactor: 1, isMobile: false });
+  await page.evaluateOnNewDocument(() => { window.__hs = []; const tick = () => { const h = document.querySelector('[data-tuco-video]'); const t = h && h.shadowRoot && h.shadowRoot.querySelector('.tile'); if (t) window.__hs.push(Math.round(h.getBoundingClientRect().height)); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  try {
+    await page.goto(`http://localhost:${PORT}/page?w=${w.json.id}&attrs=${encodeURIComponent(JSON.stringify({ class: 'loopy-hold', style: 'display:block;aspect-ratio:1/1' }))}`, { waitUntil: 'load' });
+    await new Promise((r) => setTimeout(r, 2500));
+    const hs = await page.evaluate(() => window.__hs);
+    assert.ok(hs.length > 5, 'measured');
+    near(hs[0], 400, 'the first drawn height is the kept 400 px square, not a tall guess', 3);
+    const distinct = [...new Set(hs)];
+    assert.ok(distinct.length <= 2, 'at most one change (to the real shape): ' + distinct.join(', '));
+  } finally { await page.close(); }
+});
