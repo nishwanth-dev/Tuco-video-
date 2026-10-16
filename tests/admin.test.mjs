@@ -197,3 +197,27 @@ test('widget pages: a search box finds a widget by its ID or name, and points to
   assert.match(await page.evaluate(() => document.querySelector('.elsewhere').innerText), /Product Pages/, 'points to the page where it lives');
   await page.close();
 });
+
+test('add media: several video files can be chosen at once and each becomes a draft', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const { copyFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'multi-'));
+  const stamp = Date.now();
+  const names = [`multi-a-${stamp}.mp4`, `multi-b-${stamp}.mp4`, `multi-c-${stamp}.mp4`];
+  for (const n of names) copyFileSync(join(ROOT, 'tests/fixtures/clip.mp4'), join(dir, n));
+  const page = await open('videos');
+  assert.ok(await clickText(page, 'button', 'Add Media')); await sleep(600);
+  const input = await page.$('.modal input[type=file]');
+  assert.equal(await input.evaluate((i) => i.multiple), true, 'the file box accepts several files');
+  await input.uploadFile(...names.map((n) => join(dir, n))); await sleep(600);
+  assert.match(await page.evaluate(() => document.querySelector('.modal').innerText), /Add 3 videos/);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.modal .brow').length), 3);
+  assert.ok(await clickText(page, '.modal button', 'Upload 3 videos'));
+  await page.waitForFunction(() => document.querySelectorAll('.modal .bst.done').length === 3, { timeout: 30000 });
+  const vids2 = (await api('GET', '/api/videos')).json.videos;
+  for (const n of names) {
+    const v = vids2.find((x) => x.title === n.replace('.mp4', ''));
+    assert.ok(v, 'created: ' + n); assert.equal(v.status, 'draft');
+  }
+  await page.close();
+});

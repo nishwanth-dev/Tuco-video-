@@ -113,7 +113,7 @@ export default function Videos({ videos, loadVideos, setError }) {
       {tagging && <TagProducts video={tagging} onClose={() => setTagging(null)} onSave={async (products) => { const m = await patch(tagging, { products }); if (!m) setTagging(null); return m; }} />}
       {editing && <EditVideo video={editing} onClose={() => setEditing(null)} onSave={async (v) => { const m = await act(saveVideo)(v); if (!m) setEditing(null); return m; }} />}
       {arranging && <ArrangeVideos videos={videos.filter((v) => !v.archived)} onClose={() => setArranging(false)} onSaved={async () => { setArranging(false); await loadVideos(); }} setError={setError} />}
-      {adding && <AddMedia onClose={() => setAdding(false)} onSave={async (v) => { const m = await act(saveVideo)(v); if (!m) setAdding(false); return m; }} />}
+      {adding && <AddMedia onClose={() => setAdding(false)} onSaveMany={async (v) => act(saveVideo)(v)} onSave={async (v) => { const m = await act(saveVideo)(v); if (!m) setAdding(false); return m; }} />}
     </>
   );
 }
@@ -235,7 +235,9 @@ function EditVideo({ video, onClose, onSave }) {
   );
 }
 
-function AddMedia({ onClose, onSave }) {
+function AddMedia({ onClose, onSave, onSaveMany }) {
+  const [batch, setBatch] = useState(null); // several files chosen at once
+  const [shrinkBig, setShrinkBig] = useState(false);
   const [url, setUrl] = useState('');
   const [size, setSize] = useState(0);
   const [title, setTitle] = useState('');
@@ -250,8 +252,10 @@ function AddMedia({ onClose, onSave }) {
     setBusy(false);
   };
   const pick = async (e) => {
-    const f = e.target.files[0];
+    const files = [...e.target.files].slice(0, 50);
     e.target.value = '';
+    if (files.length > 1) { setErr(''); setUrl(''); setSize(0); setStaged(null); setBatch(files.map((f, i) => ({ id: i, file: f, title: f.name.replace(/\.[^.]+$/, '').replace(/-web$/, ''), status: 'waiting', msg: '' }))); return; }
+    const f = files[0];
     if (!f) return;
     setErr(''); setUrl(''); setSize(0); setStaged(null);
     if (f.size > 5 * 1048576) { setStaged(f); return; } // big files: offer to shrink first
@@ -266,9 +270,47 @@ function AddMedia({ onClose, onSave }) {
       await send(small);
     } catch (x) { setErr(x.message); setBusy(false); }
   };
+  const setItem = (id, patch) => setBatch((b) => b.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const runBatch = async () => {
+    setBusy(true); setErr('');
+    for (const it of batch.filter((x) => x.status !== 'done')) {
+      setItem(it.id, { status: 'working', msg: 'Uploading...' });
+      try {
+        let f = it.file;
+        if (shrinkBig && f.size > 5 * 1048576 && f.size <= MAX_INPUT) {
+          const small = await compressVideo(f, { onStatus: (m) => setItem(it.id, { msg: m }), onProgress: () => {} });
+          if (small.size < f.size) f = small;
+        } else if (f.size > 100 * 1048576) throw new Error('Over 100 MB: turn on "Make big files smaller" or shrink it first.');
+        const up = await uploadFile(f);
+        const m = await onSaveMany({ title: it.title.trim() || f.name.replace(/\.[^.]+$/, ''), url: up.url, poster: '', audience: 'kids', status: 'draft', placements: [], products: [], size: up.size || f.size });
+        if (m) throw new Error(m);
+        setItem(it.id, { status: 'done', msg: 'Added as a draft' });
+      } catch (x) { setItem(it.id, { status: 'error', msg: x.message || 'Failed' }); }
+    }
+    setBusy(false);
+  };
+  if (batch) {
+    const done = batch.filter((x) => x.status === 'done').length, todo = batch.filter((x) => x.status !== 'done').length;
+    return (
+      <Modal title={`Add ${batch.length} videos`} onClose={onClose} wide>
+        <div className="batch">
+          {batch.map((it) => (
+            <div className={'brow ' + it.status} key={it.id}>
+              <input value={it.title} disabled={busy || it.status === 'done'} onChange={(e) => setItem(it.id, { title: e.target.value })} aria-label="Title" />
+              <span className="muted small"><SizeBadge bytes={it.file.size} inline /></span>
+              <span className={'bst ' + it.status}>{it.status === 'waiting' ? 'Waiting' : it.status === 'working' ? (it.msg || 'Working...') : it.status === 'done' ? 'Added ✓' : 'Failed: ' + it.msg}</span>
+            </div>
+          ))}
+        </div>
+        <label className="chk"><input type="checkbox" checked={shrinkBig} disabled={busy} onChange={(e) => setShrinkBig(e.target.checked)} />Make files over 5 MB smaller before uploading (faster pages, a little lower quality)</label>
+        <p className="muted small">Left off, every video is uploaded exactly as it is. They are saved as drafts; tag products and set them live afterwards.</p>
+        <div className="row end"><button className="link" disabled={busy} onClick={onClose}>{done === batch.length ? 'Close' : 'Cancel'}</button>{todo > 0 && <button className="btn" disabled={busy} onClick={runBatch}>{busy ? 'Uploading...' : done ? `Try the other ${todo} again` : `Upload ${batch.length} videos`}</button>}</div>
+      </Modal>
+    );
+  }
   return (
     <Modal title="Add Media" onClose={onClose}>
-      <label className="lab">Upload a video file <span className="muted">(MP4 or MOV. Big files can be shrunk here)</span><input type="file" accept="video/*" onChange={pick} /></label>
+      <label className="lab">Upload video files <span className="muted">(MP4 or MOV. Pick one or several at once. Big files can be shrunk here)</span><input type="file" accept="video/*" multiple onChange={pick} /></label>
       <label className="lab">or paste a video URL (.mp4)<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." /></label>
       <label className="lab">Title<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       {staged && !busy && (
