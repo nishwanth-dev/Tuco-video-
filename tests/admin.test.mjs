@@ -61,7 +61,7 @@ test('widget editor: the picked videos can be put in order and the order is save
   const page = await open('w:product');
   const row = await page.evaluateHandle(() => [...document.querySelectorAll('tbody tr')].find((r) => /Order test set/.test(r.innerText)));
   await row.evaluate((r) => [...r.querySelectorAll('button')].find((b) => /Manage/.test(b.innerText)).click()); await sleep(800);
-  const titles = () => page.evaluate(() => [...document.querySelectorAll('.modal .arr .arow span')].map((s) => s.textContent.replace(/^\d+\.\s*/, '').trim()));
+  const titles = () => page.evaluate(() => [...document.querySelectorAll('.modal .arr .arow span')].map((s) => s.textContent.replace(/^\d+\.\s*/, '').replace(/\s*\d{1,2} [A-Z][a-z]{2} \d{4}.*$/, '').trim()));
   assert.deepEqual(await titles(), ['Fixture 1', 'Fixture 2', 'Fixture 3'], 'the list shows the current order');
   assert.ok(await page.evaluate(() => [...document.querySelectorAll('.modal .arr .arow')][0].querySelector('button[aria-label="Move up"]').disabled), 'the first one cannot move up');
   await page.evaluate(() => [...document.querySelectorAll('.modal .arr .arow')][0].querySelector('button[aria-label="Move down"]').click()); await sleep(200);
@@ -219,5 +219,16 @@ test('add media: several video files can be chosen at once and each becomes a dr
     const v = vids2.find((x) => x.title === n.replace('.mp4', ''));
     assert.ok(v, 'created: ' + n); assert.equal(v.status, 'draft');
   }
+  await page.close();
+});
+
+test('videos page: every video shows when it was uploaded, newest first', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await open('videos');
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.vtile')].map((t) => ({ title: t.querySelector('.vcap').textContent, date: t.querySelector('.vdate').textContent })));
+  assert.ok(rows.length >= 2);
+  assert.ok(rows.every((r) => /^Uploaded \d{1,2} [A-Z][a-z]{2} \d{4}$/.test(r.date)), 'a readable date on each: ' + JSON.stringify(rows.slice(0, 2)));
+  const api2 = (await api('GET', '/api/videos')).json.videos.filter((v) => !v.archived).sort((a, b) => b.createdAt - a.createdAt);
+  const newestTitles = new Set(api2.filter((v) => v.createdAt === api2[0].createdAt).map((v) => v.title));
+  assert.ok(newestTitles.has(rows[0].title), 'the newest video comes first');
   await page.close();
 });

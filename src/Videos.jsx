@@ -101,6 +101,7 @@ export default function Videos({ videos, loadVideos, setError }) {
               </button>
             </div>
             <div className="vcap" title={v.title}>{v.title}</div>
+            <div className="vdate" title={v.createdAt ? new Date(v.createdAt).toLocaleString() : ''}>Uploaded {fmtDate(v.createdAt)}</div>
           </div>
         ))}
       </div>
@@ -235,6 +236,9 @@ function EditVideo({ video, onClose, onSave }) {
   );
 }
 
+// 15 Oct 2026
+export const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'earlier');
+
 function AddMedia({ onClose, onSave, onSaveMany }) {
   const [batch, setBatch] = useState(null); // several files chosen at once
   const [squeeze, setSqueeze] = useState('none'); // none | quality | under5
@@ -348,7 +352,7 @@ function ArrangeVideos({ videos, onClose, onSaved, setError }) {
     <Modal title="Arrange videos" onClose={onClose}>
       <p className="muted">This sets the default order widgets use when they show all tagged videos.</p>
       <div className="arr">{ids.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
-        <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><button className="link" onClick={() => move(i, -1)}>↑</button><button className="link" onClick={() => move(i, 1)}>↓</button></div>); })}</div>
+        <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{v.title} <em className="muted">{fmtDate(v.createdAt)}</em></span><button className="link" onClick={() => move(i, -1)}>↑</button><button className="link" onClick={() => move(i, 1)}>↓</button></div>); })}</div>
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => { try { await reorderVideos(ids); await onSaved(); } catch (e) { setError(e.message); } }}>Save order</button></div>
     </Modal>
   );

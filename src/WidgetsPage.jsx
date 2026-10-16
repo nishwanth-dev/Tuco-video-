@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
 import { Modal, Toggle, Empty, Scaled } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
+import { fmtDate } from './Videos.jsx';
 import { NEW_LAYOUT } from './layoutSpec.js';
 import { Thumb } from './media.jsx';
 
@@ -82,7 +83,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const [colls, setColls] = useState([]);
   const [saveErr, setSaveErr] = useState('');
   const set = (k, v) => setW((o) => ({ ...o, [k]: v }));
-  const live = videos.filter((v) => v.status === 'live' && !v.archived);
+  const live = videos.filter((v) => v.status === 'live' && !v.archived).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // newest first
   const toggleVid = (id) => set('videoIds', w.videoIds.includes(id) ? w.videoIds.filter((x) => x !== id) : [...w.videoIds, id]);
   // Limits a picked video to desktop or phones (empty = both). Stored in the widget's overrides.
   const setDevice = (id, dev) => setW((o) => {
@@ -114,12 +115,12 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         </div>
       )}
       {w.scope === 'custom' && (
-        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
+        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><em className="vpd">{fmtDate(v.createdAt)}</em></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
       {w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
         <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order. To use a different video on phones than on desktop, set one to "Desktop only" and the other to "Phones only".</span>
           <div className="arr">{w.videoIds.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
-            <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title}{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
+            <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title} <em className="muted">{fmtDate(v.createdAt)}</em>{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
               <button type="button" className="link" disabled={i === 0} onClick={() => moveVid(i, -1)} aria-label="Move up">↑</button>
               <button type="button" className="link" disabled={i === w.videoIds.length - 1} onClick={() => moveVid(i, 1)} aria-label="Move down">↓</button>
               <select className="devsel" aria-label="Show on" value={(w.overrides && w.overrides.deviceOnly && w.overrides.deviceOnly[id]) || ''} onChange={(e) => setDevice(id, e.target.value)}><option value="">Show on desktop and phones</option><option value="desktop">Desktop only</option><option value="mobile">Phones only</option></select>
