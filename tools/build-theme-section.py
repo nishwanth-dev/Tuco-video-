@@ -325,7 +325,10 @@ if len(sys.argv) >= 4:
             elif typ == 'select': item.update({'options': plain_opts(extra['options']), 'default': D}); item['info'] = hint
             if not item.get('info'): item.pop('info', None)
             bs.append(item); ids.add(sid)
-        if bname in ('Loopy Banner', 'Loopy Section'):
+        if bname == 'Loopy Banner':
+            HOLD = [{'value': 'none', 'label': 'Do not reserve space'}] + [{'value': v, 'label': l} for v, l in [('2/1', 'Wide strip 2:1'), ('16/9', 'Wide 16:9'), ('5/4', 'Landscape 5:4'), ('4/3', 'Landscape 4:3'), ('1/1', 'Square 1:1'), ('4/5', 'Portrait 4:5'), ('9/16', 'Tall 9:16')]]
+            bs.append({'type': 'select', 'id': 'hold_desktop', 'label': 'Desktop: Space to keep while loading', 'options': HOLD, 'default': 'none', 'info': 'Keeps an empty box this shape until the video appears, so the page below does not jump. Pick the shape your banner has.'})
+            bs.append({'type': 'select', 'id': 'hold_mobile', 'label': 'Mobile: Space to keep while loading', 'options': HOLD, 'default': 'none', 'info': 'Same, for phones.'})
             bs.append({'type': 'checkbox', 'id': 'full_bleed', 'label': 'Stretch across the whole screen', 'default': False, 'info': 'Turn on if this page has side margins that the home page does not. The video then goes edge to edge.'})
         bs += [
           {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space above', 'default': 20},
@@ -333,7 +336,15 @@ if len(sys.argv) >= 4:
         ]
         attrs_b = '\n'.join(attr_line(x[0], x[1], x[2], 'block') for x in S if x[0] != 'header' and x[0] in ids)
         bleed = '{% if block.settings.full_bleed %}\n  #loopy-block-{{ block.id }} { width: 100vw; max-width: 100vw; position: relative; left: 50%; margin-left: -50vw; }\n  {% endif %}'
-        txt = BLOCK.replace('</style>', bleed + '</style>', 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
+        prelude = ('{%- liquid\n  assign hd = block.settings.hold_desktop | default: "none"\n  assign hm = block.settings.hold_mobile | default: "none"\n  assign hold = false\n  if hd != "none" or hm != "none"\n    assign hold = true\n  endif\n-%}\n')
+        hold = ('{% if hold %}\n'
+                '  #loopy-block-{{ block.id }} .loopy-hold { {% if hm != "none" %}aspect-ratio: {{ hm }};{% endif %} }\n'
+                '  @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} .loopy-hold { aspect-ratio: {% if hd != "none" %}{{ hd }}{% else %}auto{% endif %}; } }\n'
+                '{% endif %}\n')
+        holdclass = '      {%- if hold %} class="loopy-hold"{% endif -%}\n' if bname == 'Loopy Banner' else ''
+        txt = BLOCK.replace('</style>', (bleed if bname in ('Loopy Banner', 'Loopy Section') else '') + (hold if holdclass else '') + '</style>', 1)
+        if holdclass: txt = txt.replace("{%- assign wid = block.settings.widget_id | strip -%}", "{%- assign wid = block.settings.widget_id | strip -%}\n" + prelude, 1)
+        txt = txt.replace('      data-tuco-video\n', '      data-tuco-video\n' + holdclass, 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
         txt = txt.replace('@@ATTRS@@', attrs_b).replace('@@SCRIPT@@', SCRIPT).replace('@@SCHEMA@@', json.dumps({'name': bname, 'target': 'section', 'settings': bs}, indent=2))
         open(os.path.join(os.path.dirname(sys.argv[2]), bhandle + '.liquid'), 'w').write(txt)
         print(f'wrote {bhandle}: {sum(1 for y in bs if y.get("id"))} settings')

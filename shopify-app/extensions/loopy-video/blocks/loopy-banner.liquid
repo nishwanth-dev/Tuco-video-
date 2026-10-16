@@ -4,18 +4,32 @@
 {%- endcomment -%}
 
 {%- assign wid = block.settings.widget_id | strip -%}
+{%- liquid
+  assign hd = block.settings.hold_desktop | default: "none"
+  assign hm = block.settings.hold_mobile | default: "none"
+  assign hold = false
+  if hd != "none" or hm != "none"
+    assign hold = true
+  endif
+-%}
+
 
 <style>
   #loopy-block-{{ block.id }} { padding-top: calc({{ block.settings.padding_top }}px * 0.75); padding-bottom: calc({{ block.settings.padding_bottom }}px * 0.75); }
   @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} { padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px; } }
 {% if block.settings.full_bleed %}
   #loopy-block-{{ block.id }} { width: 100vw; max-width: 100vw; position: relative; left: 50%; margin-left: -50vw; }
-  {% endif %}</style>
+  {% endif %}{% if hold %}
+  #loopy-block-{{ block.id }} .loopy-hold { {% if hm != "none" %}aspect-ratio: {{ hm }};{% endif %} }
+  @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} .loopy-hold { aspect-ratio: {% if hd != "none" %}{{ hd }}{% else %}auto{% endif %}; } }
+{% endif %}
+</style>
 
 <div id="loopy-block-{{ block.id }}" {{ block.shopify_attributes }}>
   {%- if wid != blank -%}
     <div
       data-tuco-video
+      {%- if hold %} class="loopy-hold"{% endif -%}
       data-widget="{{ wid | escape }}"
       {%- if block.settings.heading != blank %} data-heading="{{ block.settings.heading | strip | escape }}"{% endif -%}
       {%- if block.settings.product_handle != blank %} data-product="{{ block.settings.product_handle | strip | escape }}"{% endif -%}
@@ -484,6 +498,88 @@
       "id": "banner_bg",
       "label": "Background behind the banner",
       "info": "Shows if the video does not fill the banner."
+    },
+    {
+      "type": "select",
+      "id": "hold_desktop",
+      "label": "Desktop: Space to keep while loading",
+      "options": [
+        {
+          "value": "none",
+          "label": "Do not reserve space"
+        },
+        {
+          "value": "2/1",
+          "label": "Wide strip 2:1"
+        },
+        {
+          "value": "16/9",
+          "label": "Wide 16:9"
+        },
+        {
+          "value": "5/4",
+          "label": "Landscape 5:4"
+        },
+        {
+          "value": "4/3",
+          "label": "Landscape 4:3"
+        },
+        {
+          "value": "1/1",
+          "label": "Square 1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "Portrait 4:5"
+        },
+        {
+          "value": "9/16",
+          "label": "Tall 9:16"
+        }
+      ],
+      "default": "none",
+      "info": "Keeps an empty box this shape until the video appears, so the page below does not jump. Pick the shape your banner has."
+    },
+    {
+      "type": "select",
+      "id": "hold_mobile",
+      "label": "Mobile: Space to keep while loading",
+      "options": [
+        {
+          "value": "none",
+          "label": "Do not reserve space"
+        },
+        {
+          "value": "2/1",
+          "label": "Wide strip 2:1"
+        },
+        {
+          "value": "16/9",
+          "label": "Wide 16:9"
+        },
+        {
+          "value": "5/4",
+          "label": "Landscape 5:4"
+        },
+        {
+          "value": "4/3",
+          "label": "Landscape 4:3"
+        },
+        {
+          "value": "1/1",
+          "label": "Square 1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "Portrait 4:5"
+        },
+        {
+          "value": "9/16",
+          "label": "Tall 9:16"
+        }
+      ],
+      "default": "none",
+      "info": "Same, for phones."
     },
     {
       "type": "checkbox",

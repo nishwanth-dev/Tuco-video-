@@ -649,6 +649,7 @@
     try { var hh = Number(localStorage.getItem(hk)); if (hh > 40) el.style.minHeight = hh + 'px'; } catch (err) { /* ignore */ }
     function settle(ok) {
       el.style.minHeight = '';
+      el.classList.remove('loopy-hold');
       if (ok) { try { var h = el.offsetHeight; if (h > 40) localStorage.setItem(hk, String(h)); } catch (err) { /* ignore */ } }
     }
     var url = API + '/api/public/config?' + q.join('&');

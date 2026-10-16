@@ -496,3 +496,12 @@ test('speed: a widget far below the first screen only loads when the shopper scr
     assert.ok(asked.includes(w.json.id), 'it asks once the shopper is near');
   } finally { await first.close(); }
 });
+
+// ---------------- Reserved space while loading ----------------
+test('reserved space: the placeholder class is cleared once the banner has drawn', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const r = await render(browser, ids, { type: 'banner', attrs: { class: 'loopy-hold' }, overrides: { banner: { aspectLandscape: '2/1', heightModeDesktop: 'ratio' } } });
+  try {
+    await new Promise((x) => setTimeout(x, 400));
+    assert.equal(await r.page.evaluate(() => document.querySelector('[data-tuco-video]').classList.contains('loopy-hold')), false);
+  } finally { await r.close(); }
+});
