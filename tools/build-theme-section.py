@@ -327,8 +327,8 @@ if len(sys.argv) >= 4:
             bs.append(item); ids.add(sid)
         if bname == 'Loopy Banner':
             HOLD = [{'value': 'none', 'label': 'Do not reserve space'}] + [{'value': v, 'label': l} for v, l in [('2/1', 'Wide strip 2:1'), ('16/9', 'Wide 16:9'), ('5/4', 'Landscape 5:4'), ('4/3', 'Landscape 4:3'), ('1/1', 'Square 1:1'), ('4/5', 'Portrait 4:5'), ('9/16', 'Tall 9:16')]]
-            bs.append({'type': 'select', 'id': 'hold_desktop', 'label': 'Desktop: Space to keep while loading', 'options': HOLD, 'default': 'none', 'info': 'Keeps an empty box this shape until the video appears, so the page below does not jump. Pick the shape your banner has.'})
-            bs.append({'type': 'select', 'id': 'hold_mobile', 'label': 'Mobile: Space to keep while loading', 'options': HOLD, 'default': 'none', 'info': 'Same, for phones.'})
+            bs.append({'type': 'select', 'id': 'hold_desktop', 'label': 'Desktop: Space to keep while loading', 'options': HOLD, 'default': '2/1', 'info': 'Keeps an empty box this shape until the video appears, so the page below does not jump. Set to the shape your banner has, or choose Do not reserve space.'})
+            bs.append({'type': 'select', 'id': 'hold_mobile', 'label': 'Mobile: Space to keep while loading', 'options': HOLD, 'default': '1/1', 'info': 'Same, for phones.'})
             bs.append({'type': 'checkbox', 'id': 'full_bleed', 'label': 'Stretch across the whole screen', 'default': False, 'info': 'Turn on if this page has side margins that the home page does not. The video then goes edge to edge.'})
         bs += [
           {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space above', 'default': 20},
