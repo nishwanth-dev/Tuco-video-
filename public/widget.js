@@ -85,6 +85,7 @@
     '.info b{display:block;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:12px;line-height:1.3;color:var(--details-color);display:flex;flex-direction:column;gap:6px;padding:12px 0}.meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;line-height:1.3;font-weight:700}.pr{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}.pr b{font-size:20px;font-weight:700;white-space:normal;overflow:visible}.pr s{font-size:15px;font-weight:600;opacity:.5}.pr em{font-style:normal;font-size:12.5px;font-weight:600;background:var(--brand);color:#222;padding:4px 10px;border-radius:8px}',
     '.abtn{border:0;cursor:pointer;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 14px var(--font),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:14px 10px;width:100%;margin-top:auto}.abtn[disabled]{opacity:.6;cursor:default}',
     '.nocl .tile{cursor:default}',
+    '.tile.hasth video{opacity:0;transition:opacity .4s ease}.tile.hasth.pl video{opacity:1}@media (prefers-reduced-motion:reduce){.tile.hasth video{transition:none}}',
     '.abtn.hov{opacity:0;transition:opacity .15s}.card:hover .abtn.hov{opacity:1}',
     // Phones: smaller text and a slimmer button, like Whatmore's carousel on a phone. The button sits at the bottom of every tile so a row lines up.
     '.mob .meta{gap:4px;padding:10px 0}.mob .meta b{font-size:13px}.mob .pr b{font-size:14px}.mob .pr s{font-size:11px}.mob .pr em{font-size:10.5px;padding:3px 8px;border-radius:6px}.mob .abtn{font-size:12.5px;padding:0;height:33px;line-height:33px}',
@@ -360,6 +361,9 @@
     });
   }
   function lazyVideos(root, ctx) {
+    [].slice.call(root.querySelectorAll('.tile.hasth video')).forEach(function (vv) {
+      vv.addEventListener('playing', function () { var t = vv.closest ? vv.closest('.tile') : null; if (t) t.classList.add('pl'); }, { once: true });
+    });
     root.addEventListener('pause', function (e) {
       var v = e.target;
       if (v && v.tagName === 'VIDEO' && v.__want && !calm) setTimeout(function () { if (v.__want && v.paused && !document.hidden) v.play().catch(function () {}); }, 200);
@@ -396,7 +400,8 @@
     var sold = v.allSoldOut && s.oos.soldOutLabel ? '<span class="sold">Sold out</span>' : '';
     var priceTxt = p && s.showPrice ? '<b>' + esc(p.price || '') + '</b>' : '';
     var inner = thumb + ov + views + sold;
-    var open = function (body) { return '<button class="tile" data-i="' + i + '" aria-label="' + esc(v.title) + '">' + body + '</button>'; };
+    // A tile with a thumbnail keeps its video invisible until it is really playing, then fades it in over the thumbnail (no flash, and the thumbnail is what loads first).
+    var open = function (body) { return '<button class="tile' + (tsrc && !yt ? ' hasth' : '') + '" data-i="' + i + '" aria-label="' + esc(v.title) + '">' + body + '</button>'; };
     if (type === 'stories') return '<div class="card">' + open(thumb) + '<span class="lbl">' + esc(v.title) + '</span></div>';
     if (type === 'banner') return '<div class="card">' + open(inner + (s.banner.showCta && p ? '<span class="cta">' + esc(v.ctaText || s.shopNowText) + '</span>' : '')) + '</div>';
     if (tt === 'below') {

@@ -521,3 +521,15 @@ test('reserved space: a "match the video" banner starts at the kept shape, then 
     assert.ok(distinct.length <= 2, 'at most one change (to the real shape): ' + distinct.join(', '));
   } finally { await page.close(); }
 });
+
+test('smooth start: with a thumbnail the video stays invisible until it plays, then fades in', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const v = (await api('GET', '/api/videos')).json.videos.find((x) => x.id === ids[0]);
+  await api('PUT', '/api/videos/' + ids[0], { ...v, poster: `http://localhost:${PORT}/poster-test.jpg` });
+  const r = await render(browser, ids, { type: 'banner', overrides: { banner: { aspectLandscape: '2/1', heightModeDesktop: 'ratio' } } });
+  try {
+    await r.page.waitForFunction(() => { const t = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile'); return t && t.classList.contains('hasth'); }, { timeout: 8000 });
+    await r.page.waitForFunction(() => { const t = document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile'); return t.classList.contains('pl'); }, { timeout: 8000 });
+    await new Promise((x) => setTimeout(x, 700));
+    assert.equal(await r.page.evaluate(() => getComputedStyle(document.querySelector('[data-tuco-video]').shadowRoot.querySelector('.tile video')).opacity), '1', 'visible once playing');
+  } finally { await r.close(); await api('PUT', '/api/videos/' + ids[0], { ...v, poster: v.poster || '' }); }
+});
