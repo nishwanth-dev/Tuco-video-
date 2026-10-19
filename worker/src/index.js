@@ -480,20 +480,27 @@ async function handle(req, env, ctx) {
     const days = Math.min(Number(url.searchParams.get('days')) || 30, 365);
     const since = Date.now() - days * 86400000;
     const q = (sql) => env.DB.prepare(sql).bind(since).all().then((r) => r.results);
+    // live=1: only widgets that are switched on and showed on the site in the last 3 days (leaves out old, replaced and test widgets)
+    let wf = ''; let liveWidgets = null;
+    if (url.searchParams.get('live') === '1') {
+      const lr = await env.DB.prepare("SELECT id FROM widgets WHERE enabled=1 AND id IN (SELECT widget FROM events WHERE type='impression' AND at>=?)").bind(Date.now() - 3 * 86400000).all();
+      const lids = lr.results.map((x) => x.id).filter((i) => /^[\w-]+$/.test(i));
+      liveWidgets = lids.length; wf = lids.length ? ` AND widget IN (${lids.map((i) => `'${i}'`).join(',')})` : ' AND 0';
+    }
     const T = "SUM(type='impression') AS impressions, SUM(type='play') AS plays, SUM(CASE WHEN type='watch' THEN secs ELSE 0 END) AS secs, SUM(type='atc') AS atc, SUM(type='like') AS likes, SUM(type='share') AS shares";
     const [perVideo, perWidget, daily, byDevice, bySource, sales, salesByVideo] = await Promise.all([
-      q(`SELECT video_id, ${T} FROM events WHERE at>=? GROUP BY video_id`),
-      q(`SELECT widget, ${T} FROM events WHERE at>=? AND widget!='' GROUP BY widget`),
-      q("SELECT strftime('%Y-%m-%d', at/1000, 'unixepoch') AS day, SUM(type='play') AS plays, SUM(type='atc') AS atc FROM events WHERE at>=? GROUP BY day ORDER BY day"),
-      q(`SELECT device, ${T} FROM events WHERE at>=? AND device!='' GROUP BY device`),
-      q(`SELECT src, ${T} FROM events WHERE at>=? AND src!='' GROUP BY src ORDER BY plays DESC LIMIT 12`),
+      q(`SELECT video_id, ${T} FROM events WHERE at>=?${wf} GROUP BY video_id`),
+      q(`SELECT widget, ${T} FROM events WHERE at>=? AND widget!=''${wf} GROUP BY widget`),
+      q(`SELECT strftime('%Y-%m-%d', at/1000, 'unixepoch') AS day, SUM(type='play') AS plays, SUM(type='atc') AS atc FROM events WHERE at>=?${wf} GROUP BY day ORDER BY day`),
+      q(`SELECT device, ${T} FROM events WHERE at>=? AND device!=''${wf} GROUP BY device`),
+      q(`SELECT src, ${T} FROM events WHERE at>=? AND src!=''${wf} GROUP BY src ORDER BY plays DESC LIMIT 12`),
       q('SELECT COUNT(DISTINCT order_id) AS orders, COALESCE(SUM(amount),0) AS revenue FROM order_attrib WHERE at>=?'),
       q('SELECT video_id, COUNT(DISTINCT order_id) AS orders, SUM(amount) AS revenue FROM order_attrib WHERE at>=? GROUP BY video_id'),
     ]);
     // null means the order webhook has not reported anything yet (or migration 005 has not been run).
     let storeSales = null;
     try { const r = await env.DB.prepare('SELECT COUNT(*) AS orders, COALESCE(SUM(amount),0) AS revenue FROM store_orders WHERE at>=?').bind(since).first(); if (r && r.orders) storeSales = r; } catch {}
-    return json({ perVideo, perWidget, daily, byDevice, bySource, sales: sales[0] || { orders: 0, revenue: 0 }, storeSales, salesByVideo }, 200, cors);
+    return json({ perVideo, perWidget, daily, byDevice, bySource, sales: sales[0] || { orders: 0, revenue: 0 }, storeSales, salesByVideo, liveWidgets }, 200, cors);
   }
   if (p === '/api/health' && req.method === 'GET') {
     const checks = {};

@@ -6,8 +6,9 @@ const fmtTime = (s) => (s >= 3600 ? (s / 3600).toFixed(1) + ' hrs' : s >= 60 ? M
 
 export default function Analytics({ videos, widgets, setError }) {
   const [days, setDays] = useState(30);
+  const [live, setLive] = useState(true);
   const [data, setData] = useState({ perVideo: [], perWidget: [], daily: [], byDevice: [], bySource: [], sales: { orders: 0, revenue: 0 }, salesByVideo: [] });
-  useEffect(() => { getAnalytics(days).then(setData).catch((e) => setError(e.message)); }, [days, setError]);
+  useEffect(() => { getAnalytics(days, live).then(setData).catch((e) => setError(e.message)); }, [days, live, setError]);
 
   const t = useMemo(() => data.perVideo.reduce((a, r) => ({ imp: a.imp + (r.impressions || 0), plays: a.plays + (r.plays || 0), secs: a.secs + (r.secs || 0), atc: a.atc + (r.atc || 0), likes: a.likes + (r.likes || 0), shares: a.shares + (r.shares || 0) }), { imp: 0, plays: 0, secs: 0, atc: 0, likes: 0, shares: 0 }), [data]);
   const max = Math.max(1, ...data.daily.map((d) => d.plays));
@@ -15,8 +16,9 @@ export default function Analytics({ videos, widgets, setError }) {
 
   return (
     <>
-      <div className="bar"><div><h1>Analytics</h1><p className="sub">How shoppers watch your videos and what they add to cart.</p></div>
-        <select value={days} onChange={(e) => setDays(Number(e.target.value))}>{[7, 30, 90].map((d) => <option key={d} value={d}>Last {d} days</option>)}</select></div>
+      <div className="bar"><div><h1>Analytics</h1><p className="sub">How shoppers watch your videos and what they add to cart.{live ? ` Showing only the ${data.liveWidgets ?? ''} widgets that are switched on and were seen on your website in the last 3 days.` : ' Showing every widget, including old and test ones.'}</p></div>
+        <div className="row"><select value={live ? 'live' : 'all'} onChange={(e) => setLive(e.target.value === 'live')} aria-label="Which widgets to count"><option value="live">Only widgets on the site now</option><option value="all">Everything ever shown</option></select>
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}>{[7, 30, 90].map((d) => <option key={d} value={d}>Last {d} days</option>)}</select></div></div>
       <div className="stats s6">
         <div className="stat"><span>Impressions</span><b>{t.imp}</b></div>
         <div className="stat"><span>Video views</span><b>{t.plays}</b></div>

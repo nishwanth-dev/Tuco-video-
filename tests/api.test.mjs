@@ -354,3 +354,18 @@ test('site checks: "check now" needs the admin token, saves a server check, and 
   assert.ok(one.json.check.details.length >= 15, 'one row per page at least');
   assert.ok(one.json.check.details.every((d) => d.problems.length), 'every unreachable page is flagged');
 });
+
+test('analytics: "only widgets on the site now" leaves out switched-off widgets and widgets with no recent impression', async () => {
+  const v = await mkVideo(); const vid = v.id || v;
+  const live = (await call('POST', '/api/widgets', { body: goodWidget({ name: 'QA live', type: 'banner', enabled: true, videoIds: [vid] }) })).json.id;
+  const off = (await call('POST', '/api/widgets', { body: goodWidget({ name: 'QA off', type: 'banner', enabled: false, videoIds: [vid] }) })).json.id;
+  const ev = (widget) => fetch(B + '/api/public/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify([{ type: 'impression', videoId: vid, widget }, { type: 'impression', videoId: vid, widget }]) });
+  assert.equal((await ev(live)).status, 200); assert.equal((await ev(off)).status, 200);
+  const all = (await call('GET', '/api/analytics?days=30')).json; const only = (await call('GET', '/api/analytics?days=30&live=1')).json;
+  assert.ok(all.perWidget.some((r) => r.widget === off), 'everything view still counts the switched-off widget');
+  assert.ok(only.perWidget.some((r) => r.widget === live), 'the live widget is counted');
+  assert.ok(!only.perWidget.some((r) => r.widget === off), 'the switched-off widget is left out');
+  assert.ok(only.liveWidgets >= 1);
+  const sum = (a) => a.perVideo.reduce((n, r) => n + (r.impressions || 0), 0);
+  assert.ok(sum(only) < sum(all), 'totals shrink when old widgets are left out');
+});

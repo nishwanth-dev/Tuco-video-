@@ -40,7 +40,7 @@ export const getOrder = (handle) => req(`/api/order/${handle}`).then((d) => d.or
 export const saveOrder = (handle, order) => send('PUT', `/api/order/${handle}`, { order });
 
 export const searchProducts = (q = '') => req(`/api/store/products?q=${encodeURIComponent(q)}`).then((d) => d.products);
-export const getAnalytics = (days) => req(`/api/analytics?days=${days}`);
+export const getAnalytics = (days, live = false) => req(`/api/analytics?days=${days}${live ? '&live=1' : ''}`);
 export const syncInstagram = () => send('POST', '/api/sync/instagram', {});
 
 export const listCollections = () => req('/api/store/collections').then((d) => d.collections);
