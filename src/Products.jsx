@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { searchProducts, getOrder, saveOrder, saveWidget } from './api.js';
-import { Modal, Empty } from './ui.jsx';
+import { Modal, Empty, Table } from './ui.jsx';
 import { Thumb } from './media.jsx';
 
 // A widget id with a one-click copy, so it can be pasted straight into the theme editor.
@@ -32,7 +32,7 @@ export default function Products({ videos, widgets = [], loadWidgets, setError }
         <label className="chk"><input type="checkbox" checked={onlyVideos} onChange={(e) => setOnlyVideos(e.target.checked)} />Only products with videos</label></div>
       {!rows.length && <Empty>{products.length ? 'No products with videos yet. Tag products from the Videos page.' : 'Loading store products...'}</Empty>}
       {rows.length > 0 && (
-        <table>
+        <Table>
           <thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Tagged videos</th><th>Video sets on its page (widget ID to use in the theme)</th><th /></tr></thead>
           <tbody>{rows.map((p) => (
             <tr key={p.handle}>
@@ -43,7 +43,7 @@ export default function Products({ videos, widgets = [], loadWidgets, setError }
               <td>{p.sets.length ? p.sets.map((w) => <div key={w.id} className="setrow"><span className={'setname ' + (w.enabled ? 'on' : 'off')} title={w.enabled ? 'Switched on' : 'Switched off. Turn it on under Product Pages.'}>{w.name} ({w.videoIds.length})</span> <CopyId id={w.id} /></div>) : <span className="muted">none</span>}</td>
               <td><button className="btn ghost sm" disabled={!p.sets.length && p.vids.length < 2} title={!p.sets.length && p.vids.length < 2 ? 'Nothing to arrange: this product has no video set and fewer than 2 tagged videos.' : ''} onClick={() => setArrange(p)}>Arrange Media</button></td>
             </tr>))}</tbody>
-        </table>
+        </Table>
       )}
       {arrange && <Arrange product={arrange} videos={videos} sets={setsFor(arrange.handle)} reload={loadWidgets} onClose={() => setArrange(null)} setError={setError} />}
     </>

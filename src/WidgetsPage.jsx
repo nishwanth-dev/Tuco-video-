@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { saveWidget, deleteWidget, searchProducts, listCollections, apiBase } from './api.js';
-import { Modal, Toggle, Empty, Scaled } from './ui.jsx';
+import { Modal, Toggle, Empty, Scaled, Table } from './ui.jsx';
 import LayoutField from './LayoutField.jsx';
 import { fmtDate } from './Videos.jsx';
 import { NEW_LAYOUT } from './layoutSpec.js';
@@ -58,7 +58,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
       )}
       {!mine.length && <Empty>No widgets here yet. Create one above, then copy its embed code into your theme.</Empty>}
       {shown.length > 0 && (
-        <table>
+        <Table>
           <thead><tr><th>Widget</th><th>Type</th><th>Created</th><th>Videos</th><th>On website</th><th /></tr></thead>
           <tbody>{shown.map((w) => (
             <tr key={w.id}>
@@ -69,7 +69,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
               <td><div className="row"><Toggle on={w.enabled} onChange={(on) => act(saveWidget)({ ...w, enabled: on })} /><button className="link" onClick={() => setEmbed(w)}>Get embed code</button></div></td>
               <td><div className="row"><button className="btn ghost sm" onClick={() => setEditing(w)}>Manage Widget</button><button className="link red" onClick={() => confirm('Delete this widget?') && act(deleteWidget)(w.id)}>Delete</button></div></td>
             </tr>))}</tbody>
-        </table>
+        </Table>
       )}
       {page === 'product' && <p className="muted pad">Videos shown on product pages are the ones tagged to that product. Set their order from <button className="link" onClick={() => go('products')}>Products → Arrange Media</button>.</p>}
       {editing && <Editor widget={editing} videos={videos} settings={settings} onClose={() => setEditing(null)} onSave={async (w) => { const m = await act(saveWidget)(w); if (!m) setEditing(null); return m; }} />}

@@ -221,7 +221,7 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
   .main { padding: 18px 14px 90px; }
   h1 { font-size: 24px; }
   /* wide tables scroll inside their own box instead of pushing the whole page sideways */
-  table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  th { white-space: nowrap; }
   th, td { padding: 11px 14px; }
   td:has(> .setrow) { min-width: 300px; }
   /* headers: title on top, controls underneath, filling the width */
@@ -282,3 +282,31 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
 .fart.has > * { flex: 1; min-width: 0; height: 100%; object-fit: cover; border-radius: 9px; background: rgba(0,0,0,.06); }
 .fart.c.has > * { border-bottom: 4px solid var(--brand, #ffd94a); }
 @media (max-width: 700px) { .fart.has { height: 70px; padding: 5px; gap: 4px; } .fart.has > * { border-radius: 7px; } }
+
+/* Phones, part 3: tables, pop-ups, pickers, Customizations */
+.tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+@media (max-width: 700px) {
+  .tscroll { border-radius: 14px; }
+  .tscroll > table { margin: 0; }
+  .tscroll > table:has(th:nth-child(6)) { min-width: 640px; }
+  .vgrid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .vmedia { aspect-ratio: 3 / 4; }
+  .toolbar .search, .search.wsearch { flex: 1 1 100%; }
+  /* pop-ups open as a sheet from the bottom, with the buttons always in reach */
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal, .modal.wide { max-width: 100%; max-height: 94vh; border-radius: 20px 20px 0 0; padding: 18px 16px 0; box-shadow: 0 -10px 40px rgba(0,0,0,.2); }
+  .modal > .row.end { position: sticky; bottom: 0; z-index: 2; background: #fff; margin: 8px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); gap: 10px; }
+  .modal > .row.end .btn { flex: 1; min-height: 46px; }
+  .modal > .row.end .link { padding: 12px 14px; }
+  .vpick { grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 300px; }
+  .arow { flex-wrap: wrap; gap: 8px 10px; padding: 10px; }
+  .arow > span { flex: 1 1 calc(100% - 60px); min-width: 0; overflow-wrap: anywhere; }
+  .arow .devsel { margin-left: 0; max-width: none; flex: 1 1 130px; min-height: 40px; }
+  .arow button { min-height: 40px; min-width: 40px; }
+  /* Customizations: the section list becomes a few compact chips */
+  .cmenu { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 18px 14px; border-right: 0; }
+  .cmenu h1, .cmenu .sub { flex: 0 0 100%; margin: 0; }
+  .cmenu .sub { margin-bottom: 6px; }
+  .cnav { border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; min-height: 40px; background: #fff; font-size: 13px; }
+  .cnav.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+}

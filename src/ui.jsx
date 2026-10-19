@@ -51,3 +51,6 @@ export function Scaled({ children, base = 1200 }) {
   }, [base]);
   return <div ref={outer} style={{ width: '100%', height: h || undefined, overflow: 'hidden' }}><div ref={inner} style={{ width: base, transform: `scale(${k})`, transformOrigin: 'top left' }}>{children}</div></div>;
 }
+
+// Tables scroll sideways inside their own box on a phone instead of squeezing or pushing the page wider.
+export const Table = (props) => <div className="tscroll"><table {...props} /></div>;

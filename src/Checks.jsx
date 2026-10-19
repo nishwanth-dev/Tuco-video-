@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listChecks, getCheck, runCheck } from './api.js';
-import { Empty } from './ui.jsx';
+import { Empty, Table } from './ui.jsx';
 
 const LABEL = { ok: 'All good', warn: 'Needs a look', fail: 'Problems found' };
 const when = (ms) => new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -23,7 +23,7 @@ function Details({ id }) {
         </div>
       )}
       {d.summary && d.summary.notes && d.summary.notes.length > 0 && <div className="chknote">{d.summary.notes.map((n, i) => <p key={i} className="muted small">{n}</p>)}</div>}
-      <table>
+      <Table>
         <thead><tr><th>Page</th><th>Device</th><th>Widget</th><th>Shown</th><th>Plays</th><th>Size and shape</th><th>Notes</th></tr></thead>
         <tbody>{rows.map((r, i) => (
           <tr key={i} className={r.problems && r.problems.length ? 'chkrow bad' : 'chkrow'}>
@@ -36,7 +36,7 @@ function Details({ id }) {
             <td className="muted small">{(r.problems || []).concat(r.warnings || []).join('; ') || ''}</td>
           </tr>))}
         </tbody>
-      </table>
+      </Table>
     </div>
   );
 }
@@ -68,7 +68,7 @@ export default function Checks() {
         </div>
       )}
       {data && data.checks.length > 0 && (
-        <table className="chktable">
+        <Table className="chktable">
           <thead><tr><th>When</th><th>Result</th><th>Pages</th><th>Problems</th><th>Took</th><th /></tr></thead>
           <tbody>{data.checks.map((c) => (
             <>
@@ -81,7 +81,7 @@ export default function Checks() {
               {open === c.id && <tr key={c.id + 'd'}><td colSpan={6}><Details id={c.id} /></td></tr>}
             </>))}
           </tbody>
-        </table>
+        </Table>
       )}
     </>
   );

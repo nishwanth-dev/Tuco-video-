@@ -343,3 +343,23 @@ test('phones: Home and widget-type cards sit two across, and the Home cards show
   assert.ok(m.row, 'on a computer the three cards stay in one row');
   await page.close();
 });
+
+
+test('phones: pop-ups open as a sheet whose Save button stays on screen, and Customizations sections are compact chips', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const shoot = async (hash) => {
+    const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+    await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/${hash}`);
+    await page.waitForFunction(() => document.querySelector('.shell h1') && !document.getElementById('splash'), { timeout: 20000 }); await sleep(500);
+    return page;
+  };
+  let page = await shoot('w:home');
+  await clickText(page, 'button', 'Create'); await sleep(900);
+  let m = await page.evaluate(() => { const b = [...document.querySelectorAll('.modal .btn')].find((x) => /Save/.test(x.innerText)); const r = b && b.getBoundingClientRect(); const md = document.querySelector('.modal').getBoundingClientRect(); return { save: r ? { bottom: Math.round(r.bottom), h: Math.round(r.height) } : null, modalBottom: Math.round(md.bottom), modalW: Math.round(md.width) }; });
+  assert.ok(m.save, 'the Save button exists'); assert.ok(m.save.bottom <= 844, 'Save is on screen without scrolling: ' + JSON.stringify(m)); assert.ok(m.save.h >= 44, 'Save is big enough to tap'); assert.equal(m.modalW, 390, 'the sheet is full width');
+  await page.close();
+  page = await shoot('custom');
+  m = await page.evaluate(() => { const c = [...document.querySelectorAll('.cmenu .cnav')]; const tops = new Set(c.map((e) => Math.round(e.getBoundingClientRect().top))); return { n: c.length, rows: tops.size, w: document.documentElement.scrollWidth }; });
+  assert.ok(m.n >= 8 && m.rows < m.n, 'sections sit in a few rows of chips, not one long list: ' + JSON.stringify(m)); assert.ok(m.w <= 392);
+  await page.close();
+});
