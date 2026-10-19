@@ -57,6 +57,8 @@ export default function App() {
     Promise.allSettled([loadVideos(), loadWidgets(), loadSettings()]).then(() => setTimeout(() => setReady(true), Math.max(0, 700 - (Date.now() - t0))));
   }, [authed, loadVideos, loadWidgets, loadSettings]);
 
+  // on a phone the menu scrolls sideways, so keep the page you are on in view
+  useEffect(() => { const el = document.querySelector('.side .nav.on'); if (el && el.scrollIntoView && window.innerWidth <= 700) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [route, ready, authed]);
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
   if (!ready) return <Loader />;
   const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go };

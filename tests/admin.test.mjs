@@ -267,3 +267,20 @@ test('site checks page: home page is named, links go to the store, odd or old ro
   assert.ok(info.btn, 'there is a Check now button');
   await page.close();
 });
+
+test('phones: no admin screen is wider than a 390 px phone, so none scrolls sideways', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  await api('POST', '/api/checks', { at: Date.now() + 9000, status: 'fail', pages: 2, failures: 1, durationS: 2, summary: { notes: ['n'] }, details: [{ path: '/collections/a-very-long-collection-name-for-phone-width-testing', device: 'server', widget: 'wgt_phone01', type: 'banner', drawn: false, problems: ['none of its videos are live'], warnings: [] }] });
+  const bad = [];
+  for (const r of ['home', 'videos', 'products', 'w:product', 'w:home', 'w:collection', 'w:pages', 'analytics', 'checks', 'custom', 'integrations']) {
+    const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+    await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/${r}`);
+    await page.waitForFunction(() => document.querySelector('.shell h1'), { timeout: 15000 }); await sleep(900);
+    const w = await page.evaluate(() => document.documentElement.scrollWidth);
+    if (w > 392) bad.push(`${r}: ${w}px wide`);
+    const nav = await page.evaluate(() => { const e = document.querySelector('.side .nav.on'); if (!e) return null; const b = e.getBoundingClientRect(); return { left: b.left, right: b.right, sticky: getComputedStyle(document.querySelector('.side')).position }; });
+    if (!nav) bad.push(`${r}: no highlighted menu item`); else if (nav.left < -1 || nav.right > 392) bad.push(`${r}: the current menu item is out of view`); else if (nav.sticky !== 'sticky') bad.push(`${r}: menu does not stay at the top`);
+    await page.close();
+  }
+  assert.deepEqual(bad, [], 'screens that spill sideways on a phone');
+});
