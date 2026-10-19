@@ -57,21 +57,28 @@ export default function App() {
     Promise.allSettled([loadVideos(), loadWidgets(), loadSettings()]).then(() => setTimeout(() => setReady(true), Math.max(0, 700 - (Date.now() - t0))));
   }, [authed, loadVideos, loadWidgets, loadSettings]);
 
-  // on a phone the menu scrolls sideways, so keep the page you are on in view
-  useEffect(() => { const el = document.querySelector('.side .nav.on'); if (el && el.scrollIntoView && window.innerWidth <= 700) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [route, ready, authed]);
+  // phones: the menu is a side drawer opened from the button in the top bar
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { if (!menuOpen) return undefined; const k = (e) => { if (e.key === 'Escape') setMenuOpen(false); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [menuOpen]);
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
   if (!ready) return <Loader />;
   const ctx = { videos, widgets, settings, loadVideos, loadWidgets, loadSettings, setError, go };
 
   return (
     <div className="shell">
-      <aside className="side">
+      <header className="mbar">
+        <button className="menubtn" aria-label="Open menu" aria-expanded={menuOpen} aria-controls="sidemenu" onClick={() => setMenuOpen(true)}><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg></button>
+        <div className="mlogo"><Logo /></div>
+        <span className="mtitle">{(NAV.find((n) => n.id === route) || {}).label}</span>
+      </header>
+      {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
+      <aside id="sidemenu" className={'side' + (menuOpen ? ' open' : '')}>
         <div className="brand"><Logo /></div>
         {NAV.map((n, i) => n.group
           ? <div className="grp" key={i}>{n.group}</div>
-          : <button key={n.id} className={'nav' + (n.id === route ? ' on' : '')} onClick={() => go(n.id)}>{n.label}{n.badge && <span className="badge">{videos.length}</span>}</button>)}
+          : <button key={n.id} className={'nav' + (n.id === route ? ' on' : '')} onClick={() => { go(n.id); setMenuOpen(false); }}>{n.label}{n.badge && <span className="badge">{videos.length}</span>}</button>)}
         <div className="grow" />
-        <button className="nav" onClick={() => { setToken(''); setAuthed(false); }}>Sign out</button>
+        <button className="nav" onClick={() => { setMenuOpen(false); setToken(''); setAuthed(false); }}>Sign out</button>
       </aside>
       <main className={'main' + (route === 'custom' ? ' full' : '')}>
         {error && <div className="err" onClick={() => setError('')}>{error} (click to dismiss)</div>}

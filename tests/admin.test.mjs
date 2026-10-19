@@ -275,12 +275,40 @@ test('phones: no admin screen is wider than a 390 px phone, so none scrolls side
     const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
     await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/${r}`);
-    await page.waitForFunction(() => document.querySelector('.shell h1'), { timeout: 15000 }); await sleep(900);
+    await page.waitForFunction(() => document.querySelector('.shell h1') && !document.getElementById('splash'), { timeout: 20000 }); await sleep(300);
     const w = await page.evaluate(() => document.documentElement.scrollWidth);
     if (w > 392) bad.push(`${r}: ${w}px wide`);
-    const nav = await page.evaluate(() => { const e = document.querySelector('.side .nav.on'); if (!e) return null; const b = e.getBoundingClientRect(); return { left: b.left, right: b.right, sticky: getComputedStyle(document.querySelector('.side')).position }; });
-    if (!nav) bad.push(`${r}: no highlighted menu item`); else if (nav.left < -1 || nav.right > 392) bad.push(`${r}: the current menu item is out of view`); else if (nav.sticky !== 'sticky') bad.push(`${r}: menu does not stay at the top`);
+    const vis = await page.evaluate(() => { const b = document.querySelector('.menubtn'); const sd = document.querySelector('.side'); return { btn: !!b && b.getBoundingClientRect().width > 20, hidden: getComputedStyle(sd).visibility === 'hidden', title: (document.querySelector('.mtitle') || {}).textContent }; });
+    if (!vis.btn) bad.push(`${r}: no menu button`); else if (!vis.hidden) bad.push(`${r}: the side menu is open by itself`); else if (!vis.title) bad.push(`${r}: the top bar does not name the page`);
     await page.close();
   }
   assert.deepEqual(bad, [], 'screens that spill sideways on a phone');
+});
+
+
+test('phones: the menu button opens a side menu; picking a page, the dark area or Escape closes it', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+  await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/home`);
+  await page.waitForFunction(() => document.querySelector('.shell h1') && !document.getElementById('splash'), { timeout: 20000 }); await sleep(300);
+  const state = () => page.evaluate(() => { const sd = document.querySelector('.side'); const b = sd.getBoundingClientRect(); return { shown: getComputedStyle(sd).visibility === 'visible', left: Math.round(b.left), items: [...sd.querySelectorAll('.nav')].map((n) => n.innerText.trim().replace(/\s+\d+$/, '')), expanded: document.querySelector('.menubtn').getAttribute('aria-expanded') }; });
+  assert.equal((await state()).shown, false, 'closed at first');
+  await page.click('.menubtn'); await sleep(500);
+  let st = await state(); assert.equal(st.shown, true); assert.ok(st.left >= -1, 'the menu is fully on screen'); assert.equal(st.expanded, 'true');
+  for (const want of ['Home', 'Videos', 'Products', 'Product Pages', 'Homepage', 'Collection Pages', 'Pages', 'Overview', 'Site checks', 'Customizations', 'Integrations', 'Sign out']) assert.ok(st.items.includes(want), 'menu lists ' + want + ': ' + st.items.join(','));
+  await page.evaluate(() => [...document.querySelectorAll('.side .nav')].find((n) => /^Videos/.test(n.innerText.trim())).click()); await sleep(600);
+  assert.equal((await state()).shown, false, 'picking a page closes the menu');
+  assert.match(await page.evaluate(() => document.querySelector('.mtitle').textContent), /Videos/, 'the top bar names the page');
+  assert.match(await page.evaluate(() => document.querySelector('.shell h1').textContent), /Videos/, 'and the page changed');
+  await page.click('.menubtn'); await sleep(400); assert.equal((await state()).shown, true);
+  await page.mouse.click(370, 400); await sleep(500); assert.equal((await state()).shown, false, 'tapping the dark area closes it');
+  await page.click('.menubtn'); await sleep(400); await page.keyboard.press('Escape'); await sleep(400); assert.equal((await state()).shown, false, 'Escape closes it');
+  await page.close();
+});
+
+test('desktop: the menu button and top bar are not shown and the side menu stays put', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await open('home');
+  const d = await page.evaluate(() => ({ mbar: getComputedStyle(document.querySelector('.mbar')).display, side: getComputedStyle(document.querySelector('.side')).position, w: document.querySelector('.side').getBoundingClientRect().width, vis: getComputedStyle(document.querySelector('.side')).visibility }));
+  assert.equal(d.mbar, 'none'); assert.notEqual(d.side, 'fixed'); assert.equal(d.vis, 'visible'); assert.ok(d.w >= 200 && d.w <= 240, 'side menu keeps its width: ' + d.w);
+  await page.close();
 });
