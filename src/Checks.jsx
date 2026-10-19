@@ -13,13 +13,13 @@ function Details({ id }) {
   useEffect(() => { getCheck(id).then(setD).catch((e) => setErr(e.message)); }, [id]);
   if (err) return <p className="red small">{err}</p>;
   if (!d) return <p className="muted small">Loading...</p>;
-  const rows = d.details || [];
+  const rows = (Array.isArray(d.details) ? d.details : []).filter((r) => r && typeof r === 'object');
   const bad = rows.filter((r) => r.problems && r.problems.length);
   return (
     <div className="chkdet">
       {bad.length > 0 && (
         <div className="chkbad"><b>What needs attention</b>
-          {bad.map((r, i) => <p key={i}><span className="pill draft">{r.device}</span> <a href={r.url} target="_blank" rel="noreferrer">{r.path}</a> <code>{r.widget}</code>: {r.problems.join('; ')}</p>)}
+          {bad.map((r, i) => <p key={i}><span className="pill draft">{deviceName(r.device)}</span> <a href={pageUrl(r)} target="_blank" rel="noreferrer">{pageName(r)}</a> <code>{r.widget}</code>: {r.problems.join('; ')}</p>)}
         </div>
       )}
       {d.summary && d.summary.notes && d.summary.notes.length > 0 && <div className="chknote">{d.summary.notes.map((n, i) => <p key={i} className="muted small">{n}</p>)}</div>}
@@ -27,8 +27,8 @@ function Details({ id }) {
         <thead><tr><th>Page</th><th>Device</th><th>Widget</th><th>Shown</th><th>Plays</th><th>Size and shape</th><th>Notes</th></tr></thead>
         <tbody>{rows.map((r, i) => (
           <tr key={i} className={r.problems && r.problems.length ? 'chkrow bad' : 'chkrow'}>
-            <td><a href={r.url} target="_blank" rel="noreferrer">{r.path}</a></td>
-            <td>{r.device}</td>
+            <td><a href={pageUrl(r)} target="_blank" rel="noreferrer">{pageName(r)}</a></td>
+            <td>{deviceName(r.device)}</td>
             <td><code>{r.widget}</code> <span className="muted small">{r.type}</span></td>
             <td><Tick ok={r.drawn} /></td>
             <td><Tick ok={r.playing} na={r.playing === null || r.playing === undefined} /></td>
@@ -40,6 +40,10 @@ function Details({ id }) {
     </div>
   );
 }
+
+const pageUrl = (r) => (/^https?:/.test(r.url) ? r.url : 'https://tucokids.com' + (r.path || ''));
+const pageName = (r) => (r.path === '/' || !r.path ? 'Home page' : r.path);
+const deviceName = (d) => (d === 'server' ? 'automatic' : d);
 
 export default function Checks() {
   const [data, setData] = useState(null);

@@ -58,8 +58,9 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
     summary: { kind: 'server-check', widgets: seen.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget and that every video and poster file exists. It does not play the video in a browser.'] },
     details: rows,
   };
-  await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')
+  const ins = await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')
     .bind(rec.at, rec.status, rec.pages, rec.failures, rec.durationS, JSON.stringify(rec.summary), JSON.stringify(rows)).run();
+  rec.id = ins.meta.last_row_id;
   await env.DB.prepare('DELETE FROM site_checks WHERE id NOT IN (SELECT id FROM site_checks ORDER BY at DESC LIMIT 200)').run();
   return rec;
 }

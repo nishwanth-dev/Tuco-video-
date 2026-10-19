@@ -245,3 +245,25 @@ test('widget pages: every widget shows when it was created, newest first', { ski
   assert.match(await page.evaluate(() => document.querySelector('thead').innerText), /Created/);
   await page.close();
 });
+
+test('site checks page: home page is named, links go to the store, odd or old rows never break it', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const at = Date.now() + 5000;
+  const row = (o) => ({ url: '', path: '/', device: 'server', widget: 'wgt_x', type: 'banner', drawn: true, playing: null, shapeOk: null, expected: '', actual: '', problems: [], warnings: [], ...o });
+  const rec = { at, status: 'fail', pages: 4, failures: 2, durationS: 3, summary: { kind: 'server-check', notes: ['note one'] }, details: [
+    row({ path: '/', widget: 'wgt_home1' }),
+    row({ path: '/collections/sample-page', url: '/collections/sample-page', widget: 'wgt_c1', problems: ['none of its videos are live'] }),
+    row({ path: '/pages/browser-one', url: 'https://tucokids.com/pages/browser-one', device: 'phone', playing: false, shapeOk: false, expected: '2.00:1', actual: '1.00:1', problems: ['the video is not playing'], warnings: ['slow'] }),
+    { path: '/pages/old-style' },                                  // a row with almost nothing in it
+    null,                                                          // a broken entry must not blank the page
+  ] };
+  assert.ok((await api('POST', '/api/checks', rec)).status < 300);
+  const page = await open('checks'); await sleep(1200);
+  const info = await page.evaluate(() => ({ text: document.body.innerText, hrefs: [...document.querySelectorAll('a')].map((a) => a.href).filter((h) => /sample-page|browser-one|old-style/.test(h)), btn: [...document.querySelectorAll('button')].some((b) => /Check now/.test(b.innerText)) }));
+  assert.match(info.text, /Home page/, 'the home page has a name, not a lone slash');
+  assert.doesNotMatch(info.text, /\bserver\b/, 'no technical word "server" is shown');
+  assert.match(info.text, /automatic/);
+  assert.ok(info.hrefs.length >= 3 && info.hrefs.every((h) => h.startsWith('https://tucokids.com/')), 'page links open the store: ' + info.hrefs.join(', '));
+  assert.match(info.text, /none of its videos are live/); assert.match(info.text, /the video is not playing/);
+  assert.ok(info.btn, 'there is a Check now button');
+  await page.close();
+});

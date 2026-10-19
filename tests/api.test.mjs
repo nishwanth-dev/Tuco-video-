@@ -350,7 +350,7 @@ test('site checks: "check now" needs the admin token, saves a server check, and 
   assert.equal((await call('POST', '/api/checks/run', { auth: false })).status, 401);
   const r = await call('POST', '/api/checks/run'); assert.equal(r.status, 200, r.text);
   assert.equal(r.json.status, 'fail', 'the test store is unreachable, so this must not read as ok');
-  const list = await call('GET', '/api/checks'); const mine = list.json.checks.find((c) => c.summary && c.summary.kind === 'server-check'); assert.ok(mine, 'the run is listed');
-  const one = await call('GET', '/api/checks/' + mine.id); assert.ok(one.json.check.details.length >= 15, 'one row per page at least');
+  const one = await call('GET', '/api/checks/' + r.json.id); assert.equal(one.json.check.summary.kind, 'server-check');
+  assert.ok(one.json.check.details.length >= 15, 'one row per page at least');
   assert.ok(one.json.check.details.every((d) => d.problems.length), 'every unreachable page is flagged');
 });

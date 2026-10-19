@@ -463,7 +463,7 @@ async function handle(req, env, ctx) {
     if (!r) return json({ error: 'not found' }, 404, cors);
     return json({ check: { id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}), details: parse(r.details, []) } }, 200, cors);
   }
-  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env); return json({ ok: true, status: r.status, failures: r.failures }, 200, cors); }
+  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env); return json({ ok: true, id: r.id, status: r.status, failures: r.failures }, 200, cors); }
   if (p === '/api/checks' && req.method === 'POST') {
     const raw = await req.text();
     if (raw.length > 900000) throw new Bad('report is too large');
