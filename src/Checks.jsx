@@ -3,7 +3,7 @@ import { listChecks, getCheck, runCheck } from './api.js';
 import { Empty } from './ui.jsx';
 
 const LABEL = { ok: 'All good', warn: 'Needs a look', fail: 'Problems found' };
-const when = (ms) => new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const when = (ms) => new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 const dur = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60 ? (s % 60) + ' s' : ''}` : `${s} s`);
 const Tick = ({ ok, na }) => (na ? <span className="muted">-</span> : ok ? <span className="chk-ok">✓</span> : <span className="chk-bad">✗</span>);
 
