@@ -1,4 +1,5 @@
 import { syncInstagram } from './instagram.js';
+import { runSiteCheck } from './sitecheck.js';
 import { mergeSettings } from './defaults.js';
 
 class Bad extends Error {}
@@ -375,7 +376,7 @@ async function handle(req, env, ctx) {
       for (const u of [row.url, row.poster]) {
         const key = keyOf(env, u);
         if (!key) continue;
-        const stillUsed = await env.DB.prepare('SELECT 1 FROM videos WHERE url LIKE ? OR poster LIKE ? LIMIT 1').bind('%' + key, '%' + key).first();
+        const stillUsed = await env.DB.prepare('SELECT 1 FROM videos WHERE instr(url, ?) > 0 OR instr(poster, ?) > 0 LIMIT 1').bind(key, key).first();
         if (!stillUsed) await env.MEDIA.delete(key).catch(() => {});
       }
     }
@@ -449,6 +450,32 @@ async function handle(req, env, ctx) {
     return json({ url: fileUrl(env, url.origin, key), size: obj?.size || 0 }, 201, cors);
   }
 
+  // Website check results (written by the scheduled checker, shown on the Site checks page).
+  if (p === '/api/checks' && req.method === 'GET') {
+    try {
+      const { results } = await env.DB.prepare('SELECT id,at,status,pages,failures,duration_s,summary FROM site_checks ORDER BY at DESC LIMIT 90').all();
+      return json({ checks: results.map((r) => ({ id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}) })) }, 200, cors);
+    } catch { return json({ checks: [], setup: true }, 200, cors); }
+  }
+  const ck = p.match(/^\/api\/checks\/(\d+)$/);
+  if (ck && req.method === 'GET') {
+    const r = await env.DB.prepare('SELECT * FROM site_checks WHERE id=?').bind(Number(ck[1])).first();
+    if (!r) return json({ error: 'not found' }, 404, cors);
+    return json({ check: { id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}), details: parse(r.details, []) } }, 200, cors);
+  }
+  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env); return json({ ok: true, status: r.status, failures: r.failures }, 200, cors); }
+  if (p === '/api/checks' && req.method === 'POST') {
+    const raw = await req.text();
+    if (raw.length > 900000) throw new Bad('report is too large');
+    let b; try { b = JSON.parse(raw); } catch { throw new Bad('invalid JSON'); }
+    const status = ['ok', 'warn', 'fail'].includes(b.status) ? b.status : 'fail';
+    const num = (x, max = 1e9) => Math.max(0, Math.min(max, Math.round(Number(x) || 0)));
+    const r = await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')
+      .bind(num(b.at, 4e12) || Date.now(), status, num(b.pages), num(b.failures), num(b.durationS), JSON.stringify(b.summary || {}), JSON.stringify(Array.isArray(b.details) ? b.details : [])).run();
+    await env.DB.prepare('DELETE FROM site_checks WHERE id NOT IN (SELECT id FROM site_checks ORDER BY at DESC LIMIT 200)').run();
+    return json({ ok: true, id: r.meta.last_row_id }, 200, cors);
+  }
+
   if (p === '/api/analytics' && req.method === 'GET') {
     const days = Math.min(Number(url.searchParams.get('days')) || 30, 365);
     const since = Date.now() - days * 86400000;
@@ -516,5 +543,5 @@ export default {
     console.error('Loopy error', req.method, new URL(req.url).pathname, e && e.stack || e); // details stay in the log, not in the response
     return json({ error: 'Something went wrong on the server. Please try again, and check the System check on the Integrations page.' }, 500, cors);
   }),
-  scheduled: (_e, env, ctx) => ctx.waitUntil(syncInstagram(env)),
+  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === '0 3 * * 1' ? syncInstagram(env) : runSiteCheck(env).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
 };

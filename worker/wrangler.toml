@@ -21,6 +21,7 @@ STORE_FALLBACK_URL = "https://greenspecialities.myshopify.com"
 
 # Weekly Instagram copy job (Mondays 03:00 UTC).
 [triggers]
-crons = ["0 3 * * 1"]
+# Site check (India time): 12:00 am = 18:30 UTC, 12:00 pm = 06:30 UTC, 5:00 pm = 11:30 UTC.
+crons = ["0 3 * * 1", "30 18 * * *", "30 6 * * *", "30 11 * * *"]
 
 # Secrets (never commit): wrangler secret put ADMIN_TOKEN / IG_TOKEN / IG_USER_ID

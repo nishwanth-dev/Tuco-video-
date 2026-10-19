@@ -325,3 +325,32 @@ test('theme blocks: every block keeps data-tuco-video and data-widget as separat
     assert.doesNotMatch(t, /data-tuco-video\s*\{%-/, f + ': a Liquid tag with whitespace control must not follow data-tuco-video');
   }
 });
+
+test('site checks: need the admin token, save a result, list it and open its details', async () => {
+  const rec = { at: Date.now(), status: 'warn', pages: 3, failures: 0, durationS: 2, summary: { kind: 'api-health', notes: ['x'] }, details: [{ path: 'Home banner data', problems: [], warnings: ['slow'] }] };
+  assert.equal((await call('POST', '/api/checks', { body: rec, auth: false })).status, 401);
+  assert.equal((await call('GET', '/api/checks', { auth: false })).status, 401);
+  assert.equal((await call('POST', '/api/checks', { body: { ...rec, at: rec.at + 1, status: 'weird' } })).status, 200);
+  const L = (await call('GET', '/api/checks')).json; const W = (L.checks || []).find((c) => c.at === rec.at + 1); assert.ok(W, 'weird row listed: ' + JSON.stringify(L).slice(0, 300)); assert.equal(W.status, 'fail', 'an unknown result is stored as a failure, never as ok');
+  const ok = await call('POST', '/api/checks', { body: rec }); assert.ok(ok.status < 300, JSON.stringify(ok.json));
+  const list = await call('GET', '/api/checks'); assert.equal(list.status, 200);
+  const mine = list.json.checks.find((c) => c.at === rec.at); assert.ok(mine, 'the saved check is listed'); assert.equal(mine.status, 'warn');
+  const one = await call('GET', '/api/checks/' + mine.id); assert.equal(one.json.check.details[0].path, 'Home banner data');
+});
+
+test('videos: deleting a video that is stored in our own storage works (long file names must not break it)', async () => {
+  const url = '/media/videos/0f0d9a3e-1b2c-4d5e-8f60-123456789abc-opt.mp4';
+  const a = await call('POST', '/api/videos', { body: goodVideo({ url }) }); assert.ok(a.status < 300, JSON.stringify(a.json));
+  const b = await call('POST', '/api/videos', { body: goodVideo({ url }) }); assert.ok(b.status < 300, JSON.stringify(b.json));
+  const d = await call('DELETE', '/api/videos/' + a.json.id); assert.equal(d.status, 200, d.text);
+  const d2 = await call('DELETE', '/api/videos/' + b.json.id); assert.equal(d2.status, 200, d2.text);
+});
+
+test('site checks: "check now" needs the admin token, saves a server check, and reports a page that cannot be opened as a problem', async () => {
+  assert.equal((await call('POST', '/api/checks/run', { auth: false })).status, 401);
+  const r = await call('POST', '/api/checks/run'); assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.status, 'fail', 'the test store is unreachable, so this must not read as ok');
+  const list = await call('GET', '/api/checks'); const mine = list.json.checks.find((c) => c.summary && c.summary.kind === 'server-check'); assert.ok(mine, 'the run is listed');
+  const one = await call('GET', '/api/checks/' + mine.id); assert.ok(one.json.check.details.length >= 15, 'one row per page at least');
+  assert.ok(one.json.check.details.every((d) => d.problems.length), 'every unreachable page is flagged');
+});

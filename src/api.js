@@ -58,3 +58,8 @@ export async function downloadBackup() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export const listChecks = () => req('/api/checks');
+export const getCheck = (id) => req(`/api/checks/${id}`).then((d) => d.check);
+
+export const runCheck = () => req('/api/checks/run', { method: 'POST' });
