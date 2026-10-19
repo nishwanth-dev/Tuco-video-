@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAnalytics } from './api.js';
+import { Thumb } from './media.jsx';
 
 const STEPS = [
   ['Add videos', 'Upload a file or sync Instagram.', 'videos', (c) => c.videos.length > 0],
@@ -26,6 +27,12 @@ export default function Home(c) {
     .map((r) => ({ ...r, v: c.videos.find((v) => v.id === r.video_id), sale: d.salesByVideo?.find((s) => s.video_id === r.video_id) }));
   const share = d.storeSales && d.storeSales.revenue ? ((d.sales.revenue / d.storeSales.revenue) * 100).toFixed(1) + '% of total' : '';
 
+  // The three cards at the top show your newest videos instead of a flat colour (ones with a saved picture first, they load fastest)
+  const recent = [...c.videos].filter((v) => !v.archived).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const pool = [...recent.filter((v) => v.poster), ...recent.filter((v) => !v.poster)];
+  const pick = (from, n) => (pool.length ? Array.from({ length: Math.min(n, pool.length) }, (_, i) => pool[(from + i) % pool.length]) : []);
+  const Art = ({ k, vids }) => <span className={'fart ' + k + (vids.length ? ' has' : '')} aria-hidden="true">{vids.map((v) => <Thumb key={v.id} url={v.url} poster={v.poster} />)}</span>;
+
   const doneCount = STEPS.slice(0, 4).filter(([, , , f]) => f(c)).length;
   const heavy = c.videos.filter((v) => v.status === 'live' && v.size > 15 * 1048576).length;
   const msg = !c.videos.length ? ['Let\'s get your first video in.', 'Upload a short clip or sync Instagram, and Loopy will shrink it for fast loading.']
@@ -41,9 +48,9 @@ export default function Home(c) {
       <div className="homegrid">
         <div className="hleft">
           <div className="fcards">
-            <button className="fcard" onClick={() => c.go('videos')}><i className="fart a" /><b>Add videos</b><p>Upload a file or sync Instagram. Big files can be shrunk right in the browser.</p><span className="fbtn">{c.videos.length ? 'Open videos' : 'Add now'} →</span></button>
-            <button className="fcard" onClick={() => c.go('w:home')}><i className="fart b" /><b>Build a widget</b><p>Carousel, stories, banner, spotlight, floating or gallery. Choose where it shows.</p><span className="fbtn">{c.widgets.length ? 'Manage widgets' : 'Create'} →</span></button>
-            <button className="fcard" onClick={() => c.go('custom')}><i className="fart c" /><b>Make it yours</b><p>Sizes, shapes and colours for desktop and mobile, with a live preview.</p><span className="fbtn">Customize →</span></button>
+            <button className="fcard" onClick={() => c.go('videos')}><Art k="a" vids={pick(0, 3)} /><b>Add videos</b><p>Upload a file or sync Instagram. Big files can be shrunk right in the browser.</p><span className="fbtn">{c.videos.length ? 'Open videos' : 'Add now'} →</span></button>
+            <button className="fcard" onClick={() => c.go('w:home')}><Art k="b" vids={pick(3, 3)} /><b>Build a widget</b><p>Carousel, stories, banner, spotlight, floating or gallery. Choose where it shows.</p><span className="fbtn">{c.widgets.length ? 'Manage widgets' : 'Create'} →</span></button>
+            <button className="fcard" onClick={() => c.go('custom')}><Art k="c" vids={pick(6, 1)} /><b>Make it yours</b><p>Sizes, shapes and colours for desktop and mobile, with a live preview.</p><span className="fbtn">Customize →</span></button>
           </div>
           <div className="hbanner"><div className="hico">✦</div><div><b>{msg[0]}</b><p>{msg[1]}</p></div><button className="btn ghost" onClick={() => c.go('analytics')}>View analytics</button></div>
           <div className="phead"><h3 className="sect">Setup checklist</h3><span className="muted small">{doneCount} of 4 done</span></div>

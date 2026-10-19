@@ -256,3 +256,29 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
   .grow { display: block; min-height: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
+
+/* Phones: cards sit two across so there is far less scrolling. Compact, still easy to tap. */
+@media (max-width: 700px) {
+  .fcards, .wcards, .stats, .stats.s6 { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fcards { margin-bottom: 12px; }
+  .fcard:last-child:nth-child(odd), .wcard:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .fart { height: 44px; }
+  .fcard b { padding: 10px 12px 0; font-size: 14px; }
+  .fcard p { padding: 3px 12px 0; margin: 0 0 8px; font-size: 11.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .fbtn { margin: 0 12px; padding: 9px 6px; font-size: 12.5px; }
+  .wcard { padding: 12px; gap: 4px; }
+  .wcard b { font-size: 14px; }
+  .wcard p { font-size: 11.5px; line-height: 1.35; margin: 0 0 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .wcard .btn { width: 100%; }
+  .wthumb { height: 60px; padding: 8px; gap: 4px; margin-bottom: 4px; } .wthumb.stories i { width: 26px; height: 26px; }
+  .stat { padding: 12px 14px; } .stat b { font-size: 22px; }
+  .hbanner { flex-wrap: wrap; padding: 12px 14px; } .hbanner .btn { width: 100%; }
+  .step { padding: 11px 14px; gap: 12px; }
+  .pgrid { gap: 8px; } .pgrid > div { padding: 10px 12px; }
+}
+
+/* Home cards: real recent videos in the picture area */
+.fart.has { display: flex; gap: 5px; padding: 7px; height: 96px; }
+.fart.has > * { flex: 1; min-width: 0; height: 100%; object-fit: cover; border-radius: 9px; background: rgba(0,0,0,.06); }
+.fart.c.has > * { border-bottom: 4px solid var(--brand, #ffd94a); }
+@media (max-width: 700px) { .fart.has { height: 70px; padding: 5px; gap: 4px; } .fart.has > * { border-radius: 7px; } }

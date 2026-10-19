@@ -312,3 +312,34 @@ test('desktop: the menu button and top bar are not shown and the side menu stays
   assert.equal(d.mbar, 'none'); assert.notEqual(d.side, 'fixed'); assert.equal(d.vis, 'visible'); assert.ok(d.w >= 200 && d.w <= 240, 'side menu keeps its width: ' + d.w);
   await page.close();
 });
+
+
+test('widget script: loading in the page head (before the body exists) raises no error', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await browser.newPage(); const errs = []; page.on('pageerror', (e) => errs.push(String(e.message || e)));
+  await page.goto(`http://localhost:${PORT}/?x=${Math.random()}`); await sleep(1500);
+  assert.deepEqual(errs.filter((e) => /createTreeWalker|widget/i.test(e)), [], 'the widget script threw: ' + errs.join(' | '));
+  await page.close();
+});
+
+test('phones: Home and widget-type cards sit two across, and the Home cards show real videos', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const shoot = async (hash, w) => {
+    const page = await browser.newPage(); await page.setViewport({ width: w, height: 900, deviceScaleFactor: 1, isMobile: w < 700, hasTouch: w < 700 });
+    await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+    await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/${hash}`);
+    await page.waitForFunction(() => document.querySelector('.shell h1') && !document.getElementById('splash'), { timeout: 20000 }); await sleep(500);
+    return page;
+  };
+  let page = await shoot('home', 390);
+  let m = await page.evaluate(() => { const cs = [...document.querySelectorAll('.fcard')].map((e) => e.getBoundingClientRect()); return { n: cs.length, row1: cs.length > 1 && Math.abs(cs[0].top - cs[1].top) < 4, narrow: cs[0].width < 220, media: [...document.querySelectorAll('.fcard .fart')].map((a) => a.querySelectorAll('img, video').length), wide: document.documentElement.scrollWidth }; });
+  assert.equal(m.n, 3); assert.ok(m.row1, 'the first two cards are side by side'); assert.ok(m.narrow); assert.ok(m.wide <= 392);
+  assert.ok(m.media.every((k) => k >= 1), 'each Home card shows a video: ' + m.media.join(','));
+  await page.close();
+  page = await shoot('w:home', 390);
+  m = await page.evaluate(() => { const cs = [...document.querySelectorAll('.wcard')].map((e) => e.getBoundingClientRect()); return { n: cs.length, row1: Math.abs(cs[0].top - cs[1].top) < 4, narrow: cs[0].width < 220 }; });
+  assert.ok(m.n >= 2 && m.row1 && m.narrow, 'widget-type cards sit two across: ' + JSON.stringify(m));
+  await page.close();
+  page = await shoot('home', 1400);
+  m = await page.evaluate(() => { const cs = [...document.querySelectorAll('.fcard')].map((e) => e.getBoundingClientRect()); return { row: Math.abs(cs[0].top - cs[2].top) < 4 }; });
+  assert.ok(m.row, 'on a computer the three cards stay in one row');
+  await page.close();
+});

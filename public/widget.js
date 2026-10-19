@@ -700,7 +700,9 @@
   }
   // A bare widget id typed on its own (for example in a Custom Liquid box) becomes a widget.
   function scanBare(root) {
-    var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT), hits = [], n;
+    var base = root || document.body;
+    if (!base) return; // the script can load before the page body exists; the later boot() scans again
+    var walker = document.createTreeWalker(base, NodeFilter.SHOW_TEXT), hits = [], n;
     while ((n = walker.nextNode())) {
       if (/^wgt_[a-z0-9]{4,}$/i.test(n.nodeValue.trim()) && !/^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|NOSCRIPT|TITLE|OPTION)$/.test(n.parentNode.nodeName)) hits.push(n);
     }
