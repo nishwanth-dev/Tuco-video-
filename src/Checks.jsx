@@ -56,7 +56,7 @@ export default function Checks() {
   const last = data && data.checks && data.checks[0];
   return (
     <>
-      <div className="bar"><div><h1>Site checks</h1><p className="sub">Loopy checks your live website by itself three times a day (12 am, 12 pm and 5 pm India time), even when no one is online. It opens the important pages and checks that each one still has its banner, that the banner is switched on, and that every video and picture file it needs exists. Nothing is changed on your site.</p></div><button className="btn" onClick={runNow} disabled={busy}>{busy ? 'Checking…' : 'Check now'}</button></div>
+      <div className="bar"><div><h1>Site checks</h1><p className="sub">Loopy checks your live website by itself three times a day (12 am, 4 am and 6 am India time), even when no one is online. It opens the important pages and checks that each one still has its banner, that the banner is switched on, and that every video and picture file it needs exists. Nothing is changed on your site.</p></div><button className="btn" onClick={runNow} disabled={busy}>{busy ? 'Checking…' : 'Check now'}</button></div>
       {err && <p className="red">{err}</p>}
       {!data && !err && <p className="muted">Loading...</p>}
       {data && data.setup && <Empty>The check results are not set up yet. They appear here after the first scheduled check has run.</Empty>}
