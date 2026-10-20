@@ -68,3 +68,6 @@ export const getInstagram = () => req('/api/instagram');
 export const setInstagramAuto = (auto) => send('PUT', '/api/instagram', { auto });
 export const getInstagramReview = () => req('/api/instagram/review');
 export const approveInstagram = (approvals) => send('POST', '/api/instagram/approve', { approvals });
+
+export const getCheckPages = () => req('/api/checks/pages');
+export const saveCheckPages = (pages) => send('PUT', '/api/checks/pages', { pages });

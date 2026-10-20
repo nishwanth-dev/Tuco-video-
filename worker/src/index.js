@@ -1,6 +1,6 @@
 import { runInstagramSync } from './instagram.js';
 import { igStatus, setAuto, isAutoOn, reviewItems, approve } from './igreview.js';
-import { runSiteCheck } from './sitecheck.js';
+import { runSiteCheck, startCheck, expireStale, getPages, savePages } from './sitecheck.js';
 import { mergeSettings } from './defaults.js';
 
 class Bad extends Error {}
@@ -128,24 +128,36 @@ async function isAdmin(req, env) {
   return crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(a, b) : a.every((x, i) => x === b[i]);
 }
 
+// Serves a stored video. Phones ask for pieces of a file ("Range"), so every kind of request must be answered correctly and never with an error:
+// a piece that runs past the end is cut to the end, a piece that is nowhere in the file gets 416, anything unclear gets the whole file.
 async function serveMedia(req, env, key) {
-  if (!env.MEDIA) return new Response('Video storage (R2) is not enabled yet', { status: 503 });
+  const cors = { 'access-control-allow-origin': '*' };
+  if (!env.MEDIA) return new Response('Video storage (R2) is not enabled yet', { status: 503, headers: cors });
+  // A passing hiccup in storage is retried once, so a shopper never gets an error for a moment of trouble.
+  const r2 = async (fn) => { try { return await fn(); } catch { await new Promise((r) => setTimeout(r, 150)); return fn(); } };
+  let head;
+  try { head = await r2(() => env.MEDIA.head(key)); } catch { return new Response('Video storage is busy, please try again', { status: 503, headers: { ...cors, 'retry-after': '2' } }); }
+  if (!head) return new Response('Not found', { status: 404, headers: cors });
+  const size = head.size;
+  const headers = { 'content-type': head.httpMetadata?.contentType || 'video/mp4', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', etag: head.httpEtag, ...cors };
+  // Only a single "bytes=" range is understood. If the file changed since the shopper's earlier request (If-Range), the whole file is sent.
   const range = req.headers.get('range');
-  const m = range && /bytes=(\d*)-(\d*)/.exec(range);
-  const head = await env.MEDIA.head(key);
-  if (!head) return new Response('Not found', { status: 404 });
-  let opts, status = 200;
-  const headers = { 'content-type': head.httpMetadata?.contentType || 'video/mp4', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', etag: head.httpEtag, 'access-control-allow-origin': '*' };
-  if (m) {
-    const start = m[1] ? Number(m[1]) : Math.max(0, head.size - Number(m[2]));
-    const end = m[1] && m[2] ? Number(m[2]) : head.size - 1;
-    opts = { range: { offset: start, length: end - start + 1 } };
-    status = 206;
-    headers['content-range'] = `bytes ${start}-${end}/${head.size}`;
-    headers['content-length'] = String(end - start + 1);
-  } else headers['content-length'] = String(head.size);
-  const obj = await env.MEDIA.get(key, opts);
-  return new Response(req.method === 'HEAD' ? null : obj.body, { status, headers });
+  const m = range && /^\s*bytes\s*=\s*(\d*)\s*-\s*(\d*)\s*(?:,|$)/i.exec(range);
+  const ifRange = req.headers.get('if-range');
+  let start = 0; let end = size - 1; let partial = false;
+  if (m && (m[1] !== '' || m[2] !== '') && size > 0 && !(ifRange && ifRange !== head.httpEtag)) {
+    if (m[1] === '') { const n = Number(m[2]); start = Math.max(0, size - n); if (!n) start = size; } // "the last n bytes"
+    else { start = Number(m[1]); end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1); }
+    if (start >= size || end < start) { const { 'cache-control': _cc, ...plain } = headers; return new Response(null, { status: 416, headers: { ...plain, 'content-range': `bytes */${size}` } }); }
+    partial = true;
+  }
+  headers['content-length'] = String(partial ? end - start + 1 : size);
+  if (partial) headers['content-range'] = `bytes ${start}-${end}/${size}`;
+  if (req.method === 'HEAD') return new Response(null, { status: partial ? 206 : 200, headers });
+  let obj;
+  try { obj = await r2(() => env.MEDIA.get(key, partial ? { range: { offset: start, length: end - start + 1 } } : undefined)); } catch { return new Response('Video storage is busy, please try again', { status: 503, headers: { ...cors, 'retry-after': '2' } }); }
+  if (!obj) return new Response('Not found', { status: 404, headers: cors });
+  return new Response(obj.body, { status: partial ? 206 : 200, headers });
 }
 
 // If R2_PUBLIC_URL is set (an R2 custom domain or public bucket address), files are served straight from R2, which is faster and
@@ -289,7 +301,10 @@ async function handle(req, env, ctx) {
   const p = url.pathname;
   const cors = corsFor(req, env);
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-private-network': 'true' } });
-  if (p.startsWith('/media/')) return serveMedia(req, env, decodeURIComponent(p.slice(7)));
+  if (p.startsWith('/media/')) {
+    let mkey; try { mkey = decodeURIComponent(p.slice(7)); } catch { return new Response('Not found', { status: 404, headers: { 'access-control-allow-origin': '*' } }); }
+    return serveMedia(req, env, mkey);
+  }
 
   // ---- public (store) ----
   if (p === '/api/public/config' && req.method === 'GET') {
@@ -465,6 +480,7 @@ async function handle(req, env, ctx) {
   // Website check results (written by the scheduled checker, shown on the Site checks page).
   if (p === '/api/checks' && req.method === 'GET') {
     try {
+      await expireStale(env);
       const { results } = await env.DB.prepare('SELECT id,at,status,pages,failures,duration_s,summary FROM site_checks ORDER BY at DESC LIMIT 90').all();
       return json({ checks: results.map((r) => ({ id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}) })) }, 200, cors);
     } catch { return json({ checks: [], setup: true }, 200, cors); }
@@ -475,12 +491,26 @@ async function handle(req, env, ctx) {
     if (!r) return json({ error: 'not found' }, 404, cors);
     return json({ check: { id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}), details: parse(r.details, []) } }, 200, cors);
   }
-  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env, { catalogFn: catalog }); return json({ ok: true, id: r.id, status: r.status, failures: r.failures }, 200, cors); }
+  // "Check now": starts the run on Cloudflare and answers at once, so a phone that locks or switches app does not interrupt it. Any device can follow the "running" row.
+  if (p === '/api/checks/run' && req.method === 'POST') {
+    const st = await startCheck(env);
+    if (!st.already) ctx.waitUntil(runSiteCheck(env, { catalogFn: catalog, mediaFn: mediaProbe(env), rowId: st.id, patient: false }).catch(async (err) => {
+      console.error('Loopy site check failed', err && err.stack || err);
+      await env.DB.prepare("UPDATE site_checks SET status='fail', failures=1, summary=? WHERE id=? AND status='running'").bind(JSON.stringify({ kind: 'server-check', notes: ['The check stopped because of an error. Press Check now to try again.'] }), st.id).run().catch(() => {});
+    }));
+    return json({ ok: true, id: st.id, running: true, already: !!st.already }, 200, cors);
+  }
+  if (p === '/api/checks/pages' && req.method === 'GET') return json({ ...(await getPages(env)), max: 40 }, 200, cors);
+  if (p === '/api/checks/pages' && req.method === 'PUT') {
+    const b = await req.json().catch(() => ({}));
+    const r = await savePages(env, b.pages);
+    return r.error ? json({ error: r.error }, 400, cors) : json({ ok: true, ...r, max: 40 }, 200, cors);
+  }
   if (p === '/api/checks' && req.method === 'POST') {
     const raw = await req.text();
     if (raw.length > 900000) throw new Bad('report is too large');
     let b; try { b = JSON.parse(raw); } catch { throw new Bad('invalid JSON'); }
-    const status = ['ok', 'warn', 'fail'].includes(b.status) ? b.status : 'fail';
+    const status = ['ok', 'warn', 'fail', 'running'].includes(b.status) ? b.status : 'fail';
     const num = (x, max = 1e9) => Math.max(0, Math.min(max, Math.round(Number(x) || 0)));
     const r = await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')
       .bind(num(b.at, 4e12) || Date.now(), status, num(b.pages), num(b.failures), num(b.durationS), JSON.stringify(b.summary || {}), JSON.stringify(Array.isArray(b.details) ? b.details : [])).run();
@@ -561,6 +591,15 @@ async function upsertWidget(env, w, isNew) {
   else await env.DB.prepare('UPDATE widgets SET name=?,type=?,page=?,scope=?,video_ids=?,product_handles=?,collection_handles=?,page_handles=?,heading=?,enabled=?,overrides=? WHERE id=?').bind(...args, w.id).run();
 }
 
+// Lets the site check ask for a video exactly the way a phone does, through the real serving code.
+const mediaProbe = (env) => (key, headers) => serveMedia(new Request('https://loopy.invalid/media/' + key, { headers }), env, key);
+// The three automatic checks: they wait longer for a store that is busy, and skip if a check is already running.
+async function scheduledCheck(env) {
+  const st = await startCheck(env);
+  if (st.already) return;
+  try { await runSiteCheck(env, { catalogFn: catalog, mediaFn: mediaProbe(env), rowId: st.id, patient: true }); }
+  catch (err) { await env.DB.prepare("UPDATE site_checks SET status='fail', failures=1, summary=? WHERE id=? AND status='running'").bind(JSON.stringify({ kind: 'server-check', notes: ['The check stopped because of an error.'] }), st.id).run().catch(() => {}); throw err; }
+}
 const IG_CRON = '0 22 * * *'; // Instagram copy, every day at 3:30 am India time
 export default {
   fetch: (req, env, ctx) => handle(req, env, ctx).catch((e) => {
@@ -570,5 +609,5 @@ export default {
     console.error('Loopy error', req.method, new URL(req.url).pathname, e && e.stack || e); // details stay in the log, not in the response
     return json({ error: 'Something went wrong on the server. Please try again, and check the System check on the Integrations page.' }, 500, cors);
   }),
-  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === IG_CRON ? isAutoOn(env).then((on) => (on ? runInstagramSync(env, 'auto') : null)) : runSiteCheck(env, { catalogFn: catalog }).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
+  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === IG_CRON ? isAutoOn(env).then((on) => (on ? runInstagramSync(env, 'auto') : null)) : scheduledCheck(env).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
 };

@@ -11,6 +11,7 @@ import { CHROME, haveChrome, ROOT, B, TOKEN, api, seedVideos } from './lib-brows
 
 const PORT = 8125, STORE = 8093;
 let storeMode = 'default'; const storeHits = {};
+const PAD = '<!-- ' + 'x'.repeat(3600) + ' -->'; // a real page is never tiny
 let browser, adminSrv, storeSrv, vids, handle2 = 'mock-soap', handle1 = 'mock-single';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
@@ -19,13 +20,19 @@ test.before(async () => {
   if (!haveChrome) return;
   storeSrv = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
+    if (u.pathname === '/video.mp4') { res.writeHead(200, { 'content-type': 'video/mp4', 'content-length': '10' }); return res.end(req.method === 'HEAD' ? undefined : '0123456789'); }
     // Test switch for the site check: how the pretend store answers page requests (default = as before)
     if (u.pathname === '/__mode') { storeMode = u.searchParams.get('m') || 'default'; for (const k of Object.keys(storeHits)) delete storeHits[k]; res.writeHead(200); return res.end('ok'); }
     if (storeMode !== 'default' && u.pathname !== '/products.json') {
       storeHits[u.pathname] = (storeHits[u.pathname] || 0) + 1;
       if (storeMode === 'always429' || (storeMode === '429first' && storeHits[u.pathname] <= 2)) { res.writeHead(429, { 'retry-after': '1' }); return res.end('slow down'); }
       if (storeMode === 'always500') { res.writeHead(500); return res.end('boom'); }
-      res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html><body>no widget here</body></html>');
+      if (storeMode === 'slow') return setTimeout(() => { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<html><body>slow page' + PAD + '</body></html>'); }, 450);
+      if (storeMode === 'tiny') { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('x'); }
+      const wm = /^widget:(.+)$/.exec(storeMode); const rm = /^redirect:(.+)$/.exec(storeMode);
+      if (rm && u.pathname === '/pages/3-999') { res.writeHead(302, { location: '/pages/elsewhere' }); return res.end(); }
+      const wid = (wm || rm || [])[1];
+      res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html><body>' + (wid ? `<div data-tuco-video data-widget="${wid}"></div>` : 'no widget here') + PAD + '</body></html>');
     }
     if (u.pathname === '/products.json') {
       const page = Number(u.searchParams.get('page') || 1);
@@ -423,23 +430,169 @@ test('pricing: prices read from the store show correctly in every situation (gro
 });
 
 
+// Starts a check and waits (up to 40 s) until it has finished; returns { status: <http>, json: { id, status, failures } } like the old all-in-one answer.
+async function runCheckAndWait() {
+  const st = await api('POST', '/api/checks/run'); if (st.status !== 200) return st;
+  for (let k = 0; k < 80; k++) {
+    const c = (await api('GET', '/api/checks/' + st.json.id)).json.check;
+    if (c && c.status !== 'running') return { status: 200, json: { id: st.json.id, status: c.status, failures: c.failures } };
+    await sleep(500);
+  }
+  throw new Error('the check did not finish');
+}
+
 test('site check: the store saying "slow down" (429) is retried, and if it keeps saying it the run is a warning, not a failure', async () => {
   const mode = (m) => fetch(`http://localhost:${STORE}/__mode?m=${m}`);
   try {
     await mode('always429');
-    const r = await api('POST', '/api/checks/run'); assert.equal(r.status, 200);
+    const r = await runCheckAndWait(); assert.equal(r.status, 200);
     assert.equal(r.json.status, 'warn', 'a store that only says 429 is not a failed check'); assert.equal(r.json.failures, 0);
     const one = (await api('GET', '/api/checks/' + r.json.id)).json.check;
     assert.ok(one.details.length >= 15 && one.details.every((d) => d.problems.length === 0 && d.warnings.some((w) => /429|slow down/.test(w))), 'every page notes that it could not be checked, with no problem');
     assert.ok((one.summary.notes || []).some((n) => /slow down/.test(n) && /not affected/.test(n)), 'the report explains it');
     await mode('429first');
-    const r2 = await api('POST', '/api/checks/run');
+    const r2 = await runCheckAndWait();
     const two = (await api('GET', '/api/checks/' + r2.json.id)).json.check;
     assert.ok(two.details.length >= 15 && !JSON.stringify(two.details).includes('429') , 'pages that recover after a retry are checked normally');
     assert.ok(two.details.every((d) => d.problems.some((p) => /no Loopy banner/.test(p))), 'and judged on what they really contain');
     await mode('always500');
-    const r3 = await api('POST', '/api/checks/run'); assert.equal(r3.json.status, 'fail', 'a real server error is still a failure');
+    const r3 = await runCheckAndWait(); assert.equal(r3.json.status, 'fail', 'a real server error is still a failure');
     const three = (await api('GET', '/api/checks/' + r3.json.id)).json.check;
     assert.ok(three.details.every((d) => d.problems.some((p) => /answered 500/.test(p))));
   } finally { await mode('default'); }
+});
+
+
+test('site check: the page list can be read and changed from the page, links are cleaned up, other websites are refused, and a check uses the saved list', async () => {
+  const d = (await api('GET', '/api/checks/pages')).json;
+  assert.equal(d.isDefault, true); assert.equal(d.pages.length, 15); assert.ok(d.pages.includes('/') && d.pages.includes('/pages/b2g2-dsk'), 'the pages you asked for are in the standard list');
+  try {
+    const ok = await api('PUT', '/api/checks/pages', { pages: `http://localhost:${STORE}/\nhttp://localhost:${STORE}/collections/new-arrivals/\n  /pages/3-999  \npages/4-999\n/pages/3-999` });
+    assert.equal(ok.status, 200, JSON.stringify(ok.json)); assert.deepEqual(ok.json.pages, ['/', '/collections/new-arrivals', '/pages/3-999', '/pages/4-999'], 'links become paths, tidy, no duplicates');
+    assert.equal((await api('GET', '/api/checks/pages')).json.isDefault, false);
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: 'https://evil.example.com/x' })).status, 400, 'only your own store can be checked');
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: 'https://tucokids.com/x' })).status, 400, 'in this test setup tucokids.com is another site');
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: '//evil.example.com/x' })).status, 400, 'an address that starts with // is refused');
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: `http://localhost:9999/x` })).status, 400, 'a different port is a different site');
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: 'not a page with spaces' })).status, 400);
+    assert.equal((await api('PUT', '/api/checks/pages', { pages: Array.from({ length: 41 }, (_, i) => '/p' + i) })).status, 400, 'at most 40 pages');
+    assert.deepEqual((await api('GET', '/api/checks/pages')).json.pages, ['/', '/collections/new-arrivals', '/pages/3-999', '/pages/4-999'], 'a refused change keeps the saved list');
+    const r = await runCheckAndWait();
+    const one = (await api('GET', '/api/checks/' + r.json.id)).json.check;
+    assert.equal(one.pages, 4, 'the run covers exactly the saved list'); assert.equal(new Set(one.details.map((x) => x.path)).size, 4);
+    assert.equal((await fetch(B + '/api/checks/pages', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  } finally { assert.equal((await api('PUT', '/api/checks/pages', { pages: '' })).json.isDefault, true); }
+  assert.equal((await api('GET', '/api/checks/pages')).json.pages.length, 15, 'an empty list puts the standard list back');
+});
+
+test('site check: pressing Check now twice starts only one run, which any device can follow until it is done', async () => {
+  const mode = (m) => fetch(`http://localhost:${STORE}/__mode?m=${m}`);
+  try {
+    await mode('slow');
+    const a = await api('POST', '/api/checks/run'); const b = await api('POST', '/api/checks/run');
+    assert.equal(a.json.already, false); assert.equal(b.json.already, true, 'the second press joins the run that is already going'); assert.equal(a.json.id, b.json.id);
+    const mid = (await api('GET', '/api/checks')).json.checks.find((c) => c.id === a.json.id);
+    assert.equal(mid.status, 'running', 'the list shows it as running'); 
+    let done; for (let k = 0; k < 90; k++) { done = (await api('GET', '/api/checks/' + a.json.id)).json.check; if (done.status !== 'running') break; await sleep(500); }
+    assert.notEqual(done.status, 'running', 'it finishes by itself'); assert.ok(done.details.length >= 15);
+    const again = await api('POST', '/api/checks/run'); assert.equal(again.json.already, false, 'after it is done a new run can start');
+    for (let k = 0; k < 90; k++) { const c = (await api('GET', '/api/checks/' + again.json.id)).json.check; if (c.status !== 'running') break; await sleep(500); }
+  } finally { await mode('default'); }
+});
+
+test('site check page: Check now shows progress, finishes on its own, and the page list can be edited (phone size)', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const mode = (m) => fetch(`http://localhost:${STORE}/__mode?m=${m}`);
+  const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  try {
+    await mode('slow');
+    await page.goto(`http://localhost:${PORT}/`); await page.evaluate((t) => localStorage.setItem('tuco_admin_token', t), TOKEN);
+    await page.goto(`http://localhost:${PORT}/?x=${Math.random()}#/checks`);
+    await page.waitForFunction(() => document.querySelector('.shell h1') && !document.getElementById('splash'), { timeout: 20000 }); await sleep(600);
+    assert.ok(await page.evaluate(() => !!document.querySelector('.chkpages textarea') || !!document.querySelector('.chkpages')), 'the page list editor is there');
+    await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Check now/.test(b.innerText)).click());
+    await page.waitForFunction(() => document.querySelector('.chkhero.running'), { timeout: 8000 });
+    assert.ok(await page.evaluate(() => /Checking 15 pages now/.test(document.querySelector('.chkhero.running').innerText) && [...document.querySelectorAll('button')].find((b) => /Checking/.test(b.innerText)).disabled), 'it shows progress and the button cannot be pressed twice');
+    await page.waitForFunction(() => !document.querySelector('.chkhero.running') && document.querySelector('.chkhero'), { timeout: 60000 });
+    assert.ok(await page.evaluate(() => /Last check/.test(document.querySelector('.chkhero').innerText) && !document.querySelector('.chkhero').innerText.includes('Checking')), 'it ends by showing the result');
+    await page.evaluate(() => document.querySelector('.chkpages summary').click());
+    await page.evaluate(() => { const ta = document.querySelector('.chkpages textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, '/\n/pages/3-999'); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.evaluate(() => [...document.querySelectorAll('.chkpages button')].find((b) => /Save list/.test(b.innerText)).click()); await sleep(900);
+    assert.equal((await api('GET', '/api/checks/pages')).json.pages.length, 2, 'the new list is saved');
+    assert.ok(await page.evaluate(() => /Saved. 2 pages/.test(document.querySelector('.chkpages').innerText)));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= 392), 'nothing spills sideways on a phone');
+  } finally { await mode('default'); await api('PUT', '/api/checks/pages', { pages: '' }); await page.close(); }
+});
+
+
+// ---------------- Site check: every way a banner or its videos can break, and that each one is reported ----------------
+const checkRun = async (mode, pages) => {
+  await fetch(`http://localhost:${STORE}/__mode?m=${mode}`);
+  if (pages) assert.equal((await api('PUT', '/api/checks/pages', { pages })).status, 200);
+  const r = await runCheckAndWait();
+  return (await api('GET', '/api/checks/' + r.json.id)).json.check;
+};
+const resetCheck = async () => { await fetch(`http://localhost:${STORE}/__mode?m=default`); await api('PUT', '/api/checks/pages', { pages: '' }); };
+const mkWidget = async (videoIds, extra = {}) => (await api('POST', '/api/widgets', { name: 'QA check ' + Math.random().toString(36).slice(2, 7), type: 'banner', page: 'home', scope: 'custom', enabled: true, videoIds, ...extra })).json.id;
+
+test('site check: a healthy banner with live, intact videos passes, and the report says how many videos were verified', async () => {
+  const w = await mkWidget([vids[0], vids[1]]);
+  try {
+    const c = await checkRun('widget:' + w, '/');
+    const rows = c.details.filter((d) => d.widget === w); assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].problems, [], 'no problems: ' + JSON.stringify(rows[0].problems)); assert.equal(rows[0].actual, '2 live videos');
+    assert.ok(c.summary.videosChecked >= 2, 'the videos were really verified: ' + JSON.stringify(c.summary));
+    assert.notEqual(c.status, 'fail');
+  } finally { await resetCheck(); await api('DELETE', '/api/widgets/' + w); }
+});
+
+test('site check: each way a video can break is caught (file missing, file the wrong size, file hosted elsewhere, widget off, no live video, widget deleted)', async () => {
+  const mk = async (o) => (await api('POST', '/api/videos', { title: 'QA ' + o.title, status: 'live', placements: ['home'], products: [], ...o })).json.id;
+  const ids = [];
+  try {
+    const missing = await mk({ title: 'missing', url: '/media/videos/this-file-does-not-exist.mp4' }); ids.push(missing);
+    const outside = await mk({ title: 'outside', url: `http://localhost:${STORE}/video.mp4`, size: 10 }); ids.push(outside);
+    const bigger = (await api('GET', '/api/videos')).json.videos.find((v) => v.id === vids[2]);
+    const wrongSize = await mk({ title: 'wrongsize', url: bigger.url, size: bigger.size * 3 }); ids.push(wrongSize);
+    const draft = await mk({ title: 'draft', url: bigger.url, size: bigger.size, status: 'draft' }); ids.push(draft);
+    const wMissing = await mkWidget([missing]); const wOutside = await mkWidget([outside]); const wSize = await mkWidget([wrongSize]); const wDraft = await mkWidget([draft]);
+    const wOff = await mkWidget([vids[0]], { enabled: false }); const wNone = await mkWidget([]);
+    const c = await checkRun('widget:' + [wMissing, wOutside, wSize, wDraft, wOff, wNone].join(','), '/').catch(() => null);
+    assert.ok(c === null || true);
+    // one page can only show one widget id in this setup, so each case gets its own run
+    const one = async (w) => { const r = await checkRun('widget:' + w, '/'); return r.details.find((d) => d.widget === w); };
+    const rMissing = await one(wMissing); assert.ok(rMissing.problems.some((p) => /missing from storage/.test(p)), JSON.stringify(rMissing.problems));
+    const rOutside = await one(wOutside); assert.deepEqual(rOutside.problems, [], 'a reachable outside video is not a failure'); assert.ok(rOutside.warnings.some((p) => /hosted outside Loopy/.test(p)), JSON.stringify(rOutside.warnings));
+    const rSize = await one(wSize); assert.ok(rSize.problems.some((p) => /may be incomplete/.test(p)), JSON.stringify(rSize.problems));
+    const rDraft = await one(wDraft); assert.ok(rDraft.problems.some((p) => /none of its videos are live/.test(p)), JSON.stringify(rDraft.problems));
+    const rOff = await one(wOff); assert.ok(rOff.problems.some((p) => /switched off/.test(p)), JSON.stringify(rOff.problems));
+    const rNone = await one(wNone); assert.ok(rNone.problems.some((p) => /no videos/.test(p)), JSON.stringify(rNone.problems));
+    const gone = await checkRun('widget:wgt_doesnotexist', '/'); assert.ok(gone.details.find((d) => d.widget === 'wgt_doesnotexist').problems.some((p) => /no longer exists/.test(p)));
+    for (const w of [wMissing, wOutside, wSize, wDraft, wOff, wNone]) await api('DELETE', '/api/widgets/' + w);
+  } finally { await resetCheck(); for (const id of ids) await api('DELETE', '/api/videos/' + id); }
+});
+
+test('site check: a page that redirects elsewhere, a page that comes back almost empty, and a missing page are each reported', async () => {
+  const w = await mkWidget([vids[0]]);
+  try {
+    const red = await checkRun('redirect:' + w, '/pages/3-999\n/pages/4-999');
+    const r3 = red.details.filter((d) => d.path === '/pages/3-999'); assert.ok(r3.some((d) => d.warnings.some((x) => /redirects to \/pages\/elsewhere/.test(x))), 'the redirect is flagged: ' + JSON.stringify(r3));
+    assert.ok(red.details.filter((d) => d.path === '/pages/4-999').every((d) => !d.warnings.some((x) => /redirects/.test(x))), 'a normal page is not flagged');
+    const tiny = await checkRun('tiny', '/'); assert.equal(tiny.status, 'fail'); assert.ok(tiny.details[0].problems.some((p) => /almost empty/.test(p)), JSON.stringify(tiny.details[0]));
+    const nf = await checkRun('default', '/pages/not-here'); assert.ok(nf.details[0].problems.some((p) => /answered 404/.test(p)), JSON.stringify(nf.details[0]));
+  } finally { await resetCheck(); await api('DELETE', '/api/widgets/' + w); }
+});
+
+test('site check: two devices pressing Check at the same instant start one run, and a run that was interrupted is closed after several minutes', async () => {
+  try {
+    await fetch(`http://localhost:${STORE}/__mode?m=slow`);
+    const [a, b, c] = await Promise.all([api('POST', '/api/checks/run'), api('POST', '/api/checks/run'), api('POST', '/api/checks/run')]);
+    assert.equal(new Set([a.json.id, b.json.id, c.json.id]).size, 1, 'all three presses follow the same run: ' + [a.json.id, b.json.id, c.json.id]);
+    for (let k = 0; k < 90; k++) { if ((await api('GET', '/api/checks/' + a.json.id)).json.check.status !== 'running') break; await sleep(500); }
+  } finally { await resetCheck(); }
+  // an interrupted run (older than 8 minutes) must never stay "Checking now" for ever
+  const old = await api('POST', '/api/checks', { at: Date.now() - 12 * 60000, status: 'running', pages: 15, failures: 0, durationS: 0, summary: { kind: 'server-check' }, details: [] });
+  assert.equal(old.status, 200);
+  const list = (await api('GET', '/api/checks')).json.checks; const row = list.find((x) => x.id === old.json.id);
+  assert.equal(row.status, 'fail', 'it is closed'); assert.ok((row.summary.notes || []).some((n) => /did not finish/.test(n)), JSON.stringify(row.summary));
+  assert.ok(!list.some((x) => x.status === 'running'), 'nothing is left running');
 });

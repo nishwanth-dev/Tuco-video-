@@ -346,11 +346,14 @@ test('videos: deleting a video that is stored in our own storage works (long fil
   const d2 = await call('DELETE', '/api/videos/' + b.json.id); assert.equal(d2.status, 200, d2.text);
 });
 
-test('site checks: "check now" needs the admin token, saves a server check, and reports a page that cannot be opened as a problem', async () => {
+test('site checks: "check now" needs the admin token, starts a run in the background, saves a server check, and reports a page that cannot be opened as a problem', async () => {
   assert.equal((await call('POST', '/api/checks/run', { auth: false })).status, 401);
   const r = await call('POST', '/api/checks/run'); assert.equal(r.status, 200, r.text);
-  assert.equal(r.json.status, 'fail', 'the test store is unreachable, so this must not read as ok');
-  const one = await call('GET', '/api/checks/' + r.json.id); assert.equal(one.json.check.summary.kind, 'server-check');
+  assert.equal(r.json.running, true); assert.ok(r.json.id, 'it answers at once with the id of the run');
+  let one;
+  for (let k = 0; k < 60; k++) { one = await call('GET', '/api/checks/' + r.json.id); if (one.json.check && one.json.check.status !== 'running') break; await new Promise((x) => setTimeout(x, 500)); }
+  assert.equal(one.json.check.status, 'fail', 'the test store is unreachable, so this must not read as ok');
+  assert.equal(one.json.check.summary.kind, 'server-check');
   assert.ok(one.json.check.details.length >= 15, 'one row per page at least');
   assert.ok(one.json.check.details.every((d) => d.problems.length), 'every unreachable page is flagged');
 });
@@ -368,4 +371,33 @@ test('analytics: "only widgets on the site now" leaves out switched-off widgets 
   assert.ok(only.liveWidgets >= 1);
   const sum = (a) => a.perVideo.reduce((n, r) => n + (r.impressions || 0), 0);
   assert.ok(sum(only) < sum(all), 'totals shrink when old widgets are left out');
+});
+
+// ---------------- Video serving: every kind of request a phone or browser can send must be answered correctly ----------------
+test('media: every kind of range request is answered correctly (this is what makes videos start on phones)', async () => {
+  const bytes = Buffer.from(Array.from({ length: 100 }, (_, i) => i));
+  const up = await call('PUT', '/api/upload?name=ranges.mp4', { raw: bytes, headers: { 'content-type': 'video/mp4' } });
+  const url = up.json.url; assert.ok(url, JSON.stringify(up.json));
+  const get = async (range, extra = {}, method = 'GET') => { const r = await fetch(url, { method, headers: { ...(range ? { range } : {}), ...extra } }); return { r, body: Buffer.from(await r.arrayBuffer()) }; };
+  let x = await get();
+  assert.equal(x.r.status, 200); assert.equal(x.r.headers.get('accept-ranges'), 'bytes'); assert.equal(x.r.headers.get('content-length'), '100'); assert.match(x.r.headers.get('content-type'), /^video\//); assert.equal(x.r.headers.get('access-control-allow-origin'), '*'); assert.equal(x.body.length, 100);
+  x = await get('bytes=0-1'); // the first request iPhones make
+  assert.equal(x.r.status, 206); assert.equal(x.r.headers.get('content-range'), 'bytes 0-1/100'); assert.equal(x.r.headers.get('content-length'), '2'); assert.deepEqual([...x.body], [0, 1]);
+  x = await get('bytes=10-'); assert.equal(x.r.status, 206); assert.equal(x.r.headers.get('content-range'), 'bytes 10-99/100'); assert.equal(x.body.length, 90); assert.equal(x.body[0], 10);
+  x = await get('bytes=-20'); assert.equal(x.r.status, 206); assert.equal(x.r.headers.get('content-range'), 'bytes 80-99/100'); assert.equal(x.body[0], 80);
+  x = await get('bytes=90-9999'); assert.equal(x.r.status, 206, 'a piece that runs past the end is cut to the end'); assert.equal(x.r.headers.get('content-range'), 'bytes 90-99/100'); assert.equal(x.r.headers.get('content-length'), '10'); assert.equal(x.body.length, 10);
+  x = await get('bytes=0-99'); assert.equal(x.r.status, 206); assert.equal(x.body.length, 100);
+  x = await get('bytes=-9999'); assert.equal(x.r.status, 206, 'asking for more than the whole file from the end gives the whole file'); assert.equal(x.r.headers.get('content-range'), 'bytes 0-99/100');
+  for (const bad of ['bytes=100-', 'bytes=500-600', 'bytes=50-10', 'bytes=-0']) { x = await get(bad); assert.equal(x.r.status, 416, bad + ' is outside the file'); assert.equal(x.r.headers.get('content-range'), 'bytes */100'); }
+  for (const odd of ['bytes=abc', 'items=0-5', 'bytes=', 'garbage', 'bytes=-']) { x = await get(odd); assert.equal(x.r.status, 200, odd + ' is ignored and the whole file is sent'); assert.equal(x.body.length, 100); }
+  x = await get('bytes=0-1,5-6'); assert.equal(x.r.status, 206); assert.equal(x.r.headers.get('content-range'), 'bytes 0-1/100', 'the first of several ranges is served');
+  x = await get('BYTES = 5 - 7'); assert.equal(x.r.status, 206); assert.equal(x.r.headers.get('content-range'), 'bytes 5-7/100', 'spaces and capitals are accepted');
+  x = await get(null, {}, 'HEAD'); assert.equal(x.r.status, 200); assert.equal(x.r.headers.get('content-length'), '100'); assert.equal(x.body.length, 0);
+  x = await get('bytes=0-9', {}, 'HEAD'); assert.equal(x.r.status, 206); assert.equal(x.body.length, 0);
+  const etag = (await get()).r.headers.get('etag');
+  x = await get('bytes=0-1', { 'if-range': etag }); assert.equal(x.r.status, 206, 'a resumed download of the same file continues');
+  x = await get('bytes=0-1', { 'if-range': '"some-other-version"' }); assert.equal(x.r.status, 200, 'if the file changed, the whole file is sent'); assert.equal(x.body.length, 100);
+  const miss = await fetch(url.replace(/ranges[^/]*$/, 'nothing-here-at-all.mp4')); assert.equal(miss.status, 404); assert.equal(miss.headers.get('access-control-allow-origin'), '*');
+  const badUri = await fetch(B + '/media/videos/%E0%A4%A.mp4'); assert.equal(badUri.status, 404, 'a broken address is "not found", never a server error');
+  const trav = await fetch(B + '/media/videos/..%2F..%2Fschema.sql'); assert.ok([404, 400].includes(trav.status));
 });
