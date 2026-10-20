@@ -26,8 +26,11 @@ async function fileOk(env, url) {
   } catch { return 'file could not be reached'; }
 }
 
-export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucokids.com' } = {}) {
-  const started = Date.now(); const origin = String(site).replace(/\/$/, '');
+export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucokids.com', catalogFn } = {}) {
+  const started = Date.now();
+  // The store's product list, to confirm tagged products still exist and still have a price.
+  let cat = null; let catErr = false;
+  if (catalogFn) { try { cat = await catalogFn(env); } catch { catErr = true; } } const origin = String(site).replace(/\/$/, '');
   const details = []; const seen = new Map();
   const queue = [...CHECK_PAGES];
   await Promise.all(Array.from({ length: 4 }, async () => {
@@ -44,7 +47,7 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
   }));
   // judge each widget once, then attach the result to every page that holds it
   const verdict = new Map();
-  for (const id of seen.keys()) verdict.set(id, await judge(env, id));
+  for (const id of seen.keys()) verdict.set(id, await judge(env, id, cat));
   const rows = [];
   for (const d of details) {
     if (!d.id) { rows.push(d); continue; }
@@ -55,7 +58,7 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
   const status = problems ? 'fail' : warns ? 'warn' : 'ok';
   const rec = {
     at: Date.now(), status, pages: CHECK_PAGES.length, failures: problems, durationS: Math.round((Date.now() - started) / 1000),
-    summary: { kind: 'server-check', widgets: seen.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget and that every video and poster file exists. It does not play the video in a browser.'] },
+    summary: { kind: 'server-check', widgets: seen.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget, that every video and poster file exists, and that tagged products still exist in the store with a price. It does not play the video in a browser.'].concat(catErr ? ['The store product list could not be read just now, so prices and products were not checked.'] : []) },
     details: rows,
   };
   const ins = await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')
@@ -69,7 +72,7 @@ function row(path, widget, type, problems, warnings, actual = '') {
   return { url: path, path, device: 'server', widget, type, drawn: !problems.length, playing: null, shapeOk: null, expected: 'working', actual, problems, warnings };
 }
 
-async function judge(env, id) {
+async function judge(env, id, cat) {
   const problems = []; const warnings = [];
   const w = await env.DB.prepare('SELECT * FROM widgets WHERE id=?').bind(id).first();
   if (!w) return { type: '', problems: ['this widget no longer exists in Loopy'], warnings, actual: '' };
@@ -87,6 +90,17 @@ async function judge(env, id) {
   for (const v of live) {
     const bad = await fileOk(env, v.url); if (bad) problems.push(`video "${v.title.slice(0, 40)}": ${bad}`);
     if (v.poster) { const pb = await fileOk(env, v.poster); if (pb) warnings.push(`picture for "${v.title.slice(0, 40)}": ${pb}`); }
+    // Products tagged on the video: still in the store, with a price, and not all sold out
+    const tags = parse(v.products, []);
+    if (cat && cat.list && cat.list.length && tags.length) {
+      let sold = 0;
+      for (const t of tags) {
+        const c = cat.map[t.handle];
+        if (!c) warnings.push(`video "${v.title.slice(0, 40)}": product "${t.handle}" is no longer in the store, so it is hidden from the video`);
+        else { if (!c.price || /^₹0(\.0+)?$/.test(c.price)) warnings.push(`product "${t.handle}" has no price in the store`); if (!c.available) sold++; }
+      }
+      if (sold && sold === tags.filter((t) => cat.map[t.handle]).length) warnings.push(`video "${v.title.slice(0, 40)}": every tagged product is sold out`);
+    }
   }
   // a banner with phone-only/computer-only videos needs one for each device
   if (live.length && Object.keys(only).length) {

@@ -24,7 +24,13 @@ test.before(async () => {
       return res.end(JSON.stringify({ products: page > 1 ? [] : [
         { handle: handle2, title: 'Mock Soap', variants: [{ price: '300', available: true, id: 1 }], images: [] },
         { handle: handle1, title: 'Mock Single', variants: [{ price: '100', available: true, id: 2 }], images: [] },
-        { handle: 'mock-none', title: 'Mock Untagged', variants: [{ price: '50', available: true, id: 3 }], images: [] }] }));
+        { handle: 'mock-none', title: 'Mock Untagged', variants: [{ price: '50', available: true, id: 3 }], images: [] },
+        { handle: 'mock-big', title: 'Mock Big', variants: [{ price: '1299.00', available: true, id: 21 }], images: [] },
+        { handle: 'mock-paise', title: 'Mock Paise', variants: [{ price: '699.50', compare_at_price: '899.00', available: true, id: 22 }], images: [] },
+        { handle: 'mock-shade', title: 'Mock Shade', variants: [{ id: 31, title: 'Rose', price: '299.00', available: true }, { id: 32, title: 'Nude', price: '349.00', available: true }, { id: 33, title: 'Brown', price: '349.00', available: false }], images: [] },
+        { handle: 'mock-out', title: 'Mock Out', variants: [{ id: 41, price: '150.00', available: false }], images: [] },
+        // the made-up products used by the widget look tests, so they count as "still in the store"
+        ...Array.from({ length: 12 }, (_, i) => ({ handle: 'fixture-' + (i + 1), title: 'Fixture product ' + (i + 1), variants: [{ price: '499', available: true, id: 100 + i }], images: [] }))] }));
     }
     res.writeHead(404); res.end();
   });
@@ -362,4 +368,47 @@ test('phones: pop-ups open as a sheet whose Save button stays on screen, and Cus
   m = await page.evaluate(() => { const c = [...document.querySelectorAll('.cmenu .cnav')]; const tops = new Set(c.map((e) => Math.round(e.getBoundingClientRect().top))); return { n: c.length, rows: tops.size, w: document.documentElement.scrollWidth }; });
   assert.ok(m.n >= 8 && m.rows < m.n, 'sections sit in a few rows of chips, not one long list: ' + JSON.stringify(m)); assert.ok(m.w <= 392);
   await page.close();
+});
+
+test('instagram review: a new reel gets suggested products, approving tags them, and it stays a draft', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const mk = await api('POST', '/api/videos', { title: 'Why we love our Mock Soap #tuco', url: 'https://cdn.example.com/ig-review.mp4', status: 'draft', source: 'instagram', sourceId: 'ig-review-1', products: [] });
+  assert.ok(mk.status < 300, JSON.stringify(mk.json)); const id = mk.json.id;
+  const rv = (await api('GET', '/api/instagram/review')).json;
+  const item = rv.items.find((i) => i.id === id);
+  assert.ok(item, 'the reel is in the review list'); assert.equal(rv.catalogOk, true);
+  assert.ok(item.suggestions.some((s) => s.handle === handle2), 'Mock Soap is suggested: ' + JSON.stringify(item.suggestions));
+  const bad = await api('POST', '/api/instagram/approve', { approvals: [{ id, handles: ['not-a-real-product'] }] });
+  assert.equal(bad.json.approved, 0, 'a handle that is not in the store is ignored');
+  let page;
+  try {
+  page = await open('integrations'); await sleep(800);
+  const ui = await page.evaluate(() => ({ ready: /ready to approve|New reels with no products/.test(document.body.innerText), chip: /Mock Soap/.test(document.querySelector('.igready')?.innerText || ''), steps: !!document.querySelector('.igsteps') }));
+  assert.ok(ui.ready && ui.chip && ui.steps, 'the card lists the reel with its suggestion: ' + JSON.stringify(ui));
+  await page.evaluate(() => [...document.querySelectorAll('.igrow .btn')].find((b) => /^Approve$/.test(b.innerText.trim())).click()); await sleep(1500);
+  const v = (await api('GET', '/api/videos')).json.videos.find((x) => x.id === id);
+  assert.ok(v.products.some((p) => p.handle === handle2), 'the product is now tagged'); assert.equal(v.status, 'draft', 'approving never makes a video live');
+  const again = await api('POST', '/api/instagram/approve', { approvals: [{ id, handles: [handle2] }] });
+  assert.equal(again.json.approved, 0, 'approving twice does not add it twice'); assert.equal((await api('GET', '/api/videos')).json.videos.find((x) => x.id === id).products.length, 1);
+  } finally { if (page) await page.close(); await api('DELETE', '/api/videos/' + id); }
+});
+
+
+test('pricing: prices read from the store show correctly in every situation (grouping, paise, from-price, options, sold out, removed product)', async () => {
+  const tags = ['mock-big', 'mock-paise', 'mock-shade', 'mock-out', 'mock-deleted'];
+  const ids = [];
+  for (const h of tags) { const r = await api('POST', '/api/videos', { title: 'QA price ' + h, url: 'https://cdn.example.com/price.mp4', status: 'live', placements: ['home'], products: [{ handle: h, title: 'Saved ' + h, price: '₹1' }] }); assert.ok(r.status < 300, JSON.stringify(r.json)); ids.push(r.json.id); }
+  const w = (await api('POST', '/api/widgets', { name: 'QA price ' + Math.random().toString(36).slice(2, 7), type: 'carousel', page: 'home', scope: 'custom', enabled: true, videoIds: ids })).json.id;
+  try {
+    const cfg = await (await fetch(`${B}/api/public/config?widget=${w}`)).json();
+    const by = Object.fromEntries(cfg.videos.map((v) => [v.products[0].handle, v.products[0]]));
+    assert.equal(by['mock-big'].price, '₹1,299', 'thousands are grouped'); assert.equal(by['mock-big'].variants.length, 0, 'a single option needs no picker'); assert.ok(!by['mock-big'].from);
+    assert.equal(by['mock-paise'].price, '₹699.50', 'paise are kept'); assert.equal(by['mock-paise'].compare, '₹899'); assert.equal(by['mock-paise'].off, 22);
+    assert.equal(by['mock-shade'].price, '₹299', 'the lowest price a shopper can buy'); assert.equal(by['mock-shade'].from, true, 'it says From when options differ');
+    assert.equal(by['mock-shade'].variantId, 31, 'the first available option is the default'); assert.equal(by['mock-shade'].variants.length, 3); assert.equal(by['mock-shade'].variants[2].available, false);
+    assert.equal(by['mock-out'].soldOut, true); assert.equal(by['mock-out'].variantId, null, 'nothing to add when every option is sold out');
+    assert.equal(by['mock-deleted'].gone, true, 'a product that is no longer in the store is marked'); assert.ok(!by['mock-deleted'].live);
+    assert.equal(by['mock-big'].live, true);
+    const list = (await api('GET', '/api/store/products')).json.products;
+    assert.ok(list.length && list.every((p) => !('variants' in p)), 'the admin product list stays small');
+  } finally { for (const id of ids) await api('DELETE', '/api/videos/' + id); await api('DELETE', '/api/widgets/' + w); }
 });

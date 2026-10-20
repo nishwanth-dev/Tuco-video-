@@ -1,4 +1,5 @@
-// Copies new Instagram reels into R2 as draft videos. Needs IG_TOKEN and IG_USER_ID secrets.
+// Copies new Instagram reels into R2 as draft videos. Needs the IG_TOKEN secret.
+import { saveLast, saveCaption } from './igreview.js';
 const MAX_PER_RUN = 15;
 
 const graph = (env) => env.IG_GRAPH_URL || 'https://graph.instagram.com';
@@ -52,10 +53,19 @@ export async function syncInstagram(env) {
         }
         await env.DB.prepare("INSERT INTO videos (id,title,url,poster,status,placements,products,source,source_id,size,created_at) VALUES (?,?,?,?, 'draft','[]','[]','instagram',?,?,?)")
           .bind(crypto.randomUUID(), title, url, poster, m.id, put?.size || 0, Date.now()).run();
+        await saveCaption(env, m.id, m.caption);
         added.push(m.id);
       } catch { failed++; }
     }
     next = body.paging && body.paging.next ? body.paging.next : '';
   }
   return { added: added.length, waiting, failed };
+}
+
+// Runs a sync and remembers how it went, so the Integrations page can show the last run.
+export async function runInstagramSync(env, by = 'auto') {
+  let r;
+  try { r = await syncInstagram(env); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
+  try { await saveLast(env, { at: Date.now(), by, added: r.added || 0, waiting: r.waiting || 0, failed: r.failed || 0, error: r.error || '', skipped: r.skipped || '' }); } catch { /* the sync itself already happened */ }
+  return r;
 }

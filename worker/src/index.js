@@ -1,4 +1,5 @@
-import { syncInstagram } from './instagram.js';
+import { runInstagramSync } from './instagram.js';
+import { igStatus, setAuto, isAutoOn, reviewItems, approve } from './igreview.js';
 import { runSiteCheck } from './sitecheck.js';
 import { mergeSettings } from './defaults.js';
 
@@ -197,13 +198,23 @@ async function catalog(env) {
   }
   return loadCatalog(env);
 }
+// Rupee text: whole rupees without decimals, paise kept when a price has them, Indian digit grouping (₹1,299).
+const rupee = (n) => { const x = Number(n); if (!Number.isFinite(x)) return ''; return '₹' + (Number.isInteger(x) ? x.toLocaleString('en-IN') : x.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); };
+const dealOf = (price, compare) => (Number(compare) > Number(price) ? { was: Number(compare), off: Math.round((1 - Number(price) / Number(compare)) * 100) } : { was: 0, off: 0 });
 async function loadCatalog(env) {
   const products = await allProducts(env, '/products.json');
   const list = products.map((p) => {
-    const av = (p.variants || []).find((v) => v.available);
-    const v = av || (p.variants || [])[0];
-    const was = v && Number(v.compare_at_price) > Number(v.price) ? Number(v.compare_at_price) : 0;
-    return { handle: p.handle, title: p.title, price: v ? `₹${Math.round(Number(v.price))}` : '', compare: was ? `₹${Math.round(was)}` : '', off: was ? Math.round((1 - Number(v.price) / was) * 100) : 0, image: p.images?.[0]?.src || '', available: !!av, variantId: av ? av.id : null };
+    const vs = p.variants || [];
+    const av = vs.filter((v) => v.available);
+    const v = av[0] || vs[0];
+    // Show the lowest price among the choices a shopper can actually buy ("From ₹x" when they differ).
+    const pool = av.length ? av : vs;
+    const low = pool.reduce((m, x) => (m === null || Number(x.price) < Number(m.price) ? x : m), null) || v;
+    const from = pool.length > 1 && pool.some((x) => Number(x.price) !== Number(low.price));
+    const d = low ? dealOf(low.price, low.compare_at_price) : { was: 0, off: 0 };
+    const multi = vs.length > 1 && !(vs.length === 1 && /default title/i.test(vs[0].title || ''));
+    const variants = multi ? vs.slice(0, 40).map((x) => { const dd = dealOf(x.price, x.compare_at_price); return { id: x.id, title: String(x.title || '').slice(0, 80), price: rupee(x.price), compare: dd.was ? rupee(dd.was) : '', off: dd.off, available: !!x.available }; }) : [];
+    return { handle: p.handle, title: p.title, price: low ? rupee(low.price) : '', from, compare: d.was ? rupee(d.was) : '', off: d.off, image: p.images?.[0]?.src || '', available: av.length > 0, variantId: av[0] ? av[0].id : null, variants };
   });
   CATALOG = { t: Date.now(), map: Object.fromEntries(list.map((p) => [p.handle, p])), list };
   return CATALOG;
@@ -225,8 +236,9 @@ async function enrich(env, videos) {
   try { cat = await catalog(env); } catch { return videos; }
   videos.forEach((v) => v.products.forEach((p) => {
     const c = cat.map[p.handle];
-    if (!c) return;
-    p.title = c.title; p.price = c.price; p.compare = c.compare || ''; p.off = c.off || 0; p.image = c.image || p.image; p.soldOut = !c.available; p.variantId = c.variantId; p.live = true;
+    // A tagged product that is no longer in the store (deleted, hidden or renamed) is marked, so the widget does not show an old price or a dead link.
+    if (!c) { if (cat.list.length) p.gone = true; return; }
+    p.title = c.title; p.price = c.price; p.from = !!c.from; p.compare = c.compare || ''; p.off = c.off || 0; p.image = c.image || p.image; p.soldOut = !c.available; p.variantId = c.variantId; p.variants = c.variants || []; p.live = true;
   }));
   return videos;
 }
@@ -433,7 +445,7 @@ async function handle(req, env, ctx) {
     const s = (url.searchParams.get('q') || '').toLowerCase();
     let list;
     try { ({ list } = await catalog(env)); } catch { return json({ error: 'Could not read the product list from your store right now. You can still paste product links, or try again in a minute.' }, 502, cors); }
-    return json({ products: s ? list.filter((x) => x.title.toLowerCase().includes(s) || x.handle.includes(s)) : list }, 200, cors);
+    return json({ products: (s ? list.filter((x) => x.title.toLowerCase().includes(s) || x.handle.includes(s)) : list).map(({ variants, ...r }) => r) }, 200, cors);
   }
   if (p === '/api/store/collections' && req.method === 'GET') {
     let collections = [];
@@ -463,7 +475,7 @@ async function handle(req, env, ctx) {
     if (!r) return json({ error: 'not found' }, 404, cors);
     return json({ check: { id: r.id, at: r.at, status: r.status, pages: r.pages, failures: r.failures, durationS: r.duration_s, summary: parse(r.summary, {}), details: parse(r.details, []) } }, 200, cors);
   }
-  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env); return json({ ok: true, id: r.id, status: r.status, failures: r.failures }, 200, cors); }
+  if (p === '/api/checks/run' && req.method === 'POST') { const r = await runSiteCheck(env, { catalogFn: catalog }); return json({ ok: true, id: r.id, status: r.status, failures: r.failures }, 200, cors); }
   if (p === '/api/checks' && req.method === 'POST') {
     const raw = await req.text();
     if (raw.length > 900000) throw new Bad('report is too large');
@@ -526,7 +538,14 @@ async function handle(req, env, ctx) {
     const all = async (t) => (await env.DB.prepare(`SELECT * FROM ${t}`).all()).results;
     return json({ exportedAt: new Date().toISOString(), videos: await all('videos'), widgets: await all('widgets'), settings: await all('kv') }, 200, { ...cors, 'content-disposition': 'attachment; filename="loopy-backup.json"' });
   }
-  if (p === '/api/sync/instagram' && req.method === 'POST') return json(await syncInstagram(env), 200, cors);
+  if (p === '/api/sync/instagram' && req.method === 'POST') return json(await runInstagramSync(env, 'manual'), 200, cors);
+  if (p === '/api/instagram' && req.method === 'GET') return json(await igStatus(env, catalog), 200, cors);
+  if (p === '/api/instagram' && req.method === 'PUT') { const b = await req.json().catch(() => ({})); await setAuto(env, b.auto !== false && b.auto !== 0 && b.auto !== 'false'); return json({ ok: true, auto: await isAutoOn(env) }, 200, cors); }
+  if (p === '/api/instagram/review' && req.method === 'GET') return json(await reviewItems(env, catalog), 200, cors);
+  if (p === '/api/instagram/approve' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({}));
+    try { return json(await approve(env, b.approvals, catalog), 200, cors); } catch { return json({ error: 'Could not read the product list from your store right now. Try again in a minute.' }, 502, cors); }
+  }
 
   return json({ error: 'not found' }, 404, cors);
 }
@@ -542,6 +561,7 @@ async function upsertWidget(env, w, isNew) {
   else await env.DB.prepare('UPDATE widgets SET name=?,type=?,page=?,scope=?,video_ids=?,product_handles=?,collection_handles=?,page_handles=?,heading=?,enabled=?,overrides=? WHERE id=?').bind(...args, w.id).run();
 }
 
+const IG_CRON = '0 22 * * *'; // Instagram copy, every day at 3:30 am India time
 export default {
   fetch: (req, env, ctx) => handle(req, env, ctx).catch((e) => {
     const cors = corsFor(req, env);
@@ -550,5 +570,5 @@ export default {
     console.error('Loopy error', req.method, new URL(req.url).pathname, e && e.stack || e); // details stay in the log, not in the response
     return json({ error: 'Something went wrong on the server. Please try again, and check the System check on the Integrations page.' }, 500, cors);
   }),
-  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === '0 3 * * 1' ? syncInstagram(env) : runSiteCheck(env).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
+  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === IG_CRON ? isAutoOn(env).then((on) => (on ? runInstagramSync(env, 'auto') : null)) : runSiteCheck(env, { catalogFn: catalog }).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
 };

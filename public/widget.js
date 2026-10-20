@@ -114,6 +114,7 @@
     '.t{margin:0 0 8px;font-weight:600;font-size:15px}.plist{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.plist::-webkit-scrollbar{display:none}',
     '.p{flex:0 0 100%;scroll-snap-align:start;display:flex;align-items:center;gap:10px;background:#fff;color:#222;border-radius:var(--radius);padding:8px}.plist.many .p{flex-basis:88%}',
     '.p img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:none;background:#f3f3f3}.pm{flex:1;min-width:0;font-size:13px;line-height:1.3}.pm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.vsel{display:block;margin:4px 0;max-width:100%;font:500 12px var(--font),sans-serif;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#222}',
     '.pm a{color:#666;font-size:11px;text-decoration:underline}.atc{border:0;border-radius:var(--btn-radius);background:var(--brand);color:#222;font:600 12px var(--font),sans-serif;padding:10px 14px;cursor:pointer;white-space:nowrap}.atc[disabled]{opacity:.6}',
     '.b{position:absolute;z-index:3;top:calc(12px + env(safe-area-inset-top));width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:16px;cursor:pointer}.x{right:12px}.s{right:60px}',
     '.side{position:absolute;right:12px;bottom:170px;display:flex;flex-direction:column;gap:10px;z-index:3}.side button{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:17px;cursor:pointer}'
@@ -128,7 +129,8 @@
   }
   function money(cents) {
     var cur = (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || 'INR';
-    try { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(cents / 100); } catch (e) { return ''; }
+    var amt = cents / 100, whole = Math.abs(amt - Math.round(amt)) < 0.005;
+    try { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 }).format(amt); } catch (e) { return ''; }
   }
   // Traffic source: utm_source, else the referring site, remembered for the visit.
   function trafficSrc() {
@@ -213,6 +215,8 @@
   // Loads live product data, fills prices and images, and drops sold-out videos per the settings.
   function prepare(ctx, videos) {
     if (ctx.preview) return Promise.resolve(videos);
+    // A tagged product that has been deleted, hidden or renamed in the store is left out: no old price and no link to a page that is gone.
+    videos.forEach(function (v) { if (v.products.some(function (p) { return p.gone; })) v.products = v.products.filter(function (p) { return !p.gone; }); });
     var out = [];
     // The API already supplies live price, image, stock and variant, so no per-product store requests are needed.
     var inr = !(window.Shopify && window.Shopify.currency && window.Shopify.currency.active && window.Shopify.currency.active !== 'INR');
@@ -266,7 +270,8 @@
     var muted = true;
     var productRow = function (p, cta) {
       var oos = p.soldOut;
-      return '<div class="p">' + '<img alt="" src="' + U(p.image) + '"><div class="pm"><b>' + esc(p.title) + '</b>' + (s.showPrice ? '<span>' + esc(p.price || '') + '</span> ' : '') +
+      var pick = p.variants && p.variants.length > 1 ? '<select class="vsel" aria-label="Choose an option">' + p.variants.map(function (x) { return '<option value="' + esc(String(x.id)) + '"' + (x.available ? '' : ' disabled') + (String(x.id) === String(p.variantId) ? ' selected' : '') + '>' + esc(x.title + (s.showPrice && x.price ? ' - ' + x.price : '') + (x.available ? '' : ' (sold out)')) + '</option>'; }).join('') + '</select>' : '';
+      return '<div class="p">' + '<img alt="" src="' + U(p.image) + '"><div class="pm"><b>' + esc(p.title) + '</b>' + (s.showPrice ? '<span>' + (p.from ? 'From ' : '') + esc(p.price || '') + '</span> ' : '') + pick +
         '<a href="' + esc(safeUrl(cta.url) || ('/products/' + encodeURIComponent(p.handle))) + '">' + esc(cta.text || s.shopNowText) + '</a></div>' + (s.showAtc ? '<button class="atc"' + (oos ? ' disabled' : '') + '>' + (oos ? 'Sold out' : 'Add to cart') + '</button>' : '') + '</div>';
     };
     root.innerHTML = '<style>' + cssVars(s) + PLAYER + '</style><div class="m" role="dialog" aria-modal="true" aria-label="Video player"><button class="b x" aria-label="Close">✕</button><button class="b s" aria-label="Sound">🔇</button><div class="reel">' +
@@ -284,7 +289,15 @@
     slides.forEach(function (sl, i) {
       var v = videos[i];
       [].slice.call(sl.querySelectorAll('.p')).forEach(function (row, j) {
-        var p = v.products[j], btn = row.querySelector('.atc');
+        var p = v.products[j], btn = row.querySelector('.atc'), sel = row.querySelector('.vsel');
+        // Products with several sizes or shades: the shopper picks one, the price and the button follow the choice.
+        if (sel && btn) sel.onchange = function () {
+          var x = p.variants.filter(function (q) { return String(q.id) === sel.value; })[0];
+          if (!x) return;
+          p.variantId = x.id;
+          var pr = row.querySelector('.pm span'); if (pr && s.showPrice) pr.textContent = x.price || '';
+          btn.disabled = !x.available; btn.textContent = x.available ? 'Add to cart' : 'Sold out';
+        };
         if (!btn || p.soldOut) return;
         btn.onclick = function () {
           btn.disabled = true; btn.textContent = 'Adding...';
@@ -398,7 +411,7 @@
     var ov = c.overlayImage ? '<img class="ov ' + esc(c.overlayPlacement) + '" src="' + U(c.overlayImage) + '" alt="">' : '';
     var views = s.showViews ? '<span class="views">▶ ' + fmtViews(v.views || 0) + '</span>' : '';
     var sold = v.allSoldOut && s.oos.soldOutLabel ? '<span class="sold">Sold out</span>' : '';
-    var priceTxt = p && s.showPrice ? '<b>' + esc(p.price || '') + '</b>' : '';
+    var priceTxt = p && s.showPrice ? '<b>' + (p.from ? 'From ' : '') + esc(p.price || '') + '</b>' : '';
     var inner = thumb + ov + views + sold;
     // A tile with a thumbnail keeps its video invisible until it is really playing, then fades it in over the thumbnail (no flash, and the thumbnail is what loads first).
     var open = function (body) { return '<button class="tile' + (tsrc && !yt ? ' hasth' : '') + '" data-i="' + i + '" aria-label="' + esc(v.title) + '">' + body + '</button>'; };
@@ -413,7 +426,7 @@
       var fatc = s.showAtc && p && !v.allSoldOut ? '<span class="cta" style="bottom:8px;background:' + esc(c.feedAtcColor) + ';color:' + esc(c.feedAtcTextColor) + ';font-size:11px;padding:8px 16px">Add to cart</span>' : '';
       return '<div class="card">' + open(inner + '<span class="info" style="padding-bottom:44px">' + (p ? '<b>' + esc(p.title) + '</b>' : '') + priceTxt + '</span>' + fatc) + '</div>';
     }
-    if (tt === 'minimal') return '<div class="card">' + open(inner + (p ? '<span class="chip">' + (s.showPrice ? esc(p.price || '') : esc(p.title)) + '</span>' : '')) + '</div>';
+    if (tt === 'minimal') return '<div class="card">' + open(inner + (p ? '<span class="chip">' + (s.showPrice ? (p.from ? 'From ' : '') + esc(p.price || '') : esc(p.title)) + '</span>' : '')) + '</div>';
     return '<div class="card">' + open(inner + '<span class="info">' + (p ? '<b>' + esc(p.title) + '</b>' : '') + priceTxt + '</span>') + '</div>';
   }
 
@@ -423,6 +436,8 @@
       b.addEventListener('click', function (e) {
         e.stopPropagation();
         var v = list[Number(b.getAttribute('data-atc'))], p = v.products[0];
+        // A product with several sizes or shades needs a choice first, so the player (with its option picker) opens instead.
+        if (p.variants && p.variants.length > 1 && !ctx.preview) { openPlayer(ctx, list, Number(b.getAttribute('data-atc'))); return; }
         ctx.lastVideo = v.id; b.disabled = true; b.textContent = 'Adding...';
         var done = function () { b.textContent = 'Added ✓'; track(ctx, { type: 'atc', videoId: v.id, product: p.handle }); };
         if (ctx.preview) return done();

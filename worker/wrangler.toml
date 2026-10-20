@@ -19,9 +19,9 @@ ALLOWED_ORIGINS = "https://tucokids.com,https://www.tucokids.com,https://greensp
 STORE_URL = "https://tucokids.com"
 STORE_FALLBACK_URL = "https://greenspecialities.myshopify.com"
 
-# Weekly Instagram copy job (Mondays 03:00 UTC).
+# Daily Instagram copy job: 22:00 UTC = 3:30 am India time (can be switched off on the Integrations page).
 [triggers]
 # Site check (India time): 12:00 am = 18:30 UTC, 4:00 am = 22:30 UTC, 6:00 am = 00:30 UTC.
-crons = ["0 3 * * 1", "30 18 * * *", "30 22 * * *", "30 0 * * *"]
+crons = ["0 22 * * *", "30 18 * * *", "30 22 * * *", "30 0 * * *"]
 
 # Secrets (never commit): wrangler secret put ADMIN_TOKEN / IG_TOKEN / IG_USER_ID

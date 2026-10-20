@@ -310,3 +310,12 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
   .cnav { border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; min-height: 40px; background: #fff; font-size: 13px; }
   .cnav.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 }
+
+/* Instagram card */
+.tgl { position: relative; width: 44px; height: 26px; border-radius: 999px; border: 0; background: #d4d4d8; cursor: pointer; padding: 0; flex: none; transition: background .15s; } .tgl i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.25); } .tgl.on { background: var(--ink); } .tgl.on i { transform: translateX(18px); } .tgl:disabled { opacity: .5; }
+.igready { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.igrow { display: flex; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px; } .igth { width: 54px; height: 72px; object-fit: cover; border-radius: 8px; background: var(--soft); flex: none; }
+.igbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; } .igtitle { font-weight: 500; font-size: 13.5px; overflow-wrap: anywhere; }
+.igsug { display: flex; flex-wrap: wrap; gap: 6px; } .igchip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; background: #fff; } .igchip.on { border-color: var(--ink); background: var(--soft); } .igchip em { color: var(--ink-3); font-style: normal; font-size: 11.5px; } .igchip input { margin: 0; }
+.igsteps { width: 100%; border-top: 1px solid var(--line); padding-top: 10px; } .igsteps summary { cursor: pointer; font-weight: 600; font-size: 13.5px; } .igsteps ol { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+@media (max-width: 700px) { .igrow { flex-wrap: wrap; } .igrow > .btn { width: 100%; } }

@@ -255,4 +255,29 @@ test('instagram: syncs reels in batches of 15, skips photos and dead links, neve
   assert.ok(poster, 'thumbnails are copied too'); assert.equal((await fetch(poster.poster)).status, 200);
 });
 
+test('instagram: the page shows how the last sync went, and the daily switch can be turned off and on', async () => {
+  const st = (await api('GET', '/api/instagram')).json;
+  if (!st.configured) return;
+  assert.equal(st.auto, true, 'daily copying is on by default');
+  assert.ok(st.last && st.last.at > 0 && typeof st.last.added === 'number' && st.last.by === 'manual', 'the last run is remembered: ' + JSON.stringify(st.last));
+  assert.equal((await api('PUT', '/api/instagram', { auto: false })).json.auto, false);
+  assert.equal((await api('GET', '/api/instagram')).json.auto, false);
+  assert.equal((await api('PUT', '/api/instagram', { auto: true })).json.auto, true);
+  assert.equal((await api('GET', '/api/instagram')).json.auto, true);
+});
+
+test('instagram: the new status and review pages need the admin token', async () => {
+  for (const [m, p] of [['GET', '/api/instagram'], ['PUT', '/api/instagram'], ['GET', '/api/instagram/review'], ['POST', '/api/instagram/approve']]) {
+    const r = await fetch(B + p, { method: m, headers: { 'content-type': 'application/json' }, body: m === 'GET' ? undefined : '{}' });
+    assert.equal(r.status, 401, m + ' ' + p);
+  }
+});
+
+test('instagram: new reels with no products are listed for review, and approving without a reachable store fails cleanly', async () => {
+  const rv = (await api('GET', '/api/instagram/review')).json;
+  assert.ok(Array.isArray(rv.items)); assert.ok(rv.items.every((i) => i.id && Array.isArray(i.suggestions)));
+  const r = await api('POST', '/api/instagram/approve', { approvals: [{ id: 'nope', handles: ['x'] }] });
+  assert.ok([200, 502].includes(r.status), 'answers cleanly, never a crash: ' + r.status);
+});
+
 test.after(() => { srv.close(); ig.close(); });
