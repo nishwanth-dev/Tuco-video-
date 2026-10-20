@@ -7,6 +7,7 @@ export const CHECK_PAGES = [
   '/collections/new-arrivals', '/collections/birthday-gifting', '/collections/999-new', '/pages/buy-at-99', '/collections/699-latest',
   '/collections/buy-1-get-1-lise', '/pages/5-249-each', '/pages/4-999', '/pages/3-999', '/pages/5-199', '/pages/b2g2-dsk',
 ];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const parse = (s, f) => { try { return JSON.parse(s); } catch { return f; } };
 const keyOf = (u) => { const m = String(u || '').match(/\/media\/(videos\/[^?#]+)$/); return m ? decodeURIComponent(m[1]) : ''; };
 
@@ -32,19 +33,35 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
   let cat = null; let catErr = false;
   if (catalogFn) { try { cat = await catalogFn(env); } catch { catErr = true; } } const origin = String(site).replace(/\/$/, '');
   const details = []; const seen = new Map();
+  // Open every page. Shopify sometimes answers 429 ("too many requests") to a server like ours for a short while. That says nothing about the
+  // page itself, so a 429 (or a brief 5xx or no answer) is retried a few times with a growing pause before anything is reported.
+  const gap = Number(env.CHECK_RETRY_MS) || 20000;
+  const got = new Map(); let retryAfter = 0;
+  const open = async (path) => {
+    try {
+      const r = await timed(origin + path, { headers: { 'user-agent': 'LoopyServerCheck/1.0' }, redirect: 'follow' });
+      const ra = Number(r.headers.get('retry-after')); if (ra > 0) retryAfter = Math.max(retryAfter, Math.min(ra * 1000, 60000));
+      got.set(path, { status: r.status, html: r.status === 200 ? await r.text() : '' });
+    } catch { got.set(path, { status: 0, html: '' }); }
+  };
   const queue = [...CHECK_PAGES];
-  await Promise.all(Array.from({ length: 4 }, async () => {
-    while (queue.length) {
-      const path = queue.shift(); let status = 0; let html = '';
-      for (let a = 0; a < 2 && status !== 200; a++) {
-        try { const r = await timed(origin + path, { headers: { 'user-agent': 'LoopyServerCheck/1.0' }, redirect: 'follow' }); status = r.status; html = status === 200 ? await r.text() : ''; } catch { status = 0; }
-      }
-      const ids = [...new Set([...html.matchAll(/data-widget="(wgt_[a-z0-9]+)"/g)].map((m) => m[1]))];
-      if (status !== 200) details.push(row(path, '(page)', '', ['the page answered ' + (status || 'nothing') + ' when opened'], []));
-      else if (!ids.length) details.push(row(path, '(none)', '', ['this page has no Loopy banner or video on it'], []));
-      for (const id of ids) { if (!seen.has(id)) seen.set(id, null); details.push({ path, id }); }
-    }
-  }));
+  await Promise.all(Array.from({ length: 2 }, async () => { while (queue.length) { await open(queue.shift()); await sleep(150); } }));
+  const transient = (g) => g.status === 429 || g.status === 0 || g.status >= 500;
+  for (let round = 1; round <= 3; round++) {
+    const pending = CHECK_PAGES.filter((pg) => transient(got.get(pg)));
+    if (!pending.length) break;
+    await sleep(Math.max(gap * round, env.CHECK_RETRY_MS ? 0 : retryAfter));
+    for (const pg of pending) { await open(pg); await sleep(400); }
+  }
+  let limited = 0;
+  for (const path of CHECK_PAGES) {
+    const { status, html } = got.get(path);
+    const ids = [...new Set([...html.matchAll(/data-widget="(wgt_[a-z0-9]+)"/g)].map((m) => m[1]))];
+    if (status === 429) { limited++; details.push(row(path, '(page)', '', [], ['the store asked us to slow down (429), so this page could not be checked this time. This is not a problem on your site.'])); }
+    else if (status !== 200) details.push(row(path, '(page)', '', ['the page answered ' + (status || 'nothing') + ' when opened'], []));
+    else if (!ids.length) details.push(row(path, '(none)', '', ['this page has no Loopy banner or video on it'], []));
+    for (const id of ids) { if (!seen.has(id)) seen.set(id, null); details.push({ path, id }); }
+  }
   // judge each widget once, then attach the result to every page that holds it
   const verdict = new Map();
   for (const id of seen.keys()) verdict.set(id, await judge(env, id, cat));
@@ -58,7 +75,7 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
   const status = problems ? 'fail' : warns ? 'warn' : 'ok';
   const rec = {
     at: Date.now(), status, pages: CHECK_PAGES.length, failures: problems, durationS: Math.round((Date.now() - started) / 1000),
-    summary: { kind: 'server-check', widgets: seen.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget, that every video and poster file exists, and that tagged products still exist in the store with a price. It does not play the video in a browser.'].concat(catErr ? ['The store product list could not be read just now, so prices and products were not checked.'] : []) },
+    summary: { kind: 'server-check', widgets: seen.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget, that every video and poster file exists, and that tagged products still exist in the store with a price. It does not play the video in a browser.'].concat(catErr ? ['The store product list could not be read just now, so prices and products were not checked.'] : [], limited ? [`The store asked this check to slow down (429) on ${limited} of ${CHECK_PAGES.length} pages, so those were not checked this time. Your videos and pages were not affected. The next run will check them.`] : []) },
     details: rows,
   };
   const ins = await env.DB.prepare('INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (?,?,?,?,?,?,?)')

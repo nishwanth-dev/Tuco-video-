@@ -10,6 +10,7 @@ import puppeteer from 'puppeteer-core';
 import { CHROME, haveChrome, ROOT, B, TOKEN, api, seedVideos } from './lib-browser.mjs';
 
 const PORT = 8125, STORE = 8093;
+let storeMode = 'default'; const storeHits = {};
 let browser, adminSrv, storeSrv, vids, handle2 = 'mock-soap', handle1 = 'mock-single';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
@@ -18,6 +19,14 @@ test.before(async () => {
   if (!haveChrome) return;
   storeSrv = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
+    // Test switch for the site check: how the pretend store answers page requests (default = as before)
+    if (u.pathname === '/__mode') { storeMode = u.searchParams.get('m') || 'default'; for (const k of Object.keys(storeHits)) delete storeHits[k]; res.writeHead(200); return res.end('ok'); }
+    if (storeMode !== 'default' && u.pathname !== '/products.json') {
+      storeHits[u.pathname] = (storeHits[u.pathname] || 0) + 1;
+      if (storeMode === 'always429' || (storeMode === '429first' && storeHits[u.pathname] <= 2)) { res.writeHead(429, { 'retry-after': '1' }); return res.end('slow down'); }
+      if (storeMode === 'always500') { res.writeHead(500); return res.end('boom'); }
+      res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html><body>no widget here</body></html>');
+    }
     if (u.pathname === '/products.json') {
       const page = Number(u.searchParams.get('page') || 1);
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -411,4 +420,26 @@ test('pricing: prices read from the store show correctly in every situation (gro
     const list = (await api('GET', '/api/store/products')).json.products;
     assert.ok(list.length && list.every((p) => !('variants' in p)), 'the admin product list stays small');
   } finally { for (const id of ids) await api('DELETE', '/api/videos/' + id); await api('DELETE', '/api/widgets/' + w); }
+});
+
+
+test('site check: the store saying "slow down" (429) is retried, and if it keeps saying it the run is a warning, not a failure', async () => {
+  const mode = (m) => fetch(`http://localhost:${STORE}/__mode?m=${m}`);
+  try {
+    await mode('always429');
+    const r = await api('POST', '/api/checks/run'); assert.equal(r.status, 200);
+    assert.equal(r.json.status, 'warn', 'a store that only says 429 is not a failed check'); assert.equal(r.json.failures, 0);
+    const one = (await api('GET', '/api/checks/' + r.json.id)).json.check;
+    assert.ok(one.details.length >= 15 && one.details.every((d) => d.problems.length === 0 && d.warnings.some((w) => /429|slow down/.test(w))), 'every page notes that it could not be checked, with no problem');
+    assert.ok((one.summary.notes || []).some((n) => /slow down/.test(n) && /not affected/.test(n)), 'the report explains it');
+    await mode('429first');
+    const r2 = await api('POST', '/api/checks/run');
+    const two = (await api('GET', '/api/checks/' + r2.json.id)).json.check;
+    assert.ok(two.details.length >= 15 && !JSON.stringify(two.details).includes('429') , 'pages that recover after a retry are checked normally');
+    assert.ok(two.details.every((d) => d.problems.some((p) => /no Loopy banner/.test(p))), 'and judged on what they really contain');
+    await mode('always500');
+    const r3 = await api('POST', '/api/checks/run'); assert.equal(r3.json.status, 'fail', 'a real server error is still a failure');
+    const three = (await api('GET', '/api/checks/' + r3.json.id)).json.check;
+    assert.ok(three.details.every((d) => d.problems.some((p) => /answered 500/.test(p))));
+  } finally { await mode('default'); }
 });
