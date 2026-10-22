@@ -13,15 +13,16 @@ const TYPES = {
   banner: ['Banners', 'Full-width video banner with a call to action'],
   spotlight: ['Spotlight', 'Featured video that floats in a corner'],
   feature: ['Video section', 'One portrait video for a section you designed in your theme (sets the video size and shape)'],
+  slide: ['Slide video', 'One video that fills a slide or box in your theme (for example the first slide of Face Bestsellers). Tall 9:16 shape.'],
   tabs: ['Product tabs', 'Category tabs, each with a video first and then product cards with price, rating and add to cart'],
   floating: ['Floating Widget', 'Small floating video on every page'],
   gallery: ['Media Gallery Video', "A tagged product's video inside its image gallery"],
 };
 const PAGE_TYPES = {
-  home: ['carousel', 'banner', 'feature', 'tabs', 'stories', 'spotlight'],
+  home: ['carousel', 'banner', 'feature', 'slide', 'stories', 'spotlight'],
   product: ['carousel', 'stories', 'floating', 'gallery'],
-  collection: ['carousel', 'stories', 'banner', 'feature', 'tabs'],
-  pages: ['carousel', 'stories', 'banner', 'feature', 'tabs'],
+  collection: ['carousel', 'stories', 'banner', 'feature', 'slide'],
+  pages: ['carousel', 'stories', 'banner', 'feature', 'slide'],
 };
 const TITLES = { home: 'Homepage', product: 'Product Pages', collection: 'Collection Pages', pages: 'Pages' };
 
@@ -46,7 +47,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
           <div className="wcard" key={t}>
             <div className={'wthumb ' + t}><i /><i /><i /></div>
             <b>{TYPES[t][0]}</b><p>{TYPES[t][1]}</p>
-            <button className="btn" onClick={() => setEditing(t === 'tabs' ? { name: TYPES[t][0], type: t, page, scope: 'custom', videoIds: [], productHandles: [], heading: '', enabled: true, overrides: newTabsOverrides() } : { name: TYPES[t][0], type: t, page, scope: 'tagged', videoIds: [], productHandles: [], heading: '', enabled: true })}>Create</button>
+            <button className="btn" onClick={() => setEditing(t === 'tabs' ? { name: TYPES[t][0], type: t, page, scope: 'custom', videoIds: [], productHandles: [], heading: '', enabled: true, overrides: newTabsOverrides() } : { name: TYPES[t][0], type: t, page, scope: t === 'slide' ? 'custom' : 'tagged', videoIds: [], productHandles: [], heading: '', enabled: true })}>Create</button>
           </div>
         ))}
       </div>
@@ -99,6 +100,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const moveVid = (i, d) => setW((o) => { const n = [...o.videoIds]; const j = i + d; if (j < 0 || j >= n.length) return o; [n[i], n[j]] = [n[j], n[i]]; return { ...o, videoIds: n }; });
   const showHeading = ['carousel'].includes(w.type);
   const isTabs = w.type === 'tabs';
+  const isSlide = w.type === 'slide';
   const isProduct = w.page === 'product';
   const isColl = w.page === 'collection';
   const loadProds = () => !prods.length && searchProducts('').then(setProds).catch(() => {});
@@ -111,7 +113,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         {showHeading && <label className="lab">{w.type === 'feature' ? 'Heading shown beside the video' : 'Heading shown above videos'}<input value={w.heading} onChange={(e) => set('heading', e.target.value)} placeholder={w.type === 'feature' ? 'for tangled & itchy hair!' : 'Watch & shop'} /></label>}
       </div>
       {isTabs && <TabsContent w={w} setW={setW} videos={videos} />}
-      {!isTabs && w.type !== 'gallery' && (
+      {!isTabs && !isSlide && w.type !== 'gallery' && (
         <div className="lab">Which videos
           <div className="checks">
             <label className="chk"><input type="radio" checked={w.scope === 'tagged'} onChange={() => set('scope', 'tagged')} />{taggedLabel}</label>
@@ -119,6 +121,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
           </div>
         </div>
       )}
+      {isSlide && <p className="muted small">Pick the video for the slide. To use a different video on phones, pick two and set one to "Desktop only" and the other to "Phones only".</p>}
       {!isTabs && w.scope === 'custom' && (
         <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><em className="vpd">{fmtDate(v.createdAt)}</em></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
@@ -195,7 +198,7 @@ function LivePreview({ w, videos, settings }) {
   return (
     <div className="lab">Preview
       <div className="row"><button type="button" className={'btn sm ' + (device === 'desktop' ? '' : 'ghost')} onClick={() => setDevice('desktop')}>Desktop</button><button type="button" className={'btn sm ' + (device === 'mobile' ? '' : 'ghost')} onClick={() => setDevice('mobile')}>Phone</button><span className="muted small">Updates as you change the settings above.</span></div>
-      <div className="lpv" style={{ width: device === 'mobile' ? 390 : '100%' }}>{device === 'desktop' ? <Scaled><div ref={ref} /></Scaled> : <div ref={ref} />}{!shown.length && <p className="muted small pad">Pick at least one live video to see the preview.</p>}</div>
+      <div className="lpv" style={{ width: w.type === 'slide' ? 260 : device === 'mobile' ? 390 : '100%' }}>{device === 'desktop' && w.type !== 'slide' ? <Scaled><div ref={ref} /></Scaled> : <div ref={ref} />}{!shown.length && <p className="muted small pad">Pick at least one live video to see the preview.</p>}</div>
     </div>
   );
 }
@@ -263,6 +266,13 @@ OV_FIELDS.feature = [
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
   [null, 'clickAction', 'When the video is clicked', 'sel', [['player', 'Open the video player'], ['none', 'Do nothing']]],
   [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]],
+];
+
+// "Slide video": the shape is fixed to the tall slide, so only how the video fills it (fit, crop) and its corners can be changed.
+OV_FIELDS.slide = [
+  ['banner', 'fitDesktop', 'Video fit, desktop', 'sel', FIT], ['banner', 'fitMobile', 'Video fit, mobile', 'sel', FIT],
+  ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
+  ['banner', 'radiusDesktop', 'Corners, desktop', 'corner'], ['banner', 'radiusMobile', 'Corners, mobile', 'corner'],
 ];
 
 // "Product tabs": colours, cards per row and spacing. (The tabs themselves are edited above.)

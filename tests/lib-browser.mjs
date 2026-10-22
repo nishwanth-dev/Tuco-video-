@@ -24,6 +24,12 @@ export function startPageServer() {
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, `http://localhost:${PORT}`);
     if (u.pathname === '/widget.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end(widgetJs()); }
+    // The box a theme gives a "slide": tall 9:16, clipped, with the widget placed inside and stretched to fill it (as in the Face Bestsellers section)
+    if (u.pathname === '/slide') {
+      const wid = u.searchParams.get('w') || ''; const width = Number(u.searchParams.get('width')) || 190;
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end(`<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><style>body{margin:0}.box{position:relative;width:${width}px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#f3f3f3;margin:20px}.box>[data-tuco-video]{position:absolute;inset:0;min-width:0 !important;width:auto !important}</style><div class="box"><div data-tuco-video data-widget="${wid.replace(/[^\w-]/g, '')}"><span hidden></span></div></div><script src="/widget.js" data-api="${B}"></script>`);
+    }
     if (u.pathname === '/page' || u.pathname.startsWith('/products/')) {
       const wid = u.searchParams.get('w') || '';
       const attrs = JSON.parse(u.searchParams.get('attrs') || '{}');

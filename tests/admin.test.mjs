@@ -662,42 +662,26 @@ test('product tabs: the admin preview shows the same as the store without saving
   assert.equal((await api('GET', '/api/widgets')).json.widgets.length, before, 'nothing was saved');
 });
 
-
-test('product tabs admin: create the widget, fill a tab, see the live preview, save it, and reopen it with everything in place', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+test('slide video admin: the simple Slide video card creates a widget like Video section (pick a video, adjust, preview), and the big Product tabs card is hidden', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
   const page = await open('w:home');
-  const draftVideo = (await api('GET', '/api/videos')).json.videos.find((v) => v.id === vids[0]);
   try {
-    await page.evaluate(() => [...document.querySelectorAll('.wcard')].find((c) => /Product tabs/.test(c.innerText)).querySelector('button').click()); await sleep(900);
-    assert.ok(await page.evaluate(() => /Create widget/.test(document.querySelector('.modal h2').innerText) && !!document.querySelector('.tabsed') && !document.querySelector('.vpick')), 'the tabs editor opens, without the video picker of other widgets');
-    assert.equal(await page.evaluate(() => document.querySelectorAll('.tabcard').length), 1, 'it starts with one tab');
-    const type = async (sel, value, nth = 0) => page.evaluate((sel, value, nth) => { const el = document.querySelectorAll(sel)[nth]; const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set; set.call(el, value); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); }, sel, value, nth);
-    await type('.tabsed > .two input', 'Our bestsellers', 0);
-    await type('.tabcard .two:first-of-type input', 'Face', 0);
-    await sleep(600);
-    await type('.tabcard select', 'mock-collection', 0);                                     // the collection
-    await type('.tabcard input[aria-label="Find a product to add"]', 'Mock Shade');
-    await sleep(500); await page.evaluate(() => [...document.querySelectorAll('.pmatch button')].find((b) => /Mock Shade/.test(b.innerText)).click());   // a hand-picked product
-    await type('.tabcard .lab select[style]', vids[0]); await type('.tabcard input[placeholder="e.g. Glow Naturally"]', 'Glow Naturally');   // the first-slide video and its text
-    await page.evaluate(() => [...document.querySelectorAll('.modal button')].find((b) => /Add a tab/.test(b.innerText)).click()); await sleep(300);
-    assert.equal(await page.evaluate(() => document.querySelectorAll('.tabcard').length), 2, 'a second tab was added');
-    await page.waitForFunction(() => [...document.querySelectorAll('.modal .lpv div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.tb')), { timeout: 15000 });
-    const prev = await page.evaluate(() => { const h = [...document.querySelectorAll('.modal .lpv div')].find((d) => d.shadowRoot && d.shadowRoot.querySelector('.tb')); const r = h.shadowRoot; return { heading: r.querySelector('.hd').textContent, tabs: [...r.querySelectorAll('.tab')].map((x) => x.textContent.trim()), titles: [...r.querySelectorAll('.panel.on .pt')].map((x) => x.textContent), slide: !!r.querySelector('.panel.on .media video'), overlay: (r.querySelector('.panel.on .ov') || {}).textContent }; });
-    assert.equal(prev.heading, 'Our bestsellers'); assert.equal(prev.tabs[0], 'Face'); assert.ok(prev.titles.includes('Mock Big') && prev.titles.includes('Mock Shade'), 'the preview shows real products from the collection and the hand-picked one: ' + prev.titles.join(',')); assert.ok(prev.slide); assert.match(prev.overlay, /Glow Naturally/);
-    // a tab with no name is explained, not silently broken
-    await type('.tabcard:nth-of-type(2) .two:first-of-type input', '', 0); await sleep(1500);
-    assert.match(await page.evaluate(() => (document.querySelector('.modal .lpv')?.parentElement.querySelector('[role="alert"]') || {}).innerText || ''), /needs a title/, 'the preview says what is wrong');
-    await type('.tabcard:nth-of-type(2) .two:first-of-type input', 'Sunscreen', 0); await sleep(600);
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), 'nothing spills sideways');
+    const cards = await page.evaluate(() => [...document.querySelectorAll('.wcard b')].map((b) => b.textContent));
+    assert.ok(cards.includes('Slide video') && cards.includes('Video section'), 'the cards: ' + cards.join(', ')); assert.ok(!cards.includes('Product tabs'), 'the Product tabs card is hidden');
+    await page.evaluate(() => [...document.querySelectorAll('.wcard')].find((c) => /Slide video/.test(c.innerText)).querySelector('button').click()); await sleep(900);
+    const m = await page.evaluate(() => ({ title: document.querySelector('.modal h2').innerText, which: /Which videos/.test(document.querySelector('.modal').innerText), picker: document.querySelectorAll('.vpick .vp').length, hint: /Pick the video for the slide/.test(document.querySelector('.modal').innerText) }));
+    assert.match(m.title, /Create widget/); assert.equal(m.which, false, 'no "all tagged videos" choice for a slide'); assert.ok(m.picker >= 1 && m.hint, 'a video picker with a short hint: ' + JSON.stringify(m));
+    await page.evaluate(() => document.querySelector('.vpick .vp input').click()); await sleep(600);
+    await page.evaluate(() => document.querySelector('.modal details.appear summary').click()); await sleep(300);
+    const fields = await page.evaluate(() => [...document.querySelectorAll('.modal details.appear label.lab')].map((l) => l.childNodes[0].textContent.trim()));
+    for (const f of ['Video fit, desktop', 'Video fit, mobile', 'Keep when cropping, desktop', 'Keep when cropping, mobile', 'Corners, desktop', 'Corners, mobile']) assert.ok(fields.includes(f), 'adjust option: ' + f + ' in ' + fields.join('|'));
+    assert.ok(!fields.some((f) => /shape|height|dots|Call to action/i.test(f)), 'no shape, height or banner extras: ' + fields.join('|'));
+    await page.waitForFunction(() => { const lpv = document.querySelector('.modal .lpv'); return lpv && [...lpv.querySelectorAll('div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.tile')); }, { timeout: 10000 });
+    const prev = await page.evaluate(() => { const lpv = document.querySelector('.modal .lpv'); const h = [...lpv.querySelectorAll('div')].find((d) => d.shadowRoot && d.shadowRoot.querySelector('.tile')); const t = h.shadowRoot.querySelector('.tile').getBoundingClientRect(); return { box: Math.round(lpv.getBoundingClientRect().width), ratio: +(t.height / t.width).toFixed(2), cta: !!h.shadowRoot.querySelector('.cta'), dots: !!h.shadowRoot.querySelector('.dots') }; });
+    assert.ok(prev.box <= 262 && Math.abs(prev.ratio - 16 / 9) < 0.03, 'the preview is a tall 9:16 box: ' + JSON.stringify(prev)); assert.ok(!prev.cta && !prev.dots);
     await page.evaluate(() => [...document.querySelectorAll('.modal .btn')].find((b) => /Save widget/.test(b.innerText)).click()); await sleep(1500);
-    assert.equal(await page.evaluate(() => !!document.querySelector('.modal')), false, 'the editor closed after saving');
-    const saved = (await api('GET', '/api/widgets')).json.widgets.find((x) => x.type === 'tabs' && x.overrides.content && x.overrides.content.heading === 'Our bestsellers');
-    assert.ok(saved, 'the widget was saved'); const tabs = saved.overrides.content.tabs;
-    assert.equal(tabs.length, 2); assert.equal(tabs[0].collection, 'mock-collection'); assert.deepEqual(tabs[0].products, ['mock-shade']); assert.equal(tabs[0].videoId, vids[0]); assert.equal(tabs[0].overlayHeading, 'Glow Naturally'); assert.equal(tabs[1].title, 'Sunscreen');
-    assert.match(await page.evaluate(() => document.body.innerText), /2 tab\(s\)/, 'the list shows the number of tabs');
-    // reopen: everything is where it was left
-    await page.evaluate((id) => [...document.querySelectorAll('tbody tr')].find((r) => r.innerText.includes(id)).querySelector('.btn').click(), saved.id); await sleep(1200);
-    const re = await page.evaluate(() => ({ cards: document.querySelectorAll('.tabcard').length, first: document.querySelector('.tabcard .two:first-of-type input').value, coll: document.querySelector('.tabcard select').value, chips: [...document.querySelectorAll('.tabcard .tag')].map((x) => x.innerText.replace('×', '').trim()) }));
-    assert.equal(re.cards, 2); assert.equal(re.first, 'Face'); assert.equal(re.coll, 'mock-collection'); assert.deepEqual(re.chips, ['Mock Shade']);
+    const saved = (await api('GET', '/api/widgets')).json.widgets.find((x) => x.type === 'slide');
+    assert.ok(saved && saved.scope === 'custom' && saved.videoIds.length === 1, 'saved with one picked video: ' + JSON.stringify(saved));
+    assert.match(await page.evaluate(() => document.body.innerText), /Slide video/, 'it is in the list');
     await api('DELETE', '/api/widgets/' + saved.id);
   } finally { await page.close(); }
 });

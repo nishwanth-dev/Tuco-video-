@@ -653,6 +653,19 @@
     }
   }
 
+  // "Slide video": one video that fills a slot in the theme (for example the first slide of a product slider). Always the tall 9:16 shape.
+  // It is a banner with the shape, margins and extras fixed; fit, crop and corners still follow the widget's own settings.
+  function renderSlide(el, ctx, list) {
+    var s2 = JSON.parse(JSON.stringify(ctx.settings)), b = s2.banner = s2.banner || {}, own = ((ctx.widget || {}).overrides || {}).banner || {};
+    b.aspectLandscape = '9/16'; b.aspectPortrait = '9/16';
+    b.heightModeDesktop = 'ratio'; b.heightModeMobile = 'ratio'; b.heightMode = 'ratio';
+    b.marginDesktop = 0; b.marginMobile = 0; b.showCta = false; b.showDots = false; b.fullScreen = false;
+    if (own.radiusDesktop === undefined) b.radiusDesktop = 0;
+    if (own.radiusMobile === undefined) b.radiusMobile = 0;
+    var c2 = {}; for (var k in ctx) c2[k] = ctx[k]; c2.settings = s2;
+    renderRow(el, c2, list.slice(0, 1), 'banner');
+  }
+
   // Corner video used for both Spotlight and the product-page Floating widget.
   function renderCorner(el, ctx, list, type) {
     var s = ctx.settings;
@@ -779,6 +792,7 @@
       el.style.setProperty('display', 'block', 'important');
       if (type === 'floating' || type === 'spotlight') return renderCorner(el, ctx, list, type);
       if (type === 'feature') return renderFeature(el, ctx, list);
+      if (type === 'slide') return renderSlide(el, ctx, list);
       if (type === 'gallery') return renderGallery(el, ctx, list.slice(0, 1));
       renderRow(el, ctx, type === 'banner' ? list.slice(0, 8) : list.slice(0, 40), type === 'stories' || type === 'banner' ? type : 'carousel');
     });

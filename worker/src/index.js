@@ -11,7 +11,7 @@ const okLink = (u) => !u || (typeof u === 'string' && u.length <= 2000 && (/^htt
 // Product, collection and page names from the store (Shopify allows letters of any language and emoji in them; no spaces, slashes or markup characters).
 const HANDLE = /^[^\s/\\?#&%"'<>]{1,255}$/u;
 const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
-const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery', 'feature', 'tabs'];
+const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery', 'feature', 'tabs', 'slide'];
 const WPAGES = ['home', 'product', 'collection', 'pages'];
 
 // Per-widget appearance overrides: only these settings, with these limits, may be overridden.
