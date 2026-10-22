@@ -5,6 +5,7 @@ import LayoutField from './LayoutField.jsx';
 import { fmtDate } from './Videos.jsx';
 import { NEW_LAYOUT } from './layoutSpec.js';
 import { Thumb } from './media.jsx';
+import { TabsContent, TabsPreview, newTabsOverrides } from './TabsEditor.jsx';
 
 const TYPES = {
   carousel: ['Video Carousel', 'Showcase your best videos in an engaging carousel'],
@@ -12,14 +13,15 @@ const TYPES = {
   banner: ['Banners', 'Full-width video banner with a call to action'],
   spotlight: ['Spotlight', 'Featured video that floats in a corner'],
   feature: ['Video section', 'One portrait video for a section you designed in your theme (sets the video size and shape)'],
+  tabs: ['Product tabs', 'Category tabs, each with a video first and then product cards with price, rating and add to cart'],
   floating: ['Floating Widget', 'Small floating video on every page'],
   gallery: ['Media Gallery Video', "A tagged product's video inside its image gallery"],
 };
 const PAGE_TYPES = {
-  home: ['carousel', 'banner', 'feature', 'stories', 'spotlight'],
+  home: ['carousel', 'banner', 'feature', 'tabs', 'stories', 'spotlight'],
   product: ['carousel', 'stories', 'floating', 'gallery'],
-  collection: ['carousel', 'stories', 'banner', 'feature'],
-  pages: ['carousel', 'stories', 'banner', 'feature'],
+  collection: ['carousel', 'stories', 'banner', 'feature', 'tabs'],
+  pages: ['carousel', 'stories', 'banner', 'feature', 'tabs'],
 };
 const TITLES = { home: 'Homepage', product: 'Product Pages', collection: 'Collection Pages', pages: 'Pages' };
 
@@ -44,7 +46,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
           <div className="wcard" key={t}>
             <div className={'wthumb ' + t}><i /><i /><i /></div>
             <b>{TYPES[t][0]}</b><p>{TYPES[t][1]}</p>
-            <button className="btn" onClick={() => setEditing({ name: TYPES[t][0], type: t, page, scope: 'tagged', videoIds: [], productHandles: [], heading: '', enabled: true })}>Create</button>
+            <button className="btn" onClick={() => setEditing(t === 'tabs' ? { name: TYPES[t][0], type: t, page, scope: 'custom', videoIds: [], productHandles: [], heading: '', enabled: true, overrides: newTabsOverrides() } : { name: TYPES[t][0], type: t, page, scope: 'tagged', videoIds: [], productHandles: [], heading: '', enabled: true })}>Create</button>
           </div>
         ))}
       </div>
@@ -65,7 +67,7 @@ export default function WidgetsPage({ page, widgets, videos, settings, loadWidge
               <td><b>{w.name}</b> <code>{w.id}</code></td>
               <td>{typeName(w.type)}</td>
               <td className="wdate" title={w.createdAt ? new Date(w.createdAt).toLocaleString() : ''}>{fmtDate(w.createdAt)}</td>
-              <td>{w.scope === 'custom' ? `${w.videoIds.length} picked` : 'All tagged videos'}{w.productHandles.length > 0 && ` · ${w.productHandles.length} product(s)`}{(w.collectionHandles || []).length > 0 && ` · ${w.collectionHandles.length} collection(s)`}{(w.pageHandles || []).length > 0 && ` · ${w.pageHandles.length} page(s)`}</td>
+              <td>{w.type === 'tabs' ? `${(((w.overrides || {}).content || {}).tabs || []).length} tab(s)` : w.scope === 'custom' ? `${w.videoIds.length} picked` : 'All tagged videos'}{w.productHandles.length > 0 && ` · ${w.productHandles.length} product(s)`}{(w.collectionHandles || []).length > 0 && ` · ${w.collectionHandles.length} collection(s)`}{(w.pageHandles || []).length > 0 && ` · ${w.pageHandles.length} page(s)`}</td>
               <td><div className="row"><Toggle on={w.enabled} onChange={(on) => act(saveWidget)({ ...w, enabled: on })} /><button className="link" onClick={() => setEmbed(w)}>Get embed code</button></div></td>
               <td><div className="row"><button className="btn ghost sm" onClick={() => setEditing(w)}>Manage Widget</button><button className="link red" onClick={() => confirm('Delete this widget?') && act(deleteWidget)(w.id)}>Delete</button></div></td>
             </tr>))}</tbody>
@@ -96,6 +98,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   });
   const moveVid = (i, d) => setW((o) => { const n = [...o.videoIds]; const j = i + d; if (j < 0 || j >= n.length) return o; [n[i], n[j]] = [n[j], n[i]]; return { ...o, videoIds: n }; });
   const showHeading = ['carousel'].includes(w.type);
+  const isTabs = w.type === 'tabs';
   const isProduct = w.page === 'product';
   const isColl = w.page === 'collection';
   const loadProds = () => !prods.length && searchProducts('').then(setProds).catch(() => {});
@@ -107,7 +110,8 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         <label className="lab">Widget name<input value={w.name} onChange={(e) => set('name', e.target.value)} /></label>
         {showHeading && <label className="lab">{w.type === 'feature' ? 'Heading shown beside the video' : 'Heading shown above videos'}<input value={w.heading} onChange={(e) => set('heading', e.target.value)} placeholder={w.type === 'feature' ? 'for tangled & itchy hair!' : 'Watch & shop'} /></label>}
       </div>
-      {w.type !== 'gallery' && (
+      {isTabs && <TabsContent w={w} setW={setW} videos={videos} />}
+      {!isTabs && w.type !== 'gallery' && (
         <div className="lab">Which videos
           <div className="checks">
             <label className="chk"><input type="radio" checked={w.scope === 'tagged'} onChange={() => set('scope', 'tagged')} />{taggedLabel}</label>
@@ -115,10 +119,10 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
           </div>
         </div>
       )}
-      {w.scope === 'custom' && (
+      {!isTabs && w.scope === 'custom' && (
         <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><em className="vpd">{fmtDate(v.createdAt)}</em></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
       )}
-      {w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
+      {!isTabs && w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
         <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order. To use a different video on phones than on desktop, set one to "Desktop only" and the other to "Phones only".</span>
           <div className="arr">{w.videoIds.map((id, i) => { const v = videos.find((x) => x.id === id); return v && (
             <div className="arow" key={id}><Thumb url={v.url} poster={v.poster} /><span>{i + 1}. {v.title} <em className="muted">{fmtDate(v.createdAt)}</em>{v.status !== 'live' && <em className="muted"> (draft, not shown until live)</em>}</span>
@@ -156,7 +160,7 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
         </label>
       )}
       <Appearance w={w} setW={setW} settings={settings} />
-      {w.type !== 'gallery' && <LivePreview w={w} videos={videos} settings={settings} />}
+      {isTabs ? <TabsPreview w={w} /> : w.type !== 'gallery' && <LivePreview w={w} videos={videos} settings={settings} />}
       <div className="row end"><button className="link" onClick={onClose}>Cancel</button><button className="btn" onClick={async () => setSaveErr((await onSave({ ...w, productHandles: w.productHandles.filter(Boolean), collectionHandles: w.collectionHandles.filter(Boolean) })) || '')}>Save widget</button></div>
       {saveErr && <p className="red small">{saveErr}</p>}
     </Modal>
@@ -259,6 +263,15 @@ OV_FIELDS.feature = [
   ['banner', 'focusDesktop', 'Keep when cropping, desktop', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]], ['banner', 'focusMobile', 'Keep when cropping, mobile', 'sel', [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']]],
   [null, 'clickAction', 'When the video is clicked', 'sel', [['player', 'Open the video player'], ['none', 'Do nothing']]],
   [null, 'clickLink', 'Link when the video is clicked (optional)', 'url'], [null, 'clickTarget', 'Open that link in', 'sel', [['same', 'The same tab'], ['new', 'A new tab']]],
+];
+
+// "Product tabs": colours, cards per row and spacing. (The tabs themselves are edited above.)
+OV_FIELDS.tabs = [
+  ['tabs', 'cardsPerRow', 'Cards per row on computers (3 to 6)', 'num'],
+  ['tabs', 'background', 'Background colour', 'color'], ['tabs', 'headingColor', 'Heading and tab colour', 'color'], ['tabs', 'textColor', 'Text colour', 'color'], ['tabs', 'accentColor', 'Active tab underline', 'color'],
+  ['tabs', 'badgeBg', 'Offer badge background', 'color'], ['tabs', 'badgeColor', 'Offer badge text', 'color'],
+  ['tabs', 'paddingTop', 'Space above (px)', 'num'], ['tabs', 'paddingBottom', 'Space below (px)', 'num'],
+  [null, 'brandColor', 'Add to cart button colour', 'color'], [null, 'brandFont', 'Font', 'font'],
 ];
 
 // Lets one widget look different from the global Customizations. Empty fields follow the global setting.

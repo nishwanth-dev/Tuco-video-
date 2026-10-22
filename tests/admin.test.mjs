@@ -11,6 +11,7 @@ import { CHROME, haveChrome, ROOT, B, TOKEN, api, seedVideos } from './lib-brows
 
 const PORT = 8125, STORE = 8093;
 let storeMode = 'default'; const storeHits = {};
+const ratingHits = {};
 const PAD = '<!-- ' + 'x'.repeat(3600) + ' -->'; // a real page is never tiny
 let browser, adminSrv, storeSrv, vids, handle2 = 'mock-soap', handle1 = 'mock-single';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -20,6 +21,17 @@ test.before(async () => {
   if (!haveChrome) return;
   storeSrv = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
+    if (u.pathname === '/collections.json') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ collections: [{ handle: 'mock-collection', title: 'Mock Collection' }, { handle: 'other-collection', title: 'Other Collection' }] })); }
+    // Product tabs: a collection (in a set order, with one product that is not in the store) and product pages with their review data
+    const cm = /^\/collections\/([^/]+)\/products\.json$/.exec(u.pathname);
+    if (cm && cm[1] === 'mock-collection') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ products: ['mock-big', 'mock-soap', 'mock-paise', 'mock-out', 'mock-vanished', 'mock-single'].map((h) => ({ handle: h })) })); }
+    const pm = /^\/products\/([^/.]+)$/.exec(u.pathname);
+    if (pm && storeMode === 'default') {
+      ratingHits[pm[1]] = (ratingHits[pm[1]] || 0) + 1;
+      const R = { 'mock-soap': ['4.85', '35'], 'mock-paise': ['4.5', '12'], 'mock-single': ['3.9', '7'] }[pm[1]];
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end('<html><body>' + (R ? `<script type="application/ld+json">{"@type":"Product","aggregateRating":{"@type":"AggregateRating","ratingValue":"${R[0]}","reviewCount":"${R[1]}"}}</script>` : '') + PAD + '</body></html>');
+    }
     if (u.pathname === '/video.mp4') { res.writeHead(200, { 'content-type': 'video/mp4', 'content-length': '10' }); return res.end(req.method === 'HEAD' ? undefined : '0123456789'); }
     // Test switch for the site check: how the pretend store answers page requests (default = as before)
     if (u.pathname === '/__mode') { storeMode = u.searchParams.get('m') || 'default'; for (const k of Object.keys(storeHits)) delete storeHits[k]; res.writeHead(200); return res.end('ok'); }
@@ -595,4 +607,97 @@ test('site check: two devices pressing Check at the same instant start one run, 
   const list = (await api('GET', '/api/checks')).json.checks; const row = list.find((x) => x.id === old.json.id);
   assert.equal(row.status, 'fail', 'it is closed'); assert.ok((row.summary.notes || []).some((n) => /did not finish/.test(n)), JSON.stringify(row.summary));
   assert.ok(!list.some((x) => x.status === 'running'), 'nothing is left running');
+});
+
+
+// ---------------- Product tabs ----------------
+const tabsWidget = async (content, extra = {}) => api('POST', '/api/widgets', { name: 'QA tabs ' + Math.random().toString(36).slice(2, 7), type: 'tabs', page: 'home', scope: 'custom', enabled: true, videoIds: [], overrides: { content }, ...extra });
+const cfgOf = async (id, bust = '') => (await fetch(`${B}/api/public/config?widget=${id}${bust ? '&x=' + bust : ''}`)).json();
+
+test('product tabs: bad content is refused with a plain message, good content is saved tidied', async () => {
+  for (const [content, re] of [[{ tabs: [{ title: '' }] }, /needs a title/], [{ tabs: Array.from({ length: 13 }, (_, i) => ({ title: 'T' + i })) }, /at most 12/], [{ tabs: [{ title: 'ok', collection: 'a b' }] }, /invalid collection/], [{ tabs: [{ title: '<i>' }] }, /cannot contain/]]) {
+    const r = await tabsWidget(content); assert.equal(r.status, 400, JSON.stringify(content)); assert.match(r.json.error, re);
+  }
+  assert.equal((await api('POST', '/api/widgets', { name: 'x', type: 'tabs', page: 'home', scope: 'custom', videoIds: [], overrides: { content: {}, tabs: { cardsPerRow: 9 } } })).status, 400, 'cards per row is limited to 3-6');
+  assert.equal((await api('POST', '/api/widgets', { name: 'x', type: 'tabs', page: 'home', scope: 'custom', videoIds: [], overrides: { content: {}, tabs: { accentColor: 'red' } } })).status, 400, 'colours must be #rrggbb');
+  const ok = await tabsWidget({ heading: ' Bestsellers ', tabs: [{ title: ' One ' }] }); assert.ok(ok.status < 300, JSON.stringify(ok.json));
+  const saved = (await api('GET', '/api/widgets')).json.widgets.find((x) => x.id === ok.json.id);
+  assert.equal(saved.overrides.content.heading, 'Bestsellers'); assert.equal(saved.overrides.content.tabs[0].title, 'One'); assert.equal(saved.overrides.content.atcText, 'add to cart');
+  await api('DELETE', '/api/widgets/' + ok.json.id);
+});
+
+test('product tabs: the store gets products in the collection\'s order with live prices, left-out vanished products, the first-slide video, and ratings after a refresh', async () => {
+  const draft = (await api('POST', '/api/videos', { title: 'QA draft slide', url: 'https://cdn.example.com/d.mp4', status: 'draft', placements: [], products: [] })).json.id;
+  const w = (await tabsWidget({ heading: 'Our bestsellers', subheading: 'Loved by parents', tabs: [
+    { title: 'Face', collection: 'mock-collection', limit: 4, videoId: vids[0], overlayHeading: 'Glow', link: '/pages/glow', products: ['mock-shade', 'mock-gone', 'mock-big'] },
+    { title: 'Hand picked', products: ['mock-shade', 'mock-big', 'mock-vanished'], showRating: false, videoId: draft },
+    { title: 'Empty' },
+  ] })).json.id;
+  try {
+    const c = await cfgOf(w); assert.equal(c.widget.type, 'tabs'); assert.deepEqual(c.videos, []); assert.equal(c.catalogOk, true);
+    const [t1, t2, t3] = c.tabs;
+    assert.deepEqual(t1.products.map((p) => p.handle), ['mock-big', 'mock-soap', 'mock-paise', 'mock-out', 'mock-shade'], 'collection order first (cut to 4 that exist in the store), then the hand-picked ones, no duplicates, nothing that is gone');
+    const by = Object.fromEntries(t1.products.map((p) => [p.handle, p]));
+    assert.equal(by['mock-big'].price, '₹1,299'); assert.equal(by['mock-paise'].compare, '₹899'); assert.equal(by['mock-paise'].off, 22); assert.equal(by['mock-out'].soldOut, true); assert.equal(by['mock-shade'].from, true); assert.equal(by['mock-shade'].variants.length, 3);
+    assert.ok(t1.slide && t1.slide.id === vids[0] && /^https?:\/\//.test(t1.slide.url), 'the first-slide video is there: ' + JSON.stringify(t1.slide)); assert.equal(t1.overlayHeading, 'Glow'); assert.equal(t1.link, '/pages/glow');
+    assert.deepEqual(t1.viewAll, { text: 'View all Face products', url: '/collections/mock-collection' }, 'the "View all" link is made from the collection');
+    assert.equal(t2.slide, null, 'a video that is not live is not shown'); assert.deepEqual(t2.products.map((p) => p.handle), ['mock-shade', 'mock-big']); assert.equal(t2.viewAll, null);
+    assert.deepEqual(t3.products, []);
+    // ratings are fetched in the background, then served from the saved copy
+    let r; for (let k = 0; k < 20; k++) { r = (await cfgOf(w, 'r' + k)).tabs[0].products.find((p) => p.handle === 'mock-soap'); if (r && r.rating) break; await sleep(400); }
+    assert.deepEqual(r.rating, { value: 4.85, count: 35 }, 'the rating appears after the background refresh');
+    assert.ok(!(await cfgOf(w, 'z')).tabs[1].products.some((p) => p.rating), 'showRating off hides ratings');
+    const hits = ratingHits['mock-soap']; await cfgOf(w, 'a1'); await cfgOf(w, 'a2'); assert.equal(ratingHits['mock-soap'], hits, 'a saved rating is not fetched again');
+    assert.equal(by['mock-big'].rating, null, 'a product without reviews shows no rating');
+  } finally { await api('DELETE', '/api/widgets/' + w); await api('DELETE', '/api/videos/' + draft); }
+});
+
+test('product tabs: the admin preview shows the same as the store without saving, with ratings straight away', async () => {
+  assert.equal((await fetch(B + '/api/widgets/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  assert.equal((await api('POST', '/api/widgets/preview', { overrides: { content: { tabs: [{ title: '' }] } } })).status, 400);
+  const before = (await api('GET', '/api/widgets')).json.widgets.length;
+  const r = await api('POST', '/api/widgets/preview', { overrides: { content: { tabs: [{ title: 'Preview', products: ['mock-single', 'mock-big'] }] }, tabs: { accentColor: '#112233' } } });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.equal(r.json.widget.type, 'tabs'); assert.equal(r.json.settings.tabs.accentColor, '#112233', 'the draft colours are applied');
+  assert.deepEqual(r.json.tabs[0].products.find((p) => p.handle === 'mock-single').rating, { value: 3.9, count: 7 }, 'the rating is there on the first preview');
+  assert.equal((await api('GET', '/api/widgets')).json.widgets.length, before, 'nothing was saved');
+});
+
+
+test('product tabs admin: create the widget, fill a tab, see the live preview, save it, and reopen it with everything in place', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const page = await open('w:home');
+  const draftVideo = (await api('GET', '/api/videos')).json.videos.find((v) => v.id === vids[0]);
+  try {
+    await page.evaluate(() => [...document.querySelectorAll('.wcard')].find((c) => /Product tabs/.test(c.innerText)).querySelector('button').click()); await sleep(900);
+    assert.ok(await page.evaluate(() => /Create widget/.test(document.querySelector('.modal h2').innerText) && !!document.querySelector('.tabsed') && !document.querySelector('.vpick')), 'the tabs editor opens, without the video picker of other widgets');
+    assert.equal(await page.evaluate(() => document.querySelectorAll('.tabcard').length), 1, 'it starts with one tab');
+    const type = async (sel, value, nth = 0) => page.evaluate((sel, value, nth) => { const el = document.querySelectorAll(sel)[nth]; const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set; set.call(el, value); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); }, sel, value, nth);
+    await type('.tabsed > .two input', 'Our bestsellers', 0);
+    await type('.tabcard .two:first-of-type input', 'Face', 0);
+    await sleep(600);
+    await type('.tabcard select', 'mock-collection', 0);                                     // the collection
+    await type('.tabcard input[aria-label="Find a product to add"]', 'Mock Shade');
+    await sleep(500); await page.evaluate(() => [...document.querySelectorAll('.pmatch button')].find((b) => /Mock Shade/.test(b.innerText)).click());   // a hand-picked product
+    await type('.tabcard .lab select[style]', vids[0]); await type('.tabcard input[placeholder="e.g. Glow Naturally"]', 'Glow Naturally');   // the first-slide video and its text
+    await page.evaluate(() => [...document.querySelectorAll('.modal button')].find((b) => /Add a tab/.test(b.innerText)).click()); await sleep(300);
+    assert.equal(await page.evaluate(() => document.querySelectorAll('.tabcard').length), 2, 'a second tab was added');
+    await page.waitForFunction(() => [...document.querySelectorAll('.modal .lpv div')].some((d) => d.shadowRoot && d.shadowRoot.querySelector('.tb')), { timeout: 15000 });
+    const prev = await page.evaluate(() => { const h = [...document.querySelectorAll('.modal .lpv div')].find((d) => d.shadowRoot && d.shadowRoot.querySelector('.tb')); const r = h.shadowRoot; return { heading: r.querySelector('.hd').textContent, tabs: [...r.querySelectorAll('.tab')].map((x) => x.textContent.trim()), titles: [...r.querySelectorAll('.panel.on .pt')].map((x) => x.textContent), slide: !!r.querySelector('.panel.on .media video'), overlay: (r.querySelector('.panel.on .ov') || {}).textContent }; });
+    assert.equal(prev.heading, 'Our bestsellers'); assert.equal(prev.tabs[0], 'Face'); assert.ok(prev.titles.includes('Mock Big') && prev.titles.includes('Mock Shade'), 'the preview shows real products from the collection and the hand-picked one: ' + prev.titles.join(',')); assert.ok(prev.slide); assert.match(prev.overlay, /Glow Naturally/);
+    // a tab with no name is explained, not silently broken
+    await type('.tabcard:nth-of-type(2) .two:first-of-type input', '', 0); await sleep(1500);
+    assert.match(await page.evaluate(() => (document.querySelector('.modal .lpv')?.parentElement.querySelector('[role="alert"]') || {}).innerText || ''), /needs a title/, 'the preview says what is wrong');
+    await type('.tabcard:nth-of-type(2) .two:first-of-type input', 'Sunscreen', 0); await sleep(600);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), 'nothing spills sideways');
+    await page.evaluate(() => [...document.querySelectorAll('.modal .btn')].find((b) => /Save widget/.test(b.innerText)).click()); await sleep(1500);
+    assert.equal(await page.evaluate(() => !!document.querySelector('.modal')), false, 'the editor closed after saving');
+    const saved = (await api('GET', '/api/widgets')).json.widgets.find((x) => x.type === 'tabs' && x.overrides.content && x.overrides.content.heading === 'Our bestsellers');
+    assert.ok(saved, 'the widget was saved'); const tabs = saved.overrides.content.tabs;
+    assert.equal(tabs.length, 2); assert.equal(tabs[0].collection, 'mock-collection'); assert.deepEqual(tabs[0].products, ['mock-shade']); assert.equal(tabs[0].videoId, vids[0]); assert.equal(tabs[0].overlayHeading, 'Glow Naturally'); assert.equal(tabs[1].title, 'Sunscreen');
+    assert.match(await page.evaluate(() => document.body.innerText), /2 tab\(s\)/, 'the list shows the number of tabs');
+    // reopen: everything is where it was left
+    await page.evaluate((id) => [...document.querySelectorAll('tbody tr')].find((r) => r.innerText.includes(id)).querySelector('.btn').click(), saved.id); await sleep(1200);
+    const re = await page.evaluate(() => ({ cards: document.querySelectorAll('.tabcard').length, first: document.querySelector('.tabcard .two:first-of-type input').value, coll: document.querySelector('.tabcard select').value, chips: [...document.querySelectorAll('.tabcard .tag')].map((x) => x.innerText.replace('×', '').trim()) }));
+    assert.equal(re.cards, 2); assert.equal(re.first, 'Face'); assert.equal(re.coll, 'mock-collection'); assert.deepEqual(re.chips, ['Mock Shade']);
+    await api('DELETE', '/api/widgets/' + saved.id);
+  } finally { await page.close(); }
 });

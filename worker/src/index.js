@@ -2,6 +2,7 @@ import { runInstagramSync } from './instagram.js';
 import { igStatus, setAuto, isAutoOn, reviewItems, approve } from './igreview.js';
 import { runSiteCheck, startCheck, expireStale, getPages, savePages } from './sitecheck.js';
 import { mergeSettings } from './defaults.js';
+import { cleanContent, resolveTabs, ContentError } from './tabs.js';
 
 class Bad extends Error {}
 // https only: an http:// video on the https store would be blocked by the browser. localhost is allowed for local testing.
@@ -10,7 +11,7 @@ const okLink = (u) => !u || (typeof u === 'string' && u.length <= 2000 && (/^htt
 // Product, collection and page names from the store (Shopify allows letters of any language and emoji in them; no spaces, slashes or markup characters).
 const HANDLE = /^[^\s/\\?#&%"'<>]{1,255}$/u;
 const PLACEMENTS = ['home', 'product', 'collection', 'pages'];
-const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery', 'feature'];
+const WTYPES = ['carousel', 'stories', 'banner', 'spotlight', 'floating', 'gallery', 'feature', 'tabs'];
 const WPAGES = ['home', 'product', 'collection', 'pages'];
 
 // Per-widget appearance overrides: only these settings, with these limits, may be overridden.
@@ -35,6 +36,9 @@ const OVERRIDABLE = {
   stories: { borderColor: hex, titleColor: hex, sizeFactor: nm(0.4, 3), spacing: nm(0.2, 4), sizeDesktop: nm(30, 300), sizeMobile: nm(30, 300), shape: ev('circle', 'rounded', 'square'), gapDesktop: nm(0, 80), gapMobile: nm(0, 80) },
   banner: { heightModeDesktop: ev('ratio', 'fixed'), heightModeMobile: ev('ratio', 'fixed'), fitDesktop: ev('cover', 'contain'), fitMobile: ev('cover', 'contain'), focusDesktop: ev('center', 'top', 'bottom'), focusMobile: ev('center', 'top', 'bottom'), background: hex, heightMode: ev('ratio', 'fixed'), desktopHeight: nm(100, 1400), mobileHeight: nm(100, 1200), aspectLandscape: (x) => x === 'auto' || RATIO.test(x), aspectPortrait: (x) => x === 'auto' || RATIO.test(x), fit: ev('cover', 'contain'), focus: ev('center', 'top', 'bottom'), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999), marginDesktop: nm(0, 200), marginMobile: nm(0, 200), maxWidthDesktop: nm(100, 2400), showDots: (x) => typeof x === 'boolean', showCta: (x) => typeof x === 'boolean', fullScreen: (x) => typeof x === 'boolean' },
   feature: { videoSide: ev('left', 'right'), videoWidthDesktop: nm(25, 75), headingSizeDesktop: nm(16, 120), headingSizeMobile: nm(14, 80), headingColor: hex, headingFont: font, background: hex, gapDesktop: nm(0, 120), paddingDesktop: nm(0, 200), paddingMobile: nm(0, 120), shapeDesktop: (x) => x === 'auto' || RATIO.test(x), shapeMobile: (x) => x === 'auto' || RATIO.test(x), cornersDesktop: nm(0, 999), cornersMobile: nm(0, 999) },
+  tabs: { background: hex, headingColor: hex, textColor: hex, accentColor: hex, badgeBg: hex, badgeColor: hex, font, cardsPerRow: nm(3, 6), paddingTop: nm(0, 120), paddingBottom: nm(0, 120) },
+  // The tabs and their content (checked in detail by cleanContent in tabs.js)
+  content: () => true,
   spotlight: { position: ev('left', 'right'), sizeFactor: nm(0.4, 3), bottomOffsetMobile: nm(0, 400), bottomOffsetDesktop: nm(0, 400), widthDesktop: nm(40, 500), widthMobile: nm(40, 500), radiusDesktop: nm(0, 999), radiusMobile: nm(0, 999) },
 };
 function cleanOverrides(o) {
@@ -44,6 +48,7 @@ function cleanOverrides(o) {
   for (const [k, v] of Object.entries(o)) {
     const rule = OVERRIDABLE[k];
     if (!rule) throw new Bad(`"${k}" cannot be overridden per widget`);
+    if (k === 'content') { try { out.content = cleanContent(v, { okLink, HANDLE }); } catch (e) { if (e instanceof ContentError) throw new Bad(e.message); throw e; } continue; }
     if (typeof rule === 'function') {
       if (!rule(v)) throw new Bad(`invalid value for ${k}`);
       out[k] = v;
@@ -231,6 +236,17 @@ async function loadCatalog(env) {
   CATALOG = { t: Date.now(), map: Object.fromEntries(list.map((p) => [p.handle, p])), list };
   return CATALOG;
 }
+const COLLORD = new Map();
+// The products of a collection in the order the store shows them (first 250), kept for 5 minutes.
+async function collectionOrder(env, handle) {
+  const hit = COLLORD.get(handle);
+  if (hit && Date.now() - hit.t < 300000) return hit.list;
+  const { products = [] } = await storeFetch(env, `/collections/${encodeURIComponent(handle)}/products.json?limit=250`);
+  const list = products.map((x) => x.handle);
+  COLLORD.set(handle, { t: Date.now(), list });
+  if (COLLORD.size > 200) COLLORD.delete(COLLORD.keys().next().value);
+  return list;
+}
 const COLL = new Map();
 async function collectionHandles(env, handle) {
   const hit = COLL.get(handle);
@@ -254,6 +270,15 @@ async function enrich(env, videos) {
   }));
   return videos;
 }
+
+// The live video chosen for a tab's first slide (nothing if it is not live, archived, or outside its dates).
+async function tabVideo(env, origin, id) {
+  const r = await env.DB.prepare(`${VIDEO_SQL} WHERE v.id=? AND v.status='live' AND v.archived=0`).bind(id).first();
+  if (!r) return null;
+  const v = toVideo(r, origin, env.R2_PUBLIC_URL); const now = Date.now();
+  return (!v.startsAt || v.startsAt <= now) && (!v.endsAt || v.endsAt > now) ? v : null;
+}
+const tabDeps = (env, origin) => ({ catalog, collectionOrder, video: (id) => tabVideo(env, origin, id) });
 
 // Picks and orders the videos a widget shows, using its scope, targeting, schedule and the saved arrange-media order.
 async function videosForWidget(env, origin, widget, settings, ctx) {
@@ -333,6 +358,10 @@ async function handle(req, env, ctx) {
       if (widget.collectionHandles.length && !widget.collectionHandles.includes(q('collection'))) return respond({ settings, widget, videos: [] });
       if (widget.pageHandles.length && !widget.pageHandles.includes(q('page'))) return respond({ settings, widget, videos: [] });
       if (widget.productHandles.length && q('product') && !widget.productHandles.includes(q('product'))) return respond({ settings, widget, videos: [] });
+    }
+    if (widget && widget.type === 'tabs') {
+      const { tabs, catalogOk } = await resolveTabs(env, ctx, (widget.overrides || {}).content || {}, tabDeps(env, url.origin));
+      return respond({ settings, widget, videos: [], tabs, catalogOk });
     }
     const product = q('product') || (widget?.productHandles.length === 1 ? widget.productHandles[0] : '');
     const useProduct = widget?.page === 'product' || q('product') ? product : '';
@@ -433,6 +462,14 @@ async function handle(req, env, ctx) {
     return json({ id, url: finalUrl }, 201, cors);
   }
 
+  // Preview of a Product tabs widget that is still being edited: the same answer the store would get, without saving anything.
+  if (p === '/api/widgets/preview' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({}));
+    const overrides = cleanOverrides((b && b.overrides) || {});
+    const settings = mergeOverrides(await getSettings(env), overrides);
+    const { tabs, catalogOk } = await resolveTabs(env, ctx, overrides.content || {}, tabDeps(env, url.origin), { sync: true });
+    return json({ settings, widget: { id: 'preview', type: 'tabs', overrides }, tabs, catalogOk }, 200, cors);
+  }
   if (p === '/api/widgets' && req.method === 'GET') {
     const { results } = await env.DB.prepare('SELECT * FROM widgets ORDER BY created_at ASC').all();
     return json({ widgets: results.map(toWidget) }, 200, cors);

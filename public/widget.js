@@ -523,6 +523,136 @@
     renderRow(host, c2, list.slice(0, 1), 'banner');
   }
 
+  // "Product tabs": category tabs, each with a video as the first slide followed by product cards (picture, name, rating, price, add to cart).
+  // The API sends everything resolved (prices, stock, ratings, the video), so this only draws it and handles tabs, arrows and add to cart.
+  function renderTabs(el, ctx, cfg) {
+    var s = ctx.settings, t = s.tabs || {}, w = ctx.widget || {}, content = (w.overrides && w.overrides.content) || {}, mob = !!ctx.mobile;
+    var tabs = (cfg.tabs || []).filter(function (x) { return x && ((x.slide && x.slide.url) || (x.products && x.products.length)); });
+    var root = el.shadowRoot || el.attachShadow({ mode: 'open' });
+    var hex = function (c, d) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : d; };
+    if (!tabs.length) {
+      root.innerHTML = ctx.preview ? '<p style="text-align:center;color:#999;font:13px sans-serif;padding:24px">Add a tab with a video or some products to see the preview.</p>' : '';
+      if (!ctx.preview) el.style.setProperty('display', 'none', 'important');
+      return;
+    }
+    var per = Math.min(6, Math.max(3, Number(t.cardsPerRow) || 4)), gap = mob ? 12 : 16;
+    var font = String(t.font || s.brandFont || 'Poppins').replace(/[^\w .,'-]/g, '');
+    var head = hex(t.headingColor, '#4d4747'), text = hex(t.textColor, '#4d4747'), acc = hex(t.accentColor, '#ffc732'), brand = hex(s.brandColor, '#ffd94a');
+    var base = ctx.preview ? 'https://tucokids.com' : '';
+    var inr = !(window.Shopify && window.Shopify.currency && window.Shopify.currency.active && window.Shopify.currency.active !== 'INR');
+    var basis = mob ? 'calc((100% - ' + gap + 'px) / 2.15)' : 'calc((100% - ' + (gap * (per - 1)) + 'px) / ' + per + ')';
+    var css = ':host{display:block;width:100%;min-width:0}*{box-sizing:border-box}[hidden]{display:none!important}' +
+      '.tb{background:' + hex(t.background, '#ffffff') + ';color:' + text + ';font-family:\'' + font + '\',system-ui,sans-serif;padding:' + (Number(t.paddingTop) >= 0 ? Number(t.paddingTop) : 8) + 'px 0 ' + (Number(t.paddingBottom) >= 0 ? Number(t.paddingBottom) : 8) + 'px}' +
+      '.hd{margin:0 0 4px;font-size:' + (mob ? 22 : 30) + 'px;font-weight:700;line-height:1.2;color:' + head + '}.sb{margin:0 0 14px;font-size:' + (mob ? 13 : 15) + 'px;line-height:1.4;opacity:.85}' +
+      '.tabs{display:flex;gap:' + (mob ? 18 : 30) + 'px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid rgba(0,0,0,.1);margin:0 0 16px}.tabs::-webkit-scrollbar{display:none}' +
+      '.tab{appearance:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;background:none;cursor:pointer;font:600 ' + (mob ? 14 : 16) + 'px \'' + font + '\',sans-serif;color:' + head + ';padding:10px 2px;white-space:nowrap;display:flex;align-items:center;gap:8px;opacity:.65}' +
+      '.tab.on{opacity:1;border-bottom-color:' + acc + '}.tab img{width:22px;height:22px;object-fit:contain}.tab:focus-visible{outline:2px solid ' + head + ';outline-offset:2px}' +
+      '.panel{display:none}.panel.on{display:block}.sc{position:relative}' +
+      '.track{display:flex;gap:' + gap + 'px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 0 6px}.track::-webkit-scrollbar{display:none}' +
+      '.card{flex:0 0 ' + basis + ';min-width:0;scroll-snap-align:start;display:flex;flex-direction:column}' +
+      '.media{position:relative;aspect-ratio:9/16;background:#f3f3f3;border-radius:16px;overflow:hidden}.media img,.media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}.media video{opacity:0;transition:opacity .3s}.media.pl video{opacity:1}' +
+      '.ov{position:absolute;left:0;right:0;bottom:0;padding:18px 16px;background:linear-gradient(to top,rgba(0,0,0,.55),rgba(0,0,0,0));color:#fff;pointer-events:none;z-index:1}.ov b{display:block;font-size:' + (mob ? 16 : 20) + 'px;font-weight:700;margin:0 0 4px}.ov span{font-size:' + (mob ? 12 : 14) + 'px;font-weight:500;opacity:.95}.media>a{position:absolute;inset:0;z-index:2}' +
+      '.pimg{display:block;aspect-ratio:1/1.1;background:#f3f3f3;border-radius:16px;overflow:hidden}.pimg img{width:100%;height:100%;object-fit:cover;display:block}' +
+      '.p{padding:10px 2px 4px;display:flex;flex-direction:column;gap:7px;flex:1}.offer{align-self:flex-start;background:' + hex(t.badgeBg, '#eef6fc') + ';color:' + hex(t.badgeColor, '#4d4747') + ';font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px}' +
+      '.pt{font-size:' + (mob ? 14 : 16) + 'px;font-weight:700;line-height:1.25;color:' + head + ';text-decoration:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+      '.rt{display:flex;align-items:center;gap:8px;font-size:13px}.rn{display:inline-flex;align-items:center;gap:4px;background:#2e7d32;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700}.rn svg{width:12px;height:12px;fill:#fff}.rc{opacity:.65}' +
+      '.pr{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px}.pr b{font-size:' + (mob ? 16 : 18) + 'px;color:' + head + '}.pr s{opacity:.55;font-size:13px}.pr em{font-style:normal;color:#2e7d32;font-weight:600;font-size:13px}' +
+      '.atc{margin-top:auto;appearance:none;border:0;border-radius:999px;background:' + brand + ';color:#222;font:600 ' + (mob ? 13 : 14) + 'px \'' + font + '\',sans-serif;padding:12px 14px;cursor:pointer;text-align:center;text-decoration:none;display:block;width:100%}.atc[disabled]{opacity:.5;cursor:not-allowed}' +
+      '.va{display:flex;align-items:center;justify-content:center;text-align:center;background:#f6f6f6;border-radius:16px;font-weight:600;font-size:15px;line-height:1.4;color:' + head + ';text-decoration:none;padding:16px;min-height:200px}' +
+      '.arr{position:absolute;top:35%;z-index:5;width:40px;height:40px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;display:' + (mob ? 'none' : 'flex') + ';align-items:center;justify-content:center;padding:0}.arr svg{width:18px;height:18px;stroke:' + head + ';fill:none;stroke-width:2.4}.prev{left:-6px}.next{right:-6px}';
+    var star = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
+    var img = function (u, wpx) { u = safeUrl(u); if (!u) return ''; return /cdn\.shopify\.com/.test(u) ? u + (u.indexOf('?') < 0 ? '?' : '&') + 'width=' + wpx : u; };
+    var offers = String(content.offersHeading || '');
+    var atcText = String(content.atcText || 'add to cart'), soldText = String(content.soldOutText || 'sold out');
+    var pcard = function (p) {
+      var href = base + '/products/' + encodeURIComponent(p.handle), multi = p.variants && p.variants.length > 1;
+      var btn = p.soldOut ? '<button class="atc" disabled>' + esc(soldText) + '</button>' : multi ? '<a class="atc" href="' + esc(href) + '">choose options</a>' : '<button class="atc" data-add="' + esc(p.handle) + '" data-v="' + esc(p.variantId) + '">' + esc(atcText) + '</button>';
+      return '<div class="card" data-h="' + esc(p.handle) + '"><a class="pimg" href="' + esc(href) + '"><img src="' + esc(img(p.image, 480)) + '" alt="" loading="lazy" decoding="async"></a><div class="p">' + (offers ? '<span class="offer">' + esc(offers) + '</span>' : '') +
+        '<a class="pt" href="' + esc(href) + '">' + esc(p.title) + '</a>' +
+        (p.rating ? '<div class="rt"><span class="rn">' + star + esc(p.rating.value) + '</span><span class="rc">(' + esc(p.rating.count) + ')</span></div>' : '') +
+        (s.showPrice === false ? '' : '<div class="pr"><b class="pp">' + (p.from ? 'From ' : '') + esc(p.price) + '</b>' + (p.compare ? '<s class="pc">' + esc(p.compare) + '</s>' + (p.off > 0 ? '<em class="po">(' + esc(p.off) + '% off)</em>' : '') : '') + '</div>') + btn + '</div></div>';
+    };
+    var slide = function (x) {
+      var sl = x.slide; if (!sl || !safeUrl(sl.url)) return '';
+      return '<div class="card"><div class="media">' + (sl.poster ? '<img src="' + U(sl.poster) + '" alt="" loading="lazy" decoding="async">' : '') + '<video data-src="' + U(sl.url) + '" data-id="' + esc(sl.id) + '" muted loop playsinline preload="none" aria-label="' + esc(x.overlayHeading || sl.title || 'Video') + '"></video>' +
+        ((x.overlayHeading || x.overlaySub) ? '<div class="ov">' + (x.overlayHeading ? '<b>' + esc(x.overlayHeading) + '</b>' : '') + (x.overlaySub ? '<span>' + esc(x.overlaySub) + '</span>' : '') + '</div>' : '') +
+        (safeUrl(x.link) ? '<a href="' + U(x.link) + '" aria-label="' + esc(x.overlayHeading || 'Learn more') + '"></a>' : '') + '</div></div>';
+    };
+    var heading = content.heading || (ctx.preview ? 'Your heading goes here' : '');
+    root.innerHTML = '<style>' + css + '</style><section class="tb">' + (heading ? '<h2 class="hd">' + esc(heading) + '</h2>' : '') + (content.subheading ? '<p class="sb">' + esc(content.subheading) + '</p>' : '') +
+      '<div class="tabs" role="tablist">' + tabs.map(function (x, i) { return '<button class="tab' + (i ? '' : ' on') + '" role="tab" aria-selected="' + (i ? 'false' : 'true') + '" data-i="' + i + '">' + (safeUrl(x.icon) ? '<img src="' + U(x.icon) + '" alt="">' : '') + esc(x.title) + '</button>'; }).join('') + '</div>' +
+      tabs.map(function (x, i) {
+        return '<div class="panel' + (i ? '' : ' on') + '" role="tabpanel" data-i="' + i + '"><div class="sc"><button class="arr prev" aria-label="Previous" hidden><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="track">' + slide(x) + x.products.map(pcard).join('') +
+          (x.viewAll && safeUrl(x.viewAll.url) ? '<a class="card va" href="' + esc(base + safeUrl(x.viewAll.url)) + '">' + esc(x.viewAll.text) + ' →</a>' : '') + '</div><button class="arr next" aria-label="Next" hidden><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div>';
+      }).join('') + '</section>';
+    var panels = [].slice.call(root.querySelectorAll('.panel')), tabBtns = [].slice.call(root.querySelectorAll('.tab')), active = 0;
+    // Arrows (computers): shown only when there is more to scroll to
+    panels.forEach(function (pn) {
+      var tr = pn.querySelector('.track'), pv = pn.querySelector('.prev'), nx = pn.querySelector('.next');
+      var upd = function () { pv.hidden = tr.scrollLeft < 8; nx.hidden = tr.scrollLeft + tr.clientWidth >= tr.scrollWidth - 8; };
+      tr.addEventListener('scroll', upd, { passive: true });
+      pv.addEventListener('click', function () { tr.scrollBy({ left: -tr.clientWidth * 0.9, behavior: 'smooth' }); });
+      nx.addEventListener('click', function () { tr.scrollBy({ left: tr.clientWidth * 0.9, behavior: 'smooth' }); });
+      pn.__upd = upd;
+    });
+    // The first-slide video starts only when it is on screen and its tab is open, and stops otherwise (saves data and battery)
+    var calmNow = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || !!(navigator.connection && navigator.connection.saveData);
+    var io = typeof IntersectionObserver === 'function' ? new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        var m = en.target, v = m.querySelector('video'), pn = m.closest ? m.closest('.panel') : null;
+        if (!v) return;
+        var on = en.isIntersecting && pn && pn.classList.contains('on');
+        if (on && !calmNow) {
+          if (!v.src) { v.addEventListener('playing', function () { m.classList.add('pl'); }, { once: true }); v.src = v.getAttribute('data-src') + '#t=0.1'; }
+          v.play().catch(function () {});
+          if (!m.__seen) { m.__seen = 1; track(ctx, { type: 'impression', videoId: v.getAttribute('data-id') }); }
+        } else if (v.src) v.pause();
+      });
+    }, { rootMargin: '150px' }) : null;
+    var watch = function () { root.querySelectorAll('.media').forEach(function (m) { if (io) { io.unobserve(m); io.observe(m); } }); };
+    watch();
+    var activate = function (i, focus) {
+      active = i;
+      tabBtns.forEach(function (b, k) { b.classList.toggle('on', k === i); b.setAttribute('aria-selected', k === i ? 'true' : 'false'); b.tabIndex = k === i ? 0 : -1; });
+      panels.forEach(function (pn, k) { pn.classList.toggle('on', k === i); });
+      if (focus) tabBtns[i].focus();
+      panels[i].__upd();
+      watch();
+    };
+    tabBtns.forEach(function (b, i) {
+      b.tabIndex = i ? -1 : 0;
+      b.addEventListener('click', function () { activate(i); });
+      b.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') { e.preventDefault(); activate((i + 1) % tabBtns.length, true); } else if (e.key === 'ArrowLeft') { e.preventDefault(); activate((i + tabBtns.length - 1) % tabBtns.length, true); } });
+    });
+    setTimeout(function () { panels[active].__upd(); }, 60);
+    // Add to cart: the real cart, with the video credited for the sale
+    [].slice.call(root.querySelectorAll('[data-add]')).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var pn = b.closest('.panel'), x = tabs[Number(pn.getAttribute('data-i'))], h = b.getAttribute('data-add'), idle = b.textContent;
+        b.disabled = true; b.textContent = 'Adding...';
+        ctx.lastVideo = x.slide ? x.slide.id : '';
+        var back = function () { setTimeout(function () { b.disabled = false; b.textContent = idle; }, 1800); };
+        if (ctx.preview) { b.textContent = 'Added ✓'; back(); return; }
+        addToCart(ctx, b.getAttribute('data-v')).then(function () { b.textContent = 'Added ✓'; if (x.slide) track(ctx, { type: 'atc', videoId: x.slide.id, product: h }); back(); }).catch(function () { window.location.href = '/products/' + encodeURIComponent(h); });
+      });
+    });
+    // Visitors browsing in another currency: prices come straight from the store page for that currency
+    if (!inr && !ctx.preview) {
+      tabs.forEach(function (x) { x.products.forEach(function (p) {
+        getProduct(p.handle).then(function (d) {
+          if (!d || !d.variants || !d.variants.length) return;
+          var av = d.variants.filter(function (v) { return v.available; })[0] || d.variants[0];
+          root.querySelectorAll('.card[data-h="' + p.handle.replace(/"/g, '') + '"]').forEach(function (c) {
+            var pp = c.querySelector('.pp'), pc = c.querySelector('.pc'), po = c.querySelector('.po');
+            if (pp) pp.textContent = money(av.price);
+            var was = Number(av.compare_at_price) > Number(av.price);
+            if (pc) { pc.textContent = was ? money(av.compare_at_price) : ''; pc.hidden = !was; } if (po) po.hidden = !was;
+          });
+        });
+      }); });
+    }
+  }
+
   // Corner video used for both Spotlight and the product-page Floating widget.
   function renderCorner(el, ctx, list, type) {
     var s = ctx.settings;
@@ -638,6 +768,7 @@
     var type = (cfg.widget && cfg.widget.type) || el.getAttribute('data-layout') || 'carousel';
     var ctx = { settings: cfg.settings, widget: cfg.widget, widgetId: cfg.widget ? cfg.widget.id : '', preview: !!opts.preview, mobile: opts.device ? opts.device === 'mobile' : isMobile() };
     // A video can be limited to one device (as Whatmore does for a desktop and a mobile banner): overrides.deviceOnly maps a video id to 'mobile' or 'desktop'.
+    if (type === 'tabs') { el.style.setProperty('display', 'block', 'important'); return Promise.resolve(renderTabs(el, ctx, cfg)); }
     var only = (cfg.widget && cfg.widget.overrides && cfg.widget.overrides.deviceOnly) || {}, dev = ctx.mobile ? 'mobile' : 'desktop';
     var videos = (cfg.videos || []).filter(function (v) { return !only[v.id] || only[v.id] === dev; });
     return prepare(ctx, videos).then(function (list) {

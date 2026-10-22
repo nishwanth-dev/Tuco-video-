@@ -7,6 +7,7 @@ export const DEFAULTS = {
   banner: { heightModeDesktop: '', heightModeMobile: '', fitDesktop: '', fitMobile: '', focusDesktop: '', focusMobile: '', clickable: true, fullScreen: false, showCta: true, showDots: true, aspectLandscape: 'auto', aspectPortrait: 'auto', fit: 'cover', focus: 'center', heightMode: 'fixed', desktopHeight: 480, mobileHeight: 420, background: '#f3f3f3', radiusDesktop: null, radiusMobile: null, marginDesktop: null, marginMobile: null, maxWidthDesktop: 0 },
   spotlight: { enabled: true, position: 'left', sizeFactor: 1, ultraMinimize: false, bottomOffsetMobile: 84, bottomOffsetDesktop: 20, widthDesktop: 0, widthMobile: 0, radiusDesktop: null, radiusMobile: null },
   feature: { videoSide: 'right', videoWidthDesktop: 45, headingSizeDesktop: 48, headingSizeMobile: 28, headingColor: '#4d4747', headingFont: '', background: '', shapeDesktop: 'auto', shapeMobile: 'auto', cornersDesktop: 0, cornersMobile: 4, gapDesktop: 40, paddingDesktop: 40, paddingMobile: 20 },
+  tabs: { background: '#ffffff', headingColor: '#4d4747', textColor: '#4d4747', accentColor: '#ffc732', badgeBg: '#eef6fc', badgeColor: '#4d4747', font: '', cardsPerRow: 4, paddingTop: 8, paddingBottom: 8 },
   product: { ultraMinimize: false, showPopup: false, showHomepageVideos: false, recommend: 'none', collectionMode: 'always' },
   oos: { showWhenAllOut: false, showTile: true, soldOutLabel: true },
 };

@@ -401,3 +401,13 @@ test('media: every kind of range request is answered correctly (this is what mak
   const badUri = await fetch(B + '/media/videos/%E0%A4%A.mp4'); assert.equal(badUri.status, 404, 'a broken address is "not found", never a server error');
   const trav = await fetch(B + '/media/videos/..%2F..%2Fschema.sql'); assert.ok([404, 400].includes(trav.status));
 });
+
+test('theme blocks: the Product Tabs block exists, asks for a widget ID, keeps space while loading, and never touches the video-widget attributes of other blocks', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const dir = new URL('../shopify-app/extensions/loopy-video/blocks/', import.meta.url);
+  const t = readFileSync(new URL('loopy-tabs.liquid', dir), 'utf8');
+  assert.match(t, /"name": "Loopy Product Tabs"/); assert.match(t, /"id": "widget_id"/); assert.match(t, /hold_px_desktop/); assert.match(t, /hold_px_mobile/);
+  assert.match(t, /data-tuco-video\s+data-widget="/); assert.match(t, /><span hidden><\/span><\/div>/); assert.match(t, /class="loopy-hold"/);
+  assert.match(t, /loopy\.tucokids\.workers\.dev\/widget\.js/, 'it loads the Loopy script once');
+  assert.equal(readdirSync(dir).filter((f) => /\.liquid$/.test(f)).length >= 7, true, 'the other blocks are still there');
+});

@@ -71,3 +71,5 @@ export const approveInstagram = (approvals) => send('POST', '/api/instagram/appr
 
 export const getCheckPages = () => req('/api/checks/pages');
 export const saveCheckPages = (pages) => send('PUT', '/api/checks/pages', { pages });
+
+export const previewWidget = (overrides) => send('POST', '/api/widgets/preview', { overrides });

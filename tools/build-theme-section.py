@@ -298,6 +298,8 @@ if len(sys.argv) >= 4:
        'Round story circles that open a full-screen player.'),
       ('Loopy Section', 'loopy-section', lambda i: i in ('click_link', 'click_target', 'click_action'), False, False,
        'A heading beside one video (stacked on phones). The heading, colours and layout are all set in Loopy.'),
+      ('Loopy Product Tabs', 'loopy-tabs', lambda i: False, False, False,
+       'Category tabs, each with a video first and then product cards with price, rating and add to cart. The tabs, products, texts and colours are all set in Loopy.'),
       ('Loopy Spotlight', 'loopy-spotlight', lambda i: i.startswith('spot_') or i in COMMON or i in ('click_link', 'click_target', 'click_action'), False, False,
        'Small floating video in the corner of the page.'),
     ]
@@ -330,6 +332,9 @@ if len(sys.argv) >= 4:
             bs.append({'type': 'select', 'id': 'hold_desktop', 'label': 'Desktop: Space to keep while loading', 'options': HOLD, 'default': '2/1', 'info': 'Keeps an empty box this shape until the video appears, so the page below does not jump. Set to the shape your banner has, or choose Do not reserve space.'})
             bs.append({'type': 'select', 'id': 'hold_mobile', 'label': 'Mobile: Space to keep while loading', 'options': HOLD, 'default': '1/1', 'info': 'Same, for phones.'})
             bs.append({'type': 'checkbox', 'id': 'full_bleed', 'label': 'Stretch across the whole screen', 'default': False, 'info': 'Turn on if this page has side margins that the home page does not. The video then goes edge to edge.'})
+        if bname == 'Loopy Product Tabs':
+            bs.append({'type': 'range', 'id': 'hold_px_desktop', 'min': 0, 'max': 1400, 'step': 20, 'unit': 'px', 'label': 'Desktop: Space to keep while loading', 'default': 720, 'info': 'Keeps an empty space this tall until the section appears, so the page below does not jump. Set to 0 to keep none.'})
+            bs.append({'type': 'range', 'id': 'hold_px_mobile', 'min': 0, 'max': 1400, 'step': 20, 'unit': 'px', 'label': 'Mobile: Space to keep while loading', 'default': 560, 'info': 'Same, for phones.'})
         bs += [
           {'type': 'range', 'id': 'padding_top', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space above', 'default': 20},
           {'type': 'range', 'id': 'padding_bottom', 'min': 0, 'max': 100, 'step': 4, 'unit': 'px', 'label': 'Space below', 'default': 20},
@@ -341,7 +346,10 @@ if len(sys.argv) >= 4:
                 '  #loopy-block-{{ block.id }} .loopy-hold { {% if hm != "none" %}aspect-ratio: {{ hm }};{% endif %} }\n'
                 '  @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} .loopy-hold { aspect-ratio: {% if hd != "none" %}{{ hd }}{% else %}auto{% endif %}; } }\n'
                 '{% endif %}\n')
-        holdclass = '      {%- if hold %} class="loopy-hold"{% endif -%}\n' if bname == 'Loopy Banner' else ''
+        holdclass = '      {%- if hold %} class="loopy-hold"{% endif -%}\n' if bname in ('Loopy Banner', 'Loopy Product Tabs') else ''
+        if bname == 'Loopy Product Tabs':
+            prelude = '{%- liquid\n  assign hpd = block.settings.hold_px_desktop | default: 0\n  assign hpm = block.settings.hold_px_mobile | default: 0\n  assign hold = false\n  if hpd > 0 or hpm > 0\n    assign hold = true\n  endif\n-%}\n'
+            hold = '{% if hold %}\n  #loopy-block-{{ block.id }} .loopy-hold { min-height: {{ hpm }}px; }\n  @media screen and (min-width: 750px) { #loopy-block-{{ block.id }} .loopy-hold { min-height: {{ hpd }}px; } }\n{% endif %}\n'
         txt = BLOCK.replace('</style>', (bleed if bname in ('Loopy Banner', 'Loopy Section') else '') + (hold if holdclass else '') + '</style>', 1)
         if holdclass: txt = txt.replace("{%- assign wid = block.settings.widget_id | strip -%}", "{%- assign wid = block.settings.widget_id | strip -%}\n" + prelude, 1)
         txt = txt.replace('      data-widget="{{ wid | escape }}"\n', '      data-widget="{{ wid | escape }}"\n' + holdclass, 1).replace('Loopy Video app block', bname + ' app block').replace("Loopy Video: enter", bname + ": enter")
