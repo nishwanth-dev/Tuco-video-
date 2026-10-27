@@ -631,12 +631,19 @@ async function upsertWidget(env, w, isNew) {
 // Lets the site check ask for a video exactly the way a phone does, through the real serving code.
 const mediaProbe = (env) => (key, headers) => serveMedia(new Request('https://loopy.invalid/media/' + key, { headers }), env, key);
 // The three automatic checks: they wait longer for a store that is busy, and skip if a check is already running.
-async function scheduledCheck(env) {
+// A retry slot (30 minutes after each check) only runs when the check just before it was skipped because the store was busy.
+async function scheduledCheck(env, retry) {
+  if (retry) {
+    const prev = await env.DB.prepare("SELECT at, summary FROM site_checks WHERE status!='running' ORDER BY at DESC LIMIT 1").first().catch(() => null);
+    const sm = prev && parse(prev.summary, {});
+    if (!prev || !sm || !sm.skipped || Date.now() - prev.at > 90 * 60 * 1000) return;
+  }
   const st = await startCheck(env);
   if (st.already) return;
   try { await runSiteCheck(env, { catalogFn: catalog, mediaFn: mediaProbe(env), rowId: st.id, patient: true }); }
   catch (err) { await env.DB.prepare("UPDATE site_checks SET status='fail', failures=1, summary=? WHERE id=? AND status='running'").bind(JSON.stringify({ kind: 'server-check', notes: ['The check stopped because of an error.'] }), st.id).run().catch(() => {}); throw err; }
 }
+const RETRY_CRONS = ['0 19 * * *', '0 23 * * *', '0 1 * * *']; // 30 minutes after each of the three checks
 const IG_CRON = '0 22 * * *'; // Instagram copy, every day at 3:30 am India time
 export default {
   fetch: (req, env, ctx) => handle(req, env, ctx).catch((e) => {
@@ -646,5 +653,5 @@ export default {
     console.error('Loopy error', req.method, new URL(req.url).pathname, e && e.stack || e); // details stay in the log, not in the response
     return json({ error: 'Something went wrong on the server. Please try again, and check the System check on the Integrations page.' }, 500, cors);
   }),
-  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === IG_CRON ? isAutoOn(env).then((on) => (on ? runInstagramSync(env, 'auto') : null)) : scheduledCheck(env).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
+  scheduled: (e, env, ctx) => ctx.waitUntil(e.cron === IG_CRON ? isAutoOn(env).then((on) => (on ? runInstagramSync(env, 'auto') : null)) : scheduledCheck(env, RETRY_CRONS.includes(e.cron)).catch((err) => console.error('Loopy site check failed', err && err.stack || err))),
 };

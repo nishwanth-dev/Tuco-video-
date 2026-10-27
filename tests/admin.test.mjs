@@ -462,10 +462,12 @@ test('site check: the store saying "slow down" (429) is retried, and if it keeps
     const one = (await api('GET', '/api/checks/' + r.json.id)).json.check;
     assert.ok(one.details.length >= 15 && one.details.every((d) => d.problems.length === 0 && d.warnings.some((w) => /429|slow down/.test(w))), 'every page notes that it could not be checked, with no problem');
     assert.ok((one.summary.notes || []).some((n) => /slow down/.test(n) && /not affected/.test(n)), 'the report explains it');
+    assert.equal(one.summary.skipped, true, 'a run throttled on most pages is marked as skipped');
     await mode('429first');
     const r2 = await runCheckAndWait();
     const two = (await api('GET', '/api/checks/' + r2.json.id)).json.check;
     assert.ok(two.details.length >= 15 && !JSON.stringify(two.details).includes('429') , 'pages that recover after a retry are checked normally');
+    assert.ok(!two.summary.skipped, 'a run that recovered is not marked skipped');
     assert.ok(two.details.every((d) => d.problems.some((p) => /no Loopy banner/.test(p))), 'and judged on what they really contain');
     await mode('always500');
     const r3 = await runCheckAndWait(); assert.equal(r3.json.status, 'fail', 'a real server error is still a failure');

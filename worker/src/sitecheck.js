@@ -210,7 +210,7 @@ export async function runSiteCheck(env, { site = env.STORE_URL || 'https://tucok
   const status = problems ? 'fail' : warns ? 'warn' : 'ok';
   const rec = {
     at: Date.now(), status, pages: PAGES.length, failures: problems, durationS: Math.round((Date.now() - started) / 1000),
-    summary: { kind: 'server-check', widgets: seen.size, videosChecked: vctx.memo.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget, that every video and poster file exists, and that tagged products still exist in the store with a price. It does not play the video in a browser.'].concat(catErr ? ['The store product list could not be read just now, so prices and products were not checked.'] : [], limited ? [`The store asked this check to slow down (429) on ${limited} of ${PAGES.length} pages, so those were not checked this time. Your videos and pages were not affected. The next run will check them.`] : []) },
+    summary: { kind: 'server-check', limited, skipped: !problems && limited > 0 && (limited * 2 >= PAGES.length || !!catErr), widgets: seen.size, videosChecked: vctx.memo.size, warnings: warns, notes: ['Automatic check run by Loopy itself. It confirms each page has its widget, that every video and poster file exists, and that tagged products still exist in the store with a price. It does not play the video in a browser.'].concat(catErr ? ['The store product list could not be read just now, so prices and products were not checked.'] : [], limited ? [`The store asked this check to slow down (429) on ${limited} of ${PAGES.length} pages, so those were not checked this time. Your videos and pages were not affected. The next run will check them.`] : []) },
     details: rows,
   };
   if (rowId) {

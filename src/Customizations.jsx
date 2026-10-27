@@ -7,8 +7,10 @@ import { NEW_LAYOUT } from './layoutSpec.js';
 
 const SECTIONS = [
   ['brand', 'Brand Theme Settings', 'carousel'], ['tile', 'Product Tile Config', 'carousel'], ['carousel', 'Carousel Configuration', 'carousel'], ['stories', 'Stories Configuration', 'stories'],
-  ['product', 'Product Page Configuration', 'gallery'], ['banner', 'Banner Configuration', 'banner'], ['feature', 'Video Section Configuration', 'feature'], ['spotlight', 'Spotlight Configuration', 'spotlight'], ['oos', 'Out of Stock Configuration', 'carousel'],
+  ['product', 'Product Page Configuration', 'gallery'], ['banner', 'Banner Configuration', 'banner'], ['slide', 'Slide Video Configuration', 'slide'], ['feature', 'Video Section Configuration', 'feature'], ['spotlight', 'Spotlight Configuration', 'spotlight'], ['oos', 'Out of Stock Configuration', 'carousel'],
 ];
+const FITS = [['cover', 'Fill (crops edges)'], ['contain', 'Show whole video']];
+const FOCI = [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']];
 const TILES = [['overlay', 'Overlay', 'Title and price over the video'], ['below', 'Info below', 'Name, price and an Add to cart button under the tile'], ['feed', 'Feed', 'Overlay with a button inside the tile'], ['minimal', 'Minimal', 'Just the video with a small price chip']];
 const SAMPLE = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
@@ -113,8 +115,6 @@ export default function Customizations({ settings, videos, loadSettings, setErro
             const WIDE = [['auto', 'Match the video (recommended)'], ['16/9', 'Wide 16:9'], ['21/9', 'Ultra-wide 21:9'], ['2/1', '2:1'], ['3/1', 'Panorama 3:1'], ['4/3', 'Landscape 4:3'], ['1/1', 'Square 1:1']];
             const TALL = [['auto', 'Match the video (recommended)'], ['9/16', 'Tall 9:16'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['1/1', 'Square 1:1 (430 × 430)'], ['4/3', 'Landscape 4:3'], ['16/9', 'Wide 16:9']];
             const MODES = [['ratio', 'By shape'], ['fixed', 'Exact height']];
-            const FITS = [['cover', 'Fill (crops edges)'], ['contain', 'Show whole video']];
-            const FOCI = [['center', 'Middle'], ['top', 'Top'], ['bottom', 'Bottom']];
             const modeD = s.banner.heightModeDesktop || s.banner.heightMode || 'ratio';
             const modeM = s.banner.heightModeMobile || s.banner.heightMode || 'ratio';
             return <>
@@ -134,6 +134,14 @@ export default function Customizations({ settings, videos, loadSettings, setErro
           })()}
           <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
           {layoutRows('banner')}
+        </>}
+        {sec === 'slide' && <>
+          <p className="muted small">A Slide video is one tall 9:16 video that fills the space your theme gives it. Fit and crop are shared with the Banner settings. Corners are set on each Slide video widget.</p>
+          <Field label="Video fit on desktop" hint="Fill the slide (crops edges) or show the whole video with bars"><Sel v={s.banner.fitDesktop || s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fitDesktop', v)} opts={FITS} /></Field>
+          <Field label="Video fit on mobile"><Sel v={s.banner.fitMobile || s.banner.fit || 'cover'} on={(v) => setIn('banner', 'fitMobile', v)} opts={FITS} /></Field>
+          <Field label="Part kept when cropping, desktop"><Sel v={s.banner.focusDesktop || s.banner.focus || 'center'} on={(v) => setIn('banner', 'focusDesktop', v)} opts={FOCI} /></Field>
+          <Field label="Part kept when cropping, mobile"><Sel v={s.banner.focusMobile || s.banner.focus || 'center'} on={(v) => setIn('banner', 'focusMobile', v)} opts={FOCI} /></Field>
+          <Field label="Bar colour" hint="Shown when the whole video is visible"><Color v={s.banner.background || '#f3f3f3'} on={(v) => setIn('banner', 'background', v)} /></Field>
         </>}
         {sec === 'feature' && <>
           <p className="muted small">For a section you designed in your theme (heading, background and layout live there). Loopy only supplies the video and its size. The preview shows an example heading beside it. Create one under Homepage, Collection Pages or Pages, paste its widget ID into your section, and change any of this for just that widget in its Appearance panel.</p>

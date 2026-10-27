@@ -332,3 +332,4 @@ td:has(> .setrow) { min-width: 420px; padding-top: 12px; padding-bottom: 12px; }
 
 .tabsed .two, .tabcard .two { margin-bottom: 12px; } .tabcard > .chk, .tabcard > .lab, .tabcard > label.lab { display: block; margin-bottom: 12px; } .tabsed > label.lab { display: block; margin-bottom: 12px; }
 @media (max-width: 700px) { .tabsed .two, .tabcard .two { grid-template-columns: 1fr; } }
+.chkhero.skipped { background: #f2f4f7; border-color: #d0d5dd; } .chkhero.skipped b { color: #475467; }

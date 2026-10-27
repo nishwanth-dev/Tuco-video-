@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { listChecks, getCheck, runCheck, getCheckPages, saveCheckPages } from './api.js';
 import { Empty, Table } from './ui.jsx';
 
+const skipped = (c) => c.status === 'warn' && c.summary && c.summary.skipped;
+const nameOf = (c) => (skipped(c) ? 'Skipped, the store was busy' : LABEL[c.status] || c.status);
 const LABEL = { ok: 'All good', warn: 'Needs a look', fail: 'Problems found', running: 'Checking now...' };
 const when = (ms) => new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 const dur = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60 ? (s % 60) + ' s' : ''}` : `${s} s`);
@@ -83,8 +85,8 @@ export default function Checks() {
         <div className="chkhero running" role="status"><b><span className="chkspin" aria-hidden="true" /> Checking {last.pages} page{last.pages === 1 ? '' : 's'} now...</b><span>This takes about half a minute. You can leave this page open, or come back later: the check keeps going on its own.</span></div>
       )}
       {last && last.status !== 'running' && (
-        <div className={'chkhero ' + last.status}>
-          <b>{LABEL[last.status] || last.status}</b>
+        <div className={'chkhero ' + (skipped(last) ? 'skipped' : last.status)}>
+          <b>{nameOf(last)}</b>
           <span>Last check {when(last.at)}. {last.pages} page{last.pages === 1 ? '' : 's'} checked, {last.failures} problem{last.failures === 1 ? '' : 's'}.</span>
         </div>
       )}
@@ -104,7 +106,7 @@ export default function Checks() {
             <>
               <tr key={c.id} className={'chkrun' + (open === c.id ? ' on' : '')} onClick={() => setOpen(open === c.id ? null : c.id)}>
                 <td>{when(c.at)}</td>
-                <td><span className={'pill ' + (c.status === 'ok' ? 'live' : 'draft')}>{LABEL[c.status] || c.status}</span></td>
+                <td><span className={'pill ' + (c.status === 'ok' ? 'live' : 'draft')}>{nameOf(c)}</span></td>
                 <td>{c.pages}</td><td>{c.status === 'running' ? '-' : c.failures}</td><td>{c.status === 'running' ? '...' : dur(c.durationS)}</td>
                 <td><button className="link" type="button">{open === c.id ? 'Hide' : 'Details'}</button></td>
               </tr>
