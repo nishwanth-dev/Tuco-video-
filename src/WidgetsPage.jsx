@@ -86,8 +86,11 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
   const [prods, setProds] = useState([]);
   const [colls, setColls] = useState([]);
   const [saveErr, setSaveErr] = useState('');
+  const [vq, setVq] = useState('');
   const set = (k, v) => setW((o) => ({ ...o, [k]: v }));
   const live = videos.filter((v) => v.status === 'live' && !v.archived).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // newest first
+  const term = vq.trim().toLowerCase();
+  const shownLive = term ? live.filter((v) => (v.title || '').toLowerCase().includes(term) || JSON.stringify(v.products || []).toLowerCase().includes(term)) : live;
   const toggleVid = (id) => set('videoIds', w.videoIds.includes(id) ? w.videoIds.filter((x) => x !== id) : [...w.videoIds, id]);
   // Limits a picked video to desktop or phones (empty = both). Stored in the widget's overrides.
   const setDevice = (id, dev) => setW((o) => {
@@ -123,7 +126,10 @@ function Editor({ widget, videos, settings, onClose, onSave }) {
       )}
       {isSlide && <p className="muted small">Pick the video for the slide. To use a different video on phones, pick two and set one to "Desktop only" and the other to "Phones only".</p>}
       {!isTabs && w.scope === 'custom' && (
-        <div className="vpick">{live.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><em className="vpd">{fmtDate(v.createdAt)}</em></label>)}{!live.length && <p className="muted">No live videos yet.</p>}</div>
+        <>
+        <input className="vsearch" value={vq} onChange={(e) => setVq(e.target.value)} placeholder="Search videos by title or product" aria-label="Search videos" />
+        <div className="vpick">{shownLive.map((v) => <label key={v.id} className={'vp' + (w.videoIds.includes(v.id) ? ' on' : '')}><input type="checkbox" checked={w.videoIds.includes(v.id)} onChange={() => toggleVid(v.id)} /><Thumb url={v.url} poster={v.poster} /><span>{v.title}</span><em className="vpd">{fmtDate(v.createdAt)}</em></label>)}{!live.length && <p className="muted">No live videos yet.</p>}{live.length > 0 && !shownLive.length && <p className="muted">No video matches "{vq.trim()}".</p>}</div>
+        </>
       )}
       {!isTabs && w.scope === 'custom' && w.type !== 'gallery' && w.videoIds.length > 1 && (
         <div className="lab">Order of the picked videos <span className="muted">The first one is shown first. Use the arrows to change the order. To use a different video on phones than on desktop, set one to "Desktop only" and the other to "Phones only".</span>
