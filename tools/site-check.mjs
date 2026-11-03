@@ -221,7 +221,14 @@ async function main() {
     ...details.map((r) => `| ${r.path} | ${r.device} | ${r.widget} | ${r.type} | ${r.drawn ? 'yes' : 'NO'} | ${r.playing === null ? '-' : r.playing ? 'yes' : 'NO'} | ${r.shapeOk === null ? '-' : r.shapeOk ? 'ok ' + r.actual : 'BAD ' + r.actual + ' want ' + r.expected} |`)].join('\n');
   writeFileSync(join(dir, `${stamp}.md`), md);
 
-  if (!DRY) {
+  if (!DRY && process.env.LOOPY_TOKEN) {
+    // Running on GitHub (no laptop): send the result straight to Loopy's API with the admin token kept as a GitHub secret.
+    try {
+      const r = await fetch(`${API}/api/checks`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.LOOPY_TOKEN}` }, body: JSON.stringify(stored) });
+      console.log(r.ok ? 'Saved to Loopy (Site checks page).' : `Could not save to Loopy: HTTP ${r.status}`);
+      if (!r.ok) process.exitCode = 1;
+    } catch (e) { console.log('Could not save to Loopy: ' + String(e.message).slice(0, 200)); process.exitCode = 1; }
+  } else if (!DRY) {
     const q = (s) => "'" + s.replace(/'/g, "''") + "'";
     const sql = `INSERT INTO site_checks (at,status,pages,failures,duration_s,summary,details) VALUES (${stored.at},${q(stored.status)},${stored.pages},${stored.failures},${stored.durationS},${q(JSON.stringify(stored.summary))},${q(JSON.stringify(stored.details))});`;
     const f = join(dir, '.last.sql'); writeFileSync(f, sql);

@@ -1,0 +1,24 @@
+# Opens the live website in a real browser three times a day (about 12:45 am, 4:45 am and 6:45 am India time)
+# and sends the result to Loopy's Site checks page. It only reads pages, like a visitor, and changes nothing.
+# Needs one repository secret: LOOPY_TOKEN (the Loopy admin token).
+name: Site check
+on:
+  schedule:
+    - cron: '15 19 * * *'
+    - cron: '15 23 * * *'
+    - cron: '15 1 * * *'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --ignore-scripts
+      - run: node tools/site-check.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          LOOPY_TOKEN: ${{ secrets.LOOPY_TOKEN }}
