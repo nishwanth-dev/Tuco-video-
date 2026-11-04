@@ -368,6 +368,31 @@ async function handle(req, env, ctx) {
     const videos = await videosForWidget(env, url.origin, widget, settings, { product: useProduct, collection: q('collection'), placement: q('placement') });
     return respond({ settings, widget, videos });
   }
+  // Hero helpers for the theme: the widget's shape on each device, and its first picture as a plain image address,
+  // so a page can reserve the space and show the poster before any script runs.
+  if ((p === '/api/public/hero' || p === '/api/public/poster') && req.method === 'GET') {
+    const wid = url.searchParams.get('widget') || '';
+    if (!/^wgt_[a-z0-9]+$/.test(wid)) return json({ error: 'unknown widget' }, 404, cors);
+    const row = await env.DB.prepare('SELECT * FROM widgets WHERE id=?').bind(wid).first();
+    if (!row || !row.enabled) return json({ error: 'unknown widget' }, 404, cors);
+    const widget = toWidget(row);
+    const settings = mergeOverrides(await getSettings(env), widget.overrides);
+    const videos = await videosForWidget(env, url.origin, widget, settings, { product: '', collection: url.searchParams.get('collection') || '', placement: '' });
+    const only = (widget.overrides || {}).deviceOnly || {};
+    const firstFor = (dev) => videos.find((v) => !only[v.id] || only[v.id] === dev) || null;
+    const b = settings.banner || {};
+    const ratio = (mode, r) => (mode === 'ratio' && /^\d+(\.\d+)?\/\d+(\.\d+)?$/.test(String(r)) ? String(r) : null);
+    const out = {
+      type: widget.type,
+      desktop: { ratio: ratio(b.heightModeDesktop || b.heightMode || 'ratio', b.aspectLandscape), poster: (firstFor('desktop') || {}).poster || '' },
+      mobile: { ratio: ratio(b.heightModeMobile || b.heightMode || 'ratio', b.aspectPortrait), poster: (firstFor('mobile') || {}).poster || '' },
+    };
+    if (p === '/api/public/hero') return json(out, 200, { ...cors, 'cache-control': 'public, max-age=60' });
+    const dev = url.searchParams.get('device') === 'desktop' ? 'desktop' : 'mobile';
+    const target = out[dev].poster;
+    if (!target) return json({ error: 'no poster' }, 404, cors);
+    return new Response(null, { status: 302, headers: { ...cors, location: target, 'cache-control': 'public, max-age=300' } });
+  }
   if (p === '/api/public/events' && req.method === 'POST') {
     const raw = await req.text().catch(() => '');
     if (raw.length > 30000) return json({ error: 'too large' }, 413, cors);

@@ -411,3 +411,16 @@ test('theme blocks: the Product Tabs block exists, asks for a widget ID, keeps s
   assert.match(t, /loopy\.tucokids\.workers\.dev\/widget\.js/, 'it loads the Loopy script once');
   assert.equal(readdirSync(dir).filter((f) => /\.liquid$/.test(f)).length >= 7, true, 'the other blocks are still there');
 });
+
+test('hero helpers: shape per device and a redirect to the first picture, only for real widgets', async () => {
+  const v = await mkVideo({ title: 'Hero one', status: 'live', poster: 'https://example.com/hero.jpg' });
+  const wid = await mkWidget({ type: 'banner', videoIds: [v], scope: 'custom' });
+  const h = await call('GET', '/api/public/hero?widget=' + wid, { auth: false, headers: { origin: STORE } });
+  assert.equal(h.status, 200);
+  assert.equal(h.json.mobile.poster, 'https://example.com/hero.jpg');
+  assert.ok(h.json.desktop.ratio === null || /^\d+(\.\d+)?\/\d+(\.\d+)?$/.test(h.json.desktop.ratio));
+  const r = await fetch(B + '/api/public/poster?widget=' + wid, { redirect: 'manual' });
+  assert.equal(r.status, 302); assert.equal(r.headers.get('location'), 'https://example.com/hero.jpg');
+  assert.equal((await call('GET', '/api/public/hero?widget=wgt_nope', { auth: false })).status, 404);
+  assert.equal((await call('GET', '/api/public/hero?widget=bad%20id', { auth: false })).status, 404);
+});
