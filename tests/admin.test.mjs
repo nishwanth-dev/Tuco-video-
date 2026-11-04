@@ -329,7 +329,7 @@ test('phones: the menu button opens a side menu; picking a page, the dark area o
   assert.equal((await state()).shown, false, 'closed at first');
   await page.click('.menubtn'); await sleep(500);
   let st = await state(); assert.equal(st.shown, true); assert.ok(st.left >= -1, 'the menu is fully on screen'); assert.equal(st.expanded, 'true');
-  for (const want of ['Home', 'Videos', 'Products', 'Product Pages', 'Homepage', 'Collection Pages', 'Pages', 'Overview', 'Site checks', 'Customizations', 'Integrations', 'Sign out']) assert.ok(st.items.includes(want), 'menu lists ' + want + ': ' + st.items.join(','));
+  for (const want of ['Home', 'Videos', 'Images', 'Products', 'Product Pages', 'Homepage', 'Collection Pages', 'Pages', 'Overview', 'Site checks', 'Customizations', 'Integrations', 'Sign out']) assert.ok(st.items.includes(want), 'menu lists ' + want + ': ' + st.items.join(','));
   await page.evaluate(() => [...document.querySelectorAll('.side .nav')].find((n) => /^Videos/.test(n.innerText.trim())).click()); await sleep(600);
   assert.equal((await state()).shown, false, 'picking a page closes the menu');
   assert.match(await page.evaluate(() => document.querySelector('.mtitle').textContent), /Videos/, 'the top bar names the page');
@@ -686,4 +686,49 @@ test('slide video admin: the simple Slide video card creates a widget like Video
     assert.match(await page.evaluate(() => document.body.innerText), /Slide video/, 'it is in the list');
     await api('DELETE', '/api/widgets/' + saved.id);
   } finally { await page.close(); }
+});
+
+test('images tab: upload many at once, clean names, refuse bad files, never overwrite, search, folder filter, copy address, delete with confirmation', { skip: !haveChrome && 'Chrome is not installed' }, async () => {
+  const { mkdtempSync, writeFileSync } = await import('node:fs'); const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'loopy-img-')); const folder = 'imgui-' + Date.now();
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(300, 1)]);
+  const f1 = join(dir, 'My Photo (1).JPG'); const f2 = join(dir, 'second-one.jpg'); const f3 = join(dir, 'notes.txt');
+  writeFileSync(f1, jpg); writeFileSync(f2, jpg); writeFileSync(f3, 'hello');
+  const page = await open('images');
+  try {
+    assert.match(await page.evaluate(() => document.querySelector('.shell h1').textContent), /Images/);
+    await page.$eval('input[aria-label="Folder"]', (e) => { e.focus(); e.select(); }); await page.keyboard.press('Backspace'); await page.keyboard.type(folder);
+    assert.equal(await page.$eval('input[aria-label="Folder"]', (e) => e.value), folder, 'the folder box holds only the typed folder');
+    await (await page.$('input[data-testid="picker"]')).uploadFile(f1, f2, f3); await sleep(500);
+    const q = await page.evaluate(() => [...document.querySelectorAll('.upr')].map((r) => ({ cls: r.className, name: (r.querySelector('input') || {}).value || '', text: r.innerText })));
+    assert.equal(q.length, 3);
+    assert.equal(q[0].name, 'my-photo-1', 'a cleaned-up name is suggested: ' + JSON.stringify(q[0])); assert.match(q[0].text, /cleaned up/i);
+    assert.match(q[2].text, /Only JPEG, PNG and WebP/); assert.match(q[2].cls, /refused/);
+    await clickText(page, '.upq .btn', 'Upload'); await page.waitForFunction(() => document.querySelectorAll('.upr.done').length === 2, { timeout: 15000 });
+    await sleep(600);
+    const mine = (await api('GET', '/api/images')).json.images.filter((i) => i.folder === folder).map((i) => i.name).sort();
+    assert.deepEqual(mine, ['my-photo-1.jpg', 'second-one.jpg']);
+    // the same name again is refused, nothing is replaced
+    await (await page.$('input[data-testid="picker"]')).uploadFile(f2); await sleep(400);
+    assert.match(await page.evaluate(() => document.querySelector('.upr.ready').innerText), /already exists/);
+    assert.ok(await page.evaluate(() => [...document.querySelectorAll('.upq .btn')].find((b) => /Upload/.test(b.innerText)).disabled), 'cannot upload a taken name');
+    // list, search, folder filter
+    await page.select('select[aria-label="Filter by folder"]', folder); await sleep(300);
+    assert.equal(await page.evaluate(() => document.querySelectorAll('.imgrow').length), 2);
+    await page.type('input[aria-label="Search images"]', 'second'); await sleep(300);
+    const row = await page.evaluate(() => ({ n: document.querySelectorAll('.imgrow').length, t: document.querySelector('.imgrow').innerText }));
+    assert.equal(row.n, 1); assert.match(row.t, new RegExp(folder)); assert.match(row.t, /KB/); assert.match(row.t, new RegExp('/media/' + folder + '/second-one.jpg'));
+    assert.match(await page.evaluate(() => document.querySelector('.imgrow .imgaddr').textContent), /^https?:\/\/.+\/media\//);
+    await clickText(page, '.imgrow button', 'Copy address'); await sleep(200);
+    // delete asks first and shows the name
+    await clickText(page, '.imgrow button', 'Delete'); await sleep(300);
+    assert.match(await page.evaluate(() => document.querySelector('.modal').innerText), /second-one\.jpg/);
+    await clickText(page, '.modal button', 'Cancel'); await sleep(300);
+    assert.equal((await fetch(B + '/media/' + folder + '/second-one.jpg')).status, 200, 'cancel keeps it');
+    await clickText(page, '.imgrow button', 'Delete'); await sleep(300); await clickText(page, '.modal .btn', 'Delete'); await sleep(900);
+    assert.equal((await fetch(B + '/media/' + folder + '/second-one.jpg')).status, 404, 'confirmed delete removes it');
+  } finally {
+    for (const n of ['my-photo-1.jpg', 'second-one.jpg']) await api('DELETE', `/api/images/${folder}/${n}`);
+    await page.close();
+  }
 });

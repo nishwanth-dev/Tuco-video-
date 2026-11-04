@@ -73,3 +73,22 @@ export const getCheckPages = () => req('/api/checks/pages');
 export const saveCheckPages = (pages) => send('PUT', '/api/checks/pages', { pages });
 
 export const previewWidget = (overrides) => send('POST', '/api/widgets/preview', { overrides });
+
+// Images tab
+export const listImages = () => req('/api/images');
+export const deleteImage = (folder, name) => req(`/api/images/${folder}/${name}`, { method: 'DELETE' });
+// Uses XHR (not fetch) so the browser can report upload progress. Resolves { ok, status, error, url }.
+export const uploadImage = (folder, name, file, onProgress) => new Promise((resolve) => {
+  const x = new XMLHttpRequest();
+  x.open('PUT', `${BASE}/api/images/${folder}/${name}`);
+  x.setRequestHeader('authorization', `Bearer ${getToken()}`);
+  x.setRequestHeader('content-type', file.type || 'application/octet-stream');
+  x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+  x.onload = () => {
+    let d = {}; try { d = JSON.parse(x.responseText); } catch { /* not JSON */ }
+    if (x.status === 401) setToken('');
+    resolve({ ok: x.status === 201, status: x.status, error: d.error || (x.status === 401 ? 'Signed out, sign in again' : `Upload failed (${x.status})`), url: d.url });
+  };
+  x.onerror = () => resolve({ ok: false, status: 0, error: 'Could not reach Loopy. Check your internet connection and try again.' });
+  x.send(file);
+});

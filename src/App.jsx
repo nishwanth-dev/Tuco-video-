@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { listVideos, listWidgets, getSettings, getToken, setToken, apiBase, checkToken } from './api.js';
 import Home from './Home.jsx';
 import Videos from './Videos.jsx';
+import Images from './Images.jsx';
 import Products from './Products.jsx';
 import WidgetsPage from './WidgetsPage.jsx';
 import Customizations from './Customizations.jsx';
@@ -13,14 +14,14 @@ import Loader from './Loader.jsx';
 import Bot from './bot/Bot.jsx';
 
 const NAV = [
-  { id: 'home', label: 'Home' }, { id: 'videos', label: 'Videos', badge: true }, { id: 'products', label: 'Products' },
+  { id: 'home', label: 'Home' }, { id: 'videos', label: 'Videos', badge: true }, { id: 'images', label: 'Images' }, { id: 'products', label: 'Products' },
   { group: 'Video widgets' },
   { id: 'w:product', label: 'Product Pages' }, { id: 'w:home', label: 'Homepage' }, { id: 'w:collection', label: 'Collection Pages' }, { id: 'w:pages', label: 'Pages' },
   { group: 'Analytics' }, { id: 'analytics', label: 'Overview' }, { id: 'checks', label: 'Site checks' },
   { group: 'Settings' }, { id: 'custom', label: 'Customizations' }, { id: 'integrations', label: 'Integrations' },
 ];
 
-const ROUTES = ['home', 'videos', 'products', 'w:product', 'w:home', 'w:collection', 'w:pages', 'analytics', 'checks', 'custom', 'integrations'];
+const ROUTES = ['home', 'videos', 'images', 'products', 'w:product', 'w:home', 'w:collection', 'w:pages', 'analytics', 'checks', 'custom', 'integrations'];
 // Each page has its own address (#/videos), so the browser and phone back button move between pages.
 const fromHash = () => { const r = decodeURIComponent(location.hash.replace(/^#\/?/, '')); return ROUTES.includes(r) ? r : 'home'; };
 
@@ -85,6 +86,7 @@ export default function App() {
         {!apiBase && <div className="err">VITE_API_URL is not set, so the admin cannot reach the API.</div>}
         {route === 'home' && <Home {...ctx} />}
         {route === 'videos' && <Videos {...ctx} />}
+        {route === 'images' && <Images setError={setError} />}
         {route === 'products' && <Products {...ctx} />}
         {route.startsWith('w:') && <WidgetsPage key={route} page={route.slice(2)} {...ctx} />}
         {route === 'analytics' && <Analytics {...ctx} />}

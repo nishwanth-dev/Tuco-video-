@@ -440,3 +440,36 @@ test('fixed-name pictures: admin only, real pictures only, never replaced, serve
   assert.equal(g.headers.get('access-control-allow-origin'), '*');
   assert.match(g.headers.get('cache-control'), /max-age=31536000/); assert.ok(g.headers.get('etag'));
 });
+
+test('images tab: list, upload to any folder, never replaced, delete admin only, videos folder untouched', async () => {
+  const stamp = Date.now();
+  const folder = 'imgtest-' + stamp;
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(300, 1)]);
+  const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBP'), Buffer.alloc(50, 1)]);
+  const put = (f, n, body, auth = true) => call('PUT', `/api/images/${f}/${n}`, { raw: body, auth });
+  assert.equal((await put(folder, 'a-one.jpg', jpg, false)).status, 401);
+  const r = await put(folder, 'a-one.jpg', jpg); assert.equal(r.status, 201, JSON.stringify(r.json));
+  assert.ok(r.json.url.endsWith(`/media/${folder}/a-one.jpg`));
+  assert.equal((await put(folder, 'a-one.jpg', jpg)).status, 409, 'never overwritten');
+  assert.equal((await put(folder, 'b-two.webp', webp)).status, 201);
+  assert.equal((await put(folder, 'bad_name.jpg', jpg)).status, 400, 'underscores are refused for new files');
+  assert.notEqual((await put(folder, 'Upper.jpg', jpg)).status, 201);
+  assert.equal((await put(folder, 'fake.png', Buffer.from('not a picture'))).status, 400);
+  assert.equal((await put(folder, 'big.jpg', Buffer.concat([jpg, Buffer.alloc(5 * 1024 * 1024)]))).status, 400);
+  assert.notEqual((await put('videos', 'x.jpg', jpg)).status, 201, 'the videos folder is reserved');
+  assert.equal((await call('GET', '/api/images', { auth: false })).status, 401);
+  const l = await call('GET', '/api/images');
+  assert.equal(l.status, 200);
+  assert.ok(l.json.folders.includes(folder) && !l.json.folders.includes('videos'));
+  const mine = l.json.images.filter((i) => i.folder === folder);
+  assert.equal(mine.length, 2); assert.ok(mine[0].size > 0 && mine[0].uploaded > 0 && mine[0].url.includes('/media/' + folder + '/'));
+  const g = await fetch(B + `/media/${folder}/b-two.webp`, { headers: { origin: 'https://other.example' } });
+  assert.equal(g.headers.get('content-type'), 'image/webp'); assert.equal(g.headers.get('access-control-allow-origin'), '*');
+  assert.match(g.headers.get('cache-control'), /immutable/); assert.ok(g.headers.get('etag'));
+  assert.equal((await call('DELETE', `/api/images/${folder}/a-one.jpg`, { auth: false })).status, 401);
+  assert.equal((await call('DELETE', `/api/images/${folder}/a-one.jpg`)).status, 200);
+  assert.equal((await call('DELETE', `/api/images/${folder}/a-one.jpg`)).status, 404);
+  assert.equal((await fetch(B + `/media/${folder}/a-one.jpg`)).status, 404);
+  await call('DELETE', `/api/images/${folder}/b-two.webp`);
+  assert.equal((await call('DELETE', '/api/images/videos/x.mp4')).status === 200, false);
+});

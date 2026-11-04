@@ -547,6 +547,49 @@ async function handle(req, env, ctx) {
     await env.MEDIA.put(key, data, { httpMetadata: { contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg' } });
     return json({ url: `${url.origin}/media/${key}`, size: data.byteLength }, 201, cors);
   }
+  // Images tab: list, upload and delete pictures in any folder (never "videos"). Same public rules as /media: nothing is renamed or moved.
+  // New names are lowercase letters, numbers and hyphens only; older pictures (dots, underscores) can still be listed and deleted.
+  if (p === '/api/images' && req.method === 'GET') {
+    if (!env.MEDIA) return json({ error: 'Storage (R2) is not enabled yet.' }, 503, cors);
+    const top = await env.MEDIA.list({ delimiter: '/', limit: 1000 });
+    const folders = (top.delimitedPrefixes || []).map((x) => x.slice(0, -1)).filter((f) => f !== 'videos' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(f)).sort();
+    const images = [];
+    for (const f of folders) {
+      let cursor;
+      do {
+        const page = await env.MEDIA.list({ prefix: f + '/', cursor, limit: 1000 });
+        for (const o of page.objects) {
+          const name = o.key.slice(f.length + 1);
+          if (/^[a-z0-9][a-z0-9._-]{0,80}\.(jpg|jpeg|png|webp)$/i.test(name)) images.push({ folder: f, name, size: o.size, uploaded: new Date(o.uploaded).getTime(), url: `${url.origin}/media/${o.key}` });
+        }
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor && images.length < 5000);
+    }
+    images.sort((a, b) => b.uploaded - a.uploaded || a.name.localeCompare(b.name));
+    return json({ images, folders }, 200, cors);
+  }
+  const im = p.match(/^\/api\/images\/([a-z0-9][a-z0-9-]{0,39})\/([a-z0-9][a-z0-9._-]{0,80}\.(jpg|jpeg|png|webp))$/);
+  if (im && im[1] !== 'videos' && req.method === 'PUT') {
+    if (!env.MEDIA) return json({ error: 'Storage (R2) is not enabled yet.' }, 503, cors);
+    if (!/^[a-z0-9][a-z0-9-]{0,79}\.(jpg|jpeg|png|webp)$/.test(im[2])) throw new Bad('use lowercase letters, numbers and hyphens only in the file name');
+    const key = `${im[1]}/${im[2]}`;
+    const data = await req.arrayBuffer();
+    if (!data.byteLength || data.byteLength > 5 * 1024 * 1024) throw new Bad('the picture must be between 1 byte and 5 MB');
+    const b = new Uint8Array(data.slice(0, 12));
+    const ext = im[3];
+    const okMagic = ext === 'png' ? b[0] === 0x89 && b[1] === 0x50 : ext === 'webp' ? b[0] === 0x52 && b[8] === 0x57 : b[0] === 0xff && b[1] === 0xd8;
+    if (!okMagic) throw new Bad('this file is not a real ' + ext.toUpperCase() + ' picture');
+    if (await env.MEDIA.head(key)) return json({ error: 'a picture with this name already exists; use a new name', url: `${url.origin}/media/${key}` }, 409, cors);
+    await env.MEDIA.put(key, data, { httpMetadata: { contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg' } });
+    return json({ url: `${url.origin}/media/${key}`, size: data.byteLength }, 201, cors);
+  }
+  if (im && im[1] !== 'videos' && req.method === 'DELETE') {
+    if (!env.MEDIA) return json({ error: 'Storage (R2) is not enabled yet.' }, 503, cors);
+    const key = `${im[1]}/${im[2]}`;
+    if (!(await env.MEDIA.head(key))) return json({ error: 'not found' }, 404, cors);
+    await env.MEDIA.delete(key);
+    return json({ ok: true }, 200, cors);
+  }
   if (p === '/api/upload' && req.method === 'PUT') {
     if (!env.MEDIA) return json({ error: 'Video storage (R2) is not enabled yet. Paste a video URL instead.' }, 503, cors);
     const name = (url.searchParams.get('name') || 'video.mp4').replace(/[^\w.-]/g, '_').slice(-80);
