@@ -424,3 +424,19 @@ test('hero helpers: shape per device and a redirect to the first picture, only f
   assert.equal((await call('GET', '/api/public/hero?widget=wgt_nope', { auth: false })).status, 404);
   assert.equal((await call('GET', '/api/public/hero?widget=bad%20id', { auth: false })).status, 404);
 });
+
+test('fixed-name pictures: admin only, real pictures only, never replaced, served publicly for a year', async () => {
+  const name = 'ing-test-' + Date.now() + '.jpg';
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]);
+  const put = (n, body, auth = true, type = 'image/jpeg') => call('PUT', '/api/files/ingredients/' + n, { raw: body, auth, headers: { 'content-type': type } });
+  assert.equal((await put(name, jpg, false)).status, 401);
+  const r = await put(name, jpg); assert.equal(r.status, 201, JSON.stringify(r.json));
+  assert.ok(r.json.url.endsWith('/media/ingredients/' + name));
+  assert.equal((await put(name, jpg)).status, 409, 'a name is never overwritten');
+  assert.equal((await put('ing-fake-' + Date.now() + '.jpg', Buffer.from('not a picture'))).status, 400);
+  assert.notEqual((await call('PUT', '/api/files/ingredients/Bad%20Name.jpg', { raw: jpg })).status, 201, 'odd names are refused');
+  const g = await fetch(B + '/media/ingredients/' + name, { headers: { origin: 'https://other.example' } });
+  assert.equal(g.status, 200); assert.equal(g.headers.get('content-type'), 'image/jpeg');
+  assert.equal(g.headers.get('access-control-allow-origin'), '*');
+  assert.match(g.headers.get('cache-control'), /max-age=31536000/); assert.ok(g.headers.get('etag'));
+});

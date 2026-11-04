@@ -531,6 +531,22 @@ async function handle(req, env, ctx) {
   }
 
   // Raw file body, stored in R2 and served back through /media. Free plan caps request bodies at 100 MB.
+  // Fixed-name picture upload: PUT /api/files/ingredients/<name>.jpg is served at /media/ingredients/<name>.jpg for good (one-year cache),
+  // so a file is never replaced: a changed picture needs a new name.
+  const fm = p.match(/^\/api\/files\/(ingredients)\/([a-z0-9][a-z0-9._-]{0,80}\.(jpg|jpeg|png|webp))$/);
+  if (fm && req.method === 'PUT') {
+    if (!env.MEDIA) return json({ error: 'Storage (R2) is not enabled yet.' }, 503, cors);
+    const key = `${fm[1]}/${fm[2]}`;
+    const data = await req.arrayBuffer();
+    if (!data.byteLength || data.byteLength > 5 * 1024 * 1024) throw new Bad('the picture must be between 1 byte and 5 MB');
+    const b = new Uint8Array(data.slice(0, 12));
+    const ext = fm[3];
+    const okMagic = ext === 'png' ? b[0] === 0x89 && b[1] === 0x50 : ext === 'webp' ? b[0] === 0x52 && b[8] === 0x57 : b[0] === 0xff && b[1] === 0xd8;
+    if (!okMagic) throw new Bad('this file is not a real ' + ext.toUpperCase() + ' picture');
+    if (await env.MEDIA.head(key)) return json({ error: 'a picture with this name already exists; use a new name', url: `${url.origin}/media/${key}` }, 409, cors);
+    await env.MEDIA.put(key, data, { httpMetadata: { contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg' } });
+    return json({ url: `${url.origin}/media/${key}`, size: data.byteLength }, 201, cors);
+  }
   if (p === '/api/upload' && req.method === 'PUT') {
     if (!env.MEDIA) return json({ error: 'Video storage (R2) is not enabled yet. Paste a video URL instead.' }, 503, cors);
     const name = (url.searchParams.get('name') || 'video.mp4').replace(/[^\w.-]/g, '_').slice(-80);
