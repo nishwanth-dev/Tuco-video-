@@ -111,7 +111,8 @@ async function checkPage(browser, pick, device) {
     page.on('request', (r) => { if (BLOCK.test(r.url())) r.abort(); else r.continue(); });
     page.on('response', (r) => { const u = r.url(); if (/loopy\.tucokids|tuco-video-api/.test(u) && r.status() >= 400) loopyFails.push(`${r.status()} ${u.replace(/https?:\/\//, '').replace(/\?.*/, '').slice(-60)}`); });
     page.on('requestfailed', (r) => { const u = r.url(); if (/loopy\.tucokids|tuco-video-api/.test(u) && !/ERR_ABORTED/.test(r.failure() && r.failure().errorText || '')) loopyFails.push(`failed ${u.replace(/https?:\/\//, '').replace(/\?.*/, '').slice(-60)}`); });
-    page.on('console', (m) => { if (m.type() === 'error' && /tuco|loopy/i.test(m.text())) consoleErrs.push(m.text().slice(0, 120)); });
+    // Only errors about Loopy itself count. The store's own theme errors (for example the old Whatmore script "video-shopping.js" that no longer exists) say nothing about Loopy.
+    page.on('console', (m) => { const t = m.text(); if (m.type() === 'error' && /loopy\.tucokids|tuco-video-api|widget\.js|data-tuco-video/i.test(t) && !/video-shopping/i.test(t)) consoleErrs.push(t.slice(0, 120)); });
     await page.goto(pick.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     // scroll down in steps so widgets that wait until they are near the screen start
     for (let y = 0; y < 14000; y += 600) { await page.evaluate((yy) => window.scrollTo(0, yy), y); await sleep(250); const end = await page.evaluate(() => window.scrollY + innerHeight >= document.documentElement.scrollHeight - 5); if (end) break; }
